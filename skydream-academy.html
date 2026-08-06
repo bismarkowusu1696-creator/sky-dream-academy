@@ -1,0 +1,3248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SkyDream Skills Training Academy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+<style>
+/* ============================= TOKENS ============================= */
+:root{
+  --sky:#2F80ED; --sky-deep:#1B5FC4; --sky-tint:#EAF2FD;
+  --navy:#1F3A93; --navy-deep:#152A6E;
+  --gold:#F4B400; --gold-deep:#C68E00;
+  --paper:#FFFFFF; --ink:#333333; --ink-soft:#5B6472; --ink-faint:#8891A0;
+  --line:#E1E8F5;
+  --danger:#D64545; --danger-tint:#FCEAEA;
+  --success:#1E8E5A; --success-tint:#E8F6EF;
+  --warn:#B4790E; --warn-tint:#FDF3E1;
+  --radius:16px; --radius-sm:9px;
+  --shadow-sm:0 2px 10px rgba(31,58,147,0.07);
+  --shadow-md:0 10px 30px rgba(31,58,147,0.12);
+  --font-display:'Fraunces',serif;
+  --font-body:'IBM Plex Sans',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+*,*::before,*::after{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{margin:0;font-family:var(--font-body);color:var(--ink);background:var(--paper);line-height:1.55;}
+h1,h2,h3,h4{font-family:var(--font-display);color:var(--navy);margin:0 0 .4em;line-height:1.15;font-weight:600;}
+p{margin:0 0 1em;}
+a{color:inherit;}
+button{font-family:inherit;}
+img{max-width:100%;display:block;}
+.icon{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:-0.15em;}
+.container{max-width:1180px;margin:0 auto;padding:0 24px;}
+.eyebrow{font-family:var(--font-mono);letter-spacing:.14em;text-transform:uppercase;font-size:.72rem;color:var(--sky-deep);font-weight:600;}
+.section{padding:76px 0;}
+.section-alt{background:var(--sky-tint);}
+.section-head{max-width:640px;margin-bottom:40px;}
+.section-head p{color:var(--ink-soft);}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important;}}
+
+/* ============================= BUTTONS ============================= */
+.btn{display:inline-flex;align-items:center;gap:8px;justify-content:center;border:none;border-radius:999px;padding:13px 26px;font-weight:600;font-size:.95rem;cursor:pointer;text-decoration:none;transition:transform .15s ease, box-shadow .15s ease, background .15s ease;}
+.btn:active{transform:translateY(1px);}
+.btn-primary{background:var(--sky);color:#fff;box-shadow:var(--shadow-sm);}
+.btn-primary:hover{background:var(--sky-deep);box-shadow:var(--shadow-md);}
+.btn-gold{background:var(--gold);color:var(--navy-deep);}
+.btn-gold:hover{background:var(--gold-deep);color:#fff;}
+.btn-outline{background:transparent;color:var(--navy);border:1.5px solid var(--navy);}
+.btn-outline:hover{background:var(--navy);color:#fff;}
+.btn-outline-light{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.6);}
+.btn-outline-light:hover{background:#fff;color:var(--navy);}
+.btn-ghost{background:transparent;color:var(--sky-deep);padding:10px 14px;}
+.btn-ghost:hover{background:var(--sky-tint);}
+.btn-sm{padding:8px 14px;font-size:.82rem;border-radius:8px;}
+.btn-danger{background:var(--danger-tint);color:var(--danger);}
+.btn-danger:hover{background:var(--danger);color:#fff;}
+.btn-block{width:100%;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* ============================= NAV ============================= */
+#siteNav{position:sticky;top:0;z-index:200;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;max-width:1180px;margin:0 auto;}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:1.15rem;color:var(--navy);cursor:pointer;background:none;border:none;padding:0;}
+.brand-mark{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+.brand-mark svg{width:19px;height:19px;stroke:#fff;fill:none;stroke-width:1.7;}
+.brand-mark img{width:100%;height:100%;object-fit:contain;}
+.nav-links{display:flex;gap:4px;align-items:center;list-style:none;margin:0;padding:0;}
+.nav-links button{background:none;border:none;padding:9px 13px;border-radius:8px;font-size:.92rem;font-weight:500;color:var(--ink-soft);cursor:pointer;}
+.nav-links button:hover{color:var(--navy);background:var(--sky-tint);}
+.nav-links button.active{color:var(--navy);font-weight:600;}
+.nav-cta{display:flex;align-items:center;gap:10px;}
+.nav-admin-link{font-size:.8rem;color:var(--ink-faint);background:none;border:none;cursor:pointer;padding:8px 6px;}
+.nav-admin-link:hover{color:var(--sky-deep);}
+.nav-toggle{display:none;background:none;border:none;cursor:pointer;color:var(--navy);}
+.nav-toggle .icon{width:26px;height:26px;}
+@media (max-width:900px){
+  .nav-links{position:fixed;top:64px;left:0;right:0;background:#fff;flex-direction:column;align-items:stretch;padding:10px 20px 20px;border-bottom:1px solid var(--line);box-shadow:var(--shadow-md);display:none;}
+  .nav-links.open{display:flex;}
+  .nav-links button{text-align:left;padding:12px 10px;}
+  .nav-toggle{display:block;}
+  .nav-cta .btn span.long{display:none;}
+}
+
+/* ============================= HERO ============================= */
+.hero{position:relative;overflow:hidden;padding:64px 0 40px;background:
+    radial-gradient(700px 380px at 85% -10%, var(--sky-tint) 0%, rgba(234,242,253,0) 70%);}
+.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;}
+.hero-copy h1{font-size:clamp(2.1rem,4.2vw,3.35rem);}
+.hero-copy .lead{font-size:1.12rem;color:var(--ink-soft);max-width:46ch;}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0 30px;}
+.hero-ticket{display:inline-flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow-sm);position:relative;}
+.hero-ticket::after{content:"";position:absolute;right:-8px;top:50%;transform:translateY(-50%);width:16px;height:16px;background:var(--paper);border-radius:50%;border-left:1px solid var(--line);}
+.hero-ticket .t-label{font-family:var(--font-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);}
+.hero-ticket .t-date{font-weight:600;color:var(--navy);}
+.count-row{display:flex;gap:10px;font-family:var(--font-mono);}
+.count-cell{text-align:center;}
+.count-cell b{display:block;font-size:1.15rem;color:var(--sky-deep);}
+.count-cell span{font-size:.62rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;}
+.hero-visual{position:relative;aspect-ratio:1/1;max-width:460px;justify-self:end;}
+.sky-map{position:absolute;inset:0;}
+.sky-tile{position:absolute;width:74px;height:74px;background:#fff;border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:var(--shadow-sm);animation:float 6s ease-in-out infinite;}
+.sky-tile .icon{width:22px;height:22px;color:var(--sky-deep);}
+.sky-tile span{font-size:.56rem;color:var(--ink-soft);font-weight:600;text-align:center;padding:0 4px;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.hero-copy .kicker-line{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.hero-copy .kicker-line::after{content:"";flex:1;height:1px;background:var(--line);}
+@media (max-width:900px){.hero-grid{grid-template-columns:1fr;}.hero-visual{display:none;}}
+
+/* ============================= WHY CHOOSE ============================= */
+.why-band{background:linear-gradient(160deg,var(--navy),var(--navy-deep));color:#fff;padding:60px 0;}
+.why-band .section-head h2{color:#fff;}
+.why-band .section-head p{color:rgba(255,255,255,.72);}
+.why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+.why-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:var(--radius-sm);padding:22px 20px;}
+.why-card .icon{width:26px;height:26px;color:var(--gold);margin-bottom:12px;}
+.why-card h4{color:#fff;font-size:1.02rem;margin-bottom:6px;}
+.why-card p{color:rgba(255,255,255,.68);font-size:.88rem;margin:0;}
+@media (max-width:900px){.why-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:560px){.why-grid{grid-template-columns:1fr;}}
+
+/* ============================= PROGRAM CARDS ============================= */
+.programs-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;}
+.prog-card{border:1px solid var(--line);border-radius:var(--radius);padding:22px;background:#fff;transition:box-shadow .15s ease, transform .15s ease;display:flex;flex-direction:column;}
+.prog-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px);}
+.prog-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+.prog-icon-wrap{width:46px;height:46px;border-radius:12px;background:var(--sky-tint);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.prog-icon-wrap .icon{width:24px;height:24px;color:var(--sky-deep);}
+.prog-duration{font-family:var(--font-mono);font-size:.7rem;color:var(--ink-faint);background:var(--line);padding:4px 9px;border-radius:999px;white-space:nowrap;}
+.prog-card h3{font-size:1.14rem;margin-bottom:6px;}
+.prog-card .desc{color:var(--ink-soft);font-size:.9rem;flex:1;}
+.prog-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px;}
+.tag{font-size:.72rem;background:var(--sky-tint);color:var(--sky-deep);padding:4px 9px;border-radius:999px;}
+.tag.career{background:#FBF3DC;color:var(--gold-deep);}
+.prog-seats{font-size:.76rem;color:var(--ink-faint);margin-bottom:10px;}
+.prog-seats b{color:var(--sky-deep);}
+.prog-seats.full b{color:var(--danger);}
+.prog-more-toggle{background:none;border:none;color:var(--sky-deep);font-size:.82rem;font-weight:600;cursor:pointer;padding:0;text-align:left;margin-bottom:10px;}
+.prog-detail{display:none;font-size:.86rem;color:var(--ink-soft);margin-bottom:10px;}
+.prog-detail.open{display:block;}
+.prog-detail h5{margin:8px 0 4px;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--navy);font-family:var(--font-body);font-weight:700;}
+
+/* ============================= SCHEDULE ============================= */
+.schedule-wrap{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:stretch;}
+.timetable{border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:#fff;}
+.timetable-row{display:flex;justify-content:space-between;align-items:center;padding:20px 24px;border-bottom:1px solid var(--line);}
+.timetable-row:last-child{border-bottom:none;}
+.timetable-row .day{font-weight:600;color:var(--navy);display:flex;align-items:center;gap:10px;}
+.timetable-row .day .icon{width:20px;height:20px;color:var(--sky-deep);}
+.timetable-row .time{font-family:var(--font-mono);color:var(--ink-soft);}
+.ticket-stub{position:relative;background:linear-gradient(150deg,var(--navy),var(--navy-deep));color:#fff;border-radius:var(--radius);padding:28px 26px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;}
+.ticket-stub::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 90% 15%, rgba(244,180,0,.18), transparent 55%);}
+.ticket-stub .eyebrow{color:var(--gold);}
+.ticket-stub h3{color:#fff;font-size:1.5rem;margin:6px 0 2px;}
+.ticket-stub .stub-date{color:rgba(255,255,255,.75);font-family:var(--font-mono);font-size:.85rem;}
+.ticket-countdown{display:flex;gap:14px;margin-top:20px;position:relative;}
+.ticket-countdown .cd-cell{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:10px;padding:10px 4px;text-align:center;flex:1;}
+.ticket-countdown b{display:block;font-family:var(--font-mono);font-size:1.4rem;}
+.ticket-countdown span{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.6);}
+.ticket-perf{position:absolute;left:0;right:0;top:50%;border-top:2px dashed rgba(255,255,255,.25);}
+@media (max-width:900px){.schedule-wrap{grid-template-columns:1fr;}}
+
+/* ============================= ABOUT ============================= */
+.about-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px;margin-bottom:44px;}
+.about-block{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;}
+.about-block h3{font-size:1.05rem;display:flex;align-items:center;gap:9px;}
+.about-block h3 .icon{width:19px;height:19px;color:var(--gold-deep);}
+.about-block p{color:var(--ink-soft);font-size:.92rem;margin:0;}
+.obj-list{list-style:none;margin:0;padding:0;display:grid;gap:10px;}
+.obj-list li{display:flex;gap:10px;font-size:.92rem;color:var(--ink-soft);}
+.obj-list li .icon{width:17px;height:17px;color:var(--success);flex-shrink:0;margin-top:2px;}
+.trainer-grid,.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;}
+.trainer-card{text-align:center;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px 12px;}
+.trainer-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(155deg,var(--sky),var(--navy));color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:600;margin:0 auto 10px;font-size:1.1rem;position:relative;overflow:hidden;}
+.trainer-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.trainer-card h5{margin:0 0 2px;font-size:.9rem;color:var(--navy);}
+.trainer-card span{font-size:.76rem;color:var(--ink-faint);}
+.gallery-tile{aspect-ratio:1/1;border-radius:var(--radius-sm);background:var(--sky-tint);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1px dashed var(--line);position:relative;overflow:hidden;}
+.gallery-tile img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.gallery-tile .icon{width:26px;height:26px;color:var(--sky-deep);}
+.gallery-tile span{font-size:.68rem;color:var(--ink-faint);text-align:center;padding:0 8px;}
+.note-callout{background:var(--warn-tint);color:var(--warn);border-radius:var(--radius-sm);padding:12px 16px;font-size:.84rem;margin-top:8px;display:flex;gap:8px;}
+.note-callout .icon{width:16px;height:16px;flex-shrink:0;margin-top:2px;}
+@media (max-width:800px){.about-grid{grid-template-columns:1fr;}}
+
+/* ============================= FORMS ============================= */
+.form-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:32px;max-width:820px;margin:0 auto;}
+.form-step{margin-bottom:30px;}
+.form-step-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.form-step-num{width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:.82rem;flex-shrink:0;}
+.form-step-head h4{margin:0;font-size:1.02rem;color:var(--navy);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.field{display:flex;flex-direction:column;gap:6px;}
+.field.full{grid-column:1/-1;}
+.field label{font-size:.82rem;font-weight:600;color:var(--ink-soft);}
+.field .req{color:var(--danger);}
+.field input[type=text],.field input[type=date],.field input[type=tel],.field input[type=email],.field select,.field textarea{
+  border:1.5px solid var(--line);border-radius:9px;padding:11px 13px;font-family:inherit;font-size:.94rem;color:var(--ink);background:#fff;width:100%;}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--sky);outline-offset:1px;border-color:var(--sky);}
+.field .hint{font-size:.74rem;color:var(--ink-faint);}
+.field-error{font-size:.76rem;color:var(--danger);display:none;}
+.field.invalid input,.field.invalid select{border-color:var(--danger);}
+.field.invalid .field-error{display:block;}
+.check-row{display:flex;align-items:flex-start;gap:10px;font-size:.88rem;color:var(--ink-soft);}
+.check-row input{margin-top:3px;}
+.photo-upload{display:flex;align-items:center;gap:16px;}
+.photo-preview{width:76px;height:76px;border-radius:12px;background:var(--sky-tint);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;border:1px dashed var(--line);}
+.photo-preview img{width:100%;height:100%;object-fit:cover;}
+.photo-preview .icon{width:24px;height:24px;color:var(--ink-faint);}
+.form-foot{display:flex;justify-content:flex-end;gap:12px;border-top:1px solid var(--line);padding-top:22px;margin-top:6px;}
+@media (max-width:700px){.form-grid{grid-template-columns:1fr;}.form-card{padding:22px;}}
+
+/* ============================= SLIP / TICKET BADGE ============================= */
+.slip-wrap{max-width:460px;margin:0 auto;}
+.slip{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow-md);}
+.slip-head{background:linear-gradient(150deg,var(--sky),var(--navy));color:#fff;padding:22px 24px;display:flex;align-items:center;gap:12px;}
+.slip-head .brand-mark{background:rgba(255,255,255,.18);}
+.slip-head .name{font-family:var(--font-display);font-weight:700;font-size:1.05rem;}
+.slip-head .sub{font-size:.7rem;color:rgba(255,255,255,.75);letter-spacing:.05em;text-transform:uppercase;}
+.slip-body{padding:24px;}
+.slip-reg{font-family:var(--font-mono);font-size:1.35rem;color:var(--navy);letter-spacing:.03em;font-weight:600;}
+.slip-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed var(--line);font-size:.9rem;}
+.slip-row:last-child{border-bottom:none;}
+.slip-row span:first-child{color:var(--ink-faint);}
+.slip-row span:last-child{font-weight:600;color:var(--ink);text-align:right;}
+.slip-perf{border-top:2px dashed var(--line);margin:6px 0 0;position:relative;}
+.slip-qr-row{display:flex;align-items:center;gap:16px;padding-top:18px;}
+#slipQR,#printSlipQR{background:#fff;padding:6px;border-radius:8px;}
+.slip-qr-note{font-size:.72rem;color:var(--ink-faint);}
+.confirm-banner{display:flex;align-items:center;gap:10px;background:var(--success-tint);color:var(--success);padding:12px 16px;border-radius:var(--radius-sm);margin-bottom:22px;font-weight:600;}
+.confirm-banner .icon{width:20px;height:20px;flex-shrink:0;}
+.slip-actions{display:flex;gap:10px;justify-content:center;margin-top:22px;flex-wrap:wrap;}
+
+/* ============================= CONTACT ============================= */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+.contact-info-list{list-style:none;margin:0 0 24px;padding:0;display:grid;gap:14px;}
+.contact-info-list li{display:flex;gap:12px;align-items:flex-start;}
+.contact-info-list .icon{width:19px;height:19px;color:var(--sky-deep);flex-shrink:0;margin-top:2px;}
+.contact-info-list b{display:block;font-size:.78rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.04em;}
+.map-embed{border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);height:240px;}
+.map-embed iframe{width:100%;height:100%;border:0;}
+@media (max-width:800px){.contact-grid{grid-template-columns:1fr;}}
+
+/* ============================= FOOTER ============================= */
+footer{background:var(--navy-deep);color:rgba(255,255,255,.75);padding:48px 0 24px;}
+.footer-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr;gap:32px;margin-bottom:32px;}
+footer h5{color:#fff;font-size:.86rem;margin:0 0 12px;text-transform:uppercase;letter-spacing:.05em;}
+footer .brand{color:#fff;}
+footer p{font-size:.86rem;color:rgba(255,255,255,.6);}
+.footer-links{list-style:none;margin:0;padding:0;display:grid;gap:8px;font-size:.86rem;}
+.footer-links button,.footer-links a{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;padding:0;font-size:inherit;text-decoration:none;}
+.footer-links button:hover,.footer-links a:hover{color:var(--gold);}
+.footer-bottom{border-top:1px solid rgba(255,255,255,.12);padding-top:20px;font-size:.78rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;color:rgba(255,255,255,.5);}
+@media (max-width:800px){.footer-grid{grid-template-columns:1fr 1fr;}}
+
+/* ============================= ADMIN ============================= */
+#adminSection{background:#F6F8FD;min-height:70vh;}
+.admin-shell{display:none;}
+.admin-shell.active{display:block;}
+.admin-auth-wrap{max-width:420px;margin:60px auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:34px;}
+.admin-auth-wrap h2{font-size:1.3rem;text-align:center;}
+.admin-auth-wrap p.sub{text-align:center;color:var(--ink-soft);font-size:.88rem;margin-bottom:24px;}
+.admin-top{display:flex;justify-content:space-between;align-items:center;padding:22px 0;flex-wrap:wrap;gap:12px;}
+.admin-top h2{margin:0;font-size:1.4rem;}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-bottom:30px;}
+.stat-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:16px 18px;}
+.stat-card b{display:block;font-family:var(--font-mono);font-size:1.5rem;color:var(--navy);}
+.stat-card.total b{color:var(--sky-deep);}
+.stat-card.danger b{color:var(--danger);}
+.stat-card span{font-size:.76rem;color:var(--ink-faint);}
+.admin-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:18px;}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--sky-tint);border-radius:9px;padding:9px 12px;flex:1;min-width:200px;}
+.search-box .icon{width:16px;height:16px;color:var(--sky-deep);}
+.search-box input{border:none;background:transparent;outline:none;font-size:.88rem;width:100%;color:var(--ink);font-family:inherit;}
+.admin-toolbar select{border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;}
+.export-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.table-wrap{overflow-x:auto;background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);}
+table.students{width:100%;border-collapse:collapse;font-size:.86rem;min-width:760px;}
+table.students th{text-align:left;padding:12px 14px;background:var(--sky-tint);color:var(--navy);font-size:.74rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;}
+table.students td{padding:12px 14px;border-top:1px solid var(--line);white-space:nowrap;}
+table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
+.status-pill{font-size:.72rem;padding:4px 10px;border-radius:999px;font-weight:600;}
+.status-pill.Registered{background:var(--success-tint);color:var(--success);}
+.status-pill.Cancelled{background:var(--danger-tint);color:var(--danger);}
+.status-pill.Completed{background:var(--sky-tint);color:var(--sky-deep);}
+.status-pill.Paid{background:var(--success-tint);color:var(--success);}
+.status-pill.Partial{background:#fff4d6;color:#9a6b00;}
+.status-pill.Unpaid{background:var(--danger-tint);color:var(--danger);}
+.status-pill.NoFeeSet{background:var(--line);color:var(--ink-faint);}
+.row-actions{display:flex;gap:6px;}
+.icon-btn{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink-soft);}
+.icon-btn:hover{background:var(--sky-tint);color:var(--sky-deep);}
+.icon-btn.danger:hover{background:var(--danger-tint);color:var(--danger);}
+.icon-btn .icon{width:15px;height:15px;}
+.empty-state{padding:50px 20px;text-align:center;color:var(--ink-faint);}
+.empty-state .icon{width:34px;height:34px;margin-bottom:10px;}
+.admin-footer-bar{display:flex;justify-content:space-between;align-items:center;padding:18px 0 40px;flex-wrap:wrap;gap:10px;}
+.reset-link{background:none;border:none;color:var(--ink-faint);font-size:.8rem;cursor:pointer;text-decoration:underline;}
+.admin-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:20px;}
+.admin-tab-btn{background:none;border:none;cursor:pointer;padding:10px 16px;font-size:.88rem;font-weight:600;color:var(--ink-faint);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;}
+.admin-tab-btn:hover{color:var(--sky-deep);}
+.admin-tab-btn.active{color:var(--sky-deep);border-bottom-color:var(--sky-deep);}
+.msg-badge{background:var(--danger);color:#fff;border-radius:999px;font-size:.65rem;font-weight:700;padding:2px 7px;margin-left:6px;}
+.admin-tab-panel{display:none;}
+.admin-tab-panel.active{display:block;}
+.admin-user-form{background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:20px;margin-bottom:24px;max-width:640px;}
+.admin-user-form h3{margin:0 0 4px;font-size:1.05rem;}
+.admin-user-form .sub-note{color:var(--ink-soft);font-size:.84rem;margin-bottom:16px;}
+.admin-user-form .field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+@media (max-width:600px){.admin-user-form .field-row{grid-template-columns:1fr;}}
+.admin-user-list-wrap h3{font-size:1.05rem;margin-bottom:12px;}
+.admin-user-row{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--line);border-radius:var(--radius-sm);padding:14px 18px;margin-bottom:10px;flex-wrap:wrap;gap:10px;}
+.admin-user-row .who b{display:block;font-size:.92rem;color:var(--navy);}
+.admin-user-row .who span{font-size:.78rem;color:var(--ink-faint);}
+.admin-user-row .you-badge{background:var(--sky-tint);color:var(--sky-deep);font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:999px;margin-left:8px;}
+
+/* ============================= ATTENDANCE / FACILITATOR ============================= */
+.att-toggle{display:flex;gap:6px;}
+.att-btn{border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:7px 13px;font-size:.78rem;font-weight:600;cursor:pointer;color:var(--ink-soft);font-family:inherit;}
+.att-btn:hover{border-color:var(--sky);}
+.att-btn.present.active{background:var(--success-tint);color:var(--success);border-color:var(--success);}
+.att-btn.absent.active{background:var(--danger-tint);color:var(--danger);border-color:var(--danger);}
+.att-chip{display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:22px;border-radius:5px;font-size:.64rem;font-weight:700;margin:2px;padding:0 4px;}
+.att-chip.present{background:var(--success-tint);color:var(--success);}
+.att-chip.absent{background:var(--danger-tint);color:var(--danger);}
+.att-chip.unmarked{background:var(--sky-tint);color:var(--ink-faint);}
+.att-pct{font-weight:700;font-family:var(--font-mono);}
+.fac-course-check{display:flex;align-items:center;gap:6px;font-size:.85rem;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px 12px;cursor:pointer;}
+.fac-course-check input{margin:0;}
+.att-session-note{background:var(--sky-tint);border-radius:var(--radius-sm);padding:14px 16px;color:var(--sky-deep);font-size:.86rem;margin-bottom:18px;}
+.att-summary-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:18px;}
+.att-summary-row .stat-card{flex:1;min-width:120px;}
+.att-risk-banner{display:none;background:var(--danger-tint);color:var(--danger);border:1px solid var(--danger);border-radius:var(--radius-sm);padding:12px 16px;font-size:.85rem;margin-bottom:16px;}
+.preview-mode-banner{display:none;background:var(--warn-tint);color:var(--warn);border:1px solid var(--warn);border-radius:var(--radius-sm);padding:12px 16px;font-size:.85rem;margin-bottom:16px;font-weight:600;}
+
+/* ============================= MODAL ============================= */
+.modal-overlay{position:fixed;inset:0;background:rgba(20,30,60,.45);display:none;align-items:flex-start;justify-content:center;z-index:500;padding:40px 16px;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal-box{background:#fff;border-radius:var(--radius);max-width:640px;width:100%;padding:28px;position:relative;margin-bottom:40px;}
+.modal-close{position:absolute;top:18px;right:18px;background:none;border:none;cursor:pointer;color:var(--ink-faint);}
+.modal-close .icon{width:20px;height:20px;}
+.modal-box h3{margin-bottom:18px;}
+
+/* ============================= TOAST ============================= */
+#toastHost{position:fixed;bottom:22px;right:22px;z-index:900;display:flex;flex-direction:column;gap:10px;}
+.toast{background:var(--navy-deep);color:#fff;padding:13px 18px;border-radius:10px;font-size:.86rem;box-shadow:var(--shadow-md);display:flex;align-items:center;gap:10px;min-width:220px;animation:toastIn .2s ease;}
+.toast.error{background:var(--danger);}
+.toast.success{background:var(--success);}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* ============================= PRINT ============================= */
+#printArea{display:none;}
+@media print{
+  body.printing-slip > *:not(#printOverlay){display:none !important;}
+  #printOverlay{display:block !important;position:fixed;inset:0;background:#fff;}
+  #printOverlay #printArea{display:block !important;}
+}
+
+/* view sections default hidden except home */
+.view-section{display:none;}
+.view-section.active{display:block;}
+</style>
+</head>
+<body>
+
+<!-- ============================================================= NAV ============================================================= -->
+<nav id="siteNav">
+  <div class="nav-inner">
+    <button class="brand" onclick="showView('home')" aria-label="SkyDream home">
+      <span class="brand-mark"><img src="logo.png" alt="SkyDream logo"></span>
+      SkyDream
+    </button> 
+    <ul class="nav-links" id="navLinks">
+      <li><button data-view="home" onclick="showView('home')">Home</button></li>
+      <li><button data-view="about" onclick="showView('about')">About Us</button></li>
+      <li><button data-view="programs" onclick="showView('programs')">Programs</button></li>
+      <li><button data-view="schedule" onclick="showView('schedule')">Schedule</button></li>
+      <li><button data-view="lookup" onclick="showView('lookup')">Check Status</button></li>
+      <li><button data-view="contact" onclick="showView('contact')">Contact</button></li>
+    </ul>
+    <div class="nav-cta">
+      <button class="nav-admin-link" onclick="showView('facilitator')">Facilitator</button>
+      <button class="nav-admin-link" onclick="showView('admin')">Admin</button>
+      <button class="btn btn-primary btn-sm" onclick="showView('register')"><span class="long">Register Now</span><span class="short" style="display:none">Register</span></button>
+      <button class="nav-toggle" onclick="toggleMobileNav()" aria-label="Menu"><svg class="icon" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    </div>
+  </div>
+</nav>
+
+<!-- ============================================================= HOME ============================================================= -->
+<section class="view-section active" id="view-home">
+  <div class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <div class="kicker-line"><span class="eyebrow">Weekend Vocational Training · Accra</span></div>
+        <h1>Learn a skill that pays.<br>Weekends only.</h1>
+        <p class="lead">SkyDream Skills Training Academy trains school leavers, career changers and entrepreneurs across 13 hands-on programs — every Saturday and Sunday, with no long-term commitment required.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary" onclick="showView('register')">Register Now</button>
+          <button class="btn btn-outline" onclick="showView('programs')">View Programs</button>
+        </div>
+        <div class="hero-ticket">
+          <div>
+            <div class="t-label">Next intake starts</div>
+            <div class="t-date" id="heroIntakeDate">26 September 2026</div>
+          </div>
+          <div class="count-row" id="heroCountdown"></div>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="sky-map" id="heroSkyMap"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="why-band">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Why Choose Us</span><h2>Built around your week, not the other way around</h2></div>
+      <div class="why-grid">
+        <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><h4>Weekend Classes</h4><p>Train Saturdays and Sundays without leaving your job or school.</p></div>
+        <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg><h4>Job-Ready Skills</h4><p>Every program is hands-on, built around real tools and real client work.</p></div>
+        <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><h4>Trusted & Affordable</h4><p>Clear program fees and a straightforward registration process.</p></div>
+        <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-2 2-3 3-3s2.5 1 3 3"/><path d="M14 10h4M14 13h4"/></svg><h4>Instant Registration</h4><p>Get a verified registration number and printable badge the moment you register.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Available Programs</span><h2>13 vocational, language & digital tracks</h2><p>A preview of what's on offer — see the full Programs page for duration, skills and career paths.</p></div>
+      <div class="programs-grid" id="homeProgramsPreview"></div>
+      <div style="text-align:center;margin-top:28px;"><button class="btn btn-outline" onclick="showView('programs')">See All Programs</button></div>
+    </div>
+  </div>
+
+  <div class="section section-alt">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Training Schedule</span><h2>Two days a week. One new skill.</h2></div>
+      <div class="schedule-wrap">
+        <div class="timetable">
+          <div class="timetable-row"><span class="day"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Saturday</span><span class="time">1:00 PM – 3:00 PM</span></div>
+          <div class="timetable-row"><span class="day"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Sunday</span><span class="time">9:00 AM – 2:00 PM</span></div>
+        </div>
+        <div class="ticket-stub">
+          <div><span class="eyebrow">Next Intake</span><h3 id="scheduleIntakeDateHome">26 Sept 2026</h3><div class="stub-date">Program Starts</div></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:30px;"><button class="btn btn-primary" onclick="showView('register')">Reserve Your Seat</button></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Get In Touch</span><h2>Come visit, call, or message us</h2></div>
+      <ul class="contact-info-list" style="max-width:520px;">
+        <li><svg class="icon" viewBox="0 0 24 24"><path d="M12 22s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><div><b>Office Address</b>Skydream Training Centre, Accra</div></li>
+        <li><svg class="icon" viewBox="0 0 24 24"><path d="M6 3h3l1 5-2 2c1 3 3 5 6 6l2-2 5 1v3a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z"/></svg><div><b>Phone / WhatsApp</b>0546586950</div></li>
+        <li><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 6l9 7 9-7"/></svg><div><b>Email</b>skydreamacademyghana@gmail.com</div></li>
+      </ul>
+      <button class="btn btn-outline" onclick="showView('contact')">Full Contact Details</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= ABOUT ============================================================= -->
+<section class="view-section" id="view-about">
+  <div class="section">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">About Us</span><h2>Practical training, real opportunity</h2></div>
+      <div class="about-grid">
+        <div class="about-block"><h3><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l4 2"/></svg>Our History</h3><p>SkyDream Skills Training Academy was founded to give school leavers, career changers and entrepreneurs in Accra a practical route into skilled work — training that fits around a job, on Saturdays and Sundays, without long-term commitment or heavy fees.</p></div>
+        <div class="about-block"><h3><svg class="icon" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>Our Vision</h3><p>A community where every young person within reach of SkyDream has a marketable skill and the confidence to earn from it.</p></div>
+        <div class="about-block"><h3><svg class="icon" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg>Our Mission</h3><p>To deliver hands-on, affordable, weekend vocational training across trades, languages and digital skills — and to support every graduate into work or self-employment.</p></div>
+        <div class="about-block"><h3><svg class="icon" viewBox="0 0 24 24"><path d="M8 12l3 3 5-6"/><circle cx="12" cy="12" r="9"/></svg>Our Objectives</h3>
+          <ul class="obj-list">
+            <li><svg class="icon" viewBox="0 0 24 24"><path d="M8 12l3 3 5-6"/><circle cx="12" cy="12" r="9"/></svg>Equip 500+ learners yearly across 13 vocational tracks</li>
+            <li><svg class="icon" viewBox="0 0 24 24"><path d="M8 12l3 3 5-6"/><circle cx="12" cy="12" r="9"/></svg>Keep training affordable and weekend-accessible</li>
+            <li><svg class="icon" viewBox="0 0 24 24"><path d="M8 12l3 3 5-6"/><circle cx="12" cy="12" r="9"/></svg>Partner with local businesses for apprenticeships and job placement</li>
+            <li><svg class="icon" viewBox="0 0 24 24"><path d="M8 12l3 3 5-6"/><circle cx="12" cy="12" r="9"/></svg>Maintain small class sizes for hands-on mentorship</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="section-head"><span class="eyebrow">Our Trainers</span><h2>Led by working professionals</h2></div>
+      <div class="trainer-grid" id="trainerGrid"></div>
+
+      <div style="height:44px;"></div>
+      <div class="section-head"><span class="eyebrow">Gallery</span><h2>A glimpse into the workshop</h2></div>
+      <div class="gallery-grid" id="galleryGrid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= PROGRAMS ============================================================= -->
+<section class="view-section" id="view-programs">
+  <div class="section">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Programs</span><h2>13 programs to choose from</h2><p>Every program includes a description, duration, skills you'll learn and career paths it opens up. Tap a card to see full details, or register straight away.</p></div>
+      <div class="programs-grid" id="fullProgramsGrid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= SCHEDULE ============================================================= -->
+<section class="view-section" id="view-schedule">
+  <div class="section">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Training Schedule</span><h2>When classes run</h2></div>
+      <div class="schedule-wrap">
+        <div class="timetable">
+          <div class="timetable-row"><span class="day"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Saturday</span><span class="time">1:00 PM – 3:00 PM</span></div>
+          <div class="timetable-row"><span class="day"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Sunday</span><span class="time">9:00 AM – 2:00 PM</span></div>
+        </div>
+        <div class="ticket-stub">
+          <div><span class="eyebrow">Next Intake</span><h3 id="scheduleIntakeDateFull">26 Sept 2026</h3><div class="stub-date">Program Starts</div></div>
+        </div>
+      </div>
+      <div style="text-align:center;margin-top:30px;"><button class="btn btn-primary" onclick="showView('register')">Reserve Your Seat</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= REGISTER ============================================================= -->
+<section class="view-section" id="view-register">
+  <div class="section">
+    <div class="container">
+      <div class="section-head" style="margin:0 auto 32px;text-align:center;max-width:600px;"><span class="eyebrow">Online Registration</span><h2>Reserve your seat for the <span id="regIntakeHeadingDate">26 Sept 2026</span> intake</h2><p>Fields marked <span class="req">*</span> are required. Registration takes about 3 minutes.</p></div>
+
+      <!-- FORM VIEW -->
+      <form id="regForm" class="form-card" novalidate>
+        <div class="form-step">
+          <div class="form-step-head"><span class="form-step-num">1</span><h4>Personal Information</h4></div>
+          <div class="form-grid">
+            <div class="field full"><label>Full Name <span class="req">*</span></label><input type="text" id="f_fullName" required><span class="field-error">Please enter the student's full name.</span></div>
+            <div class="field"><label>Date of Birth <span class="req">*</span></label><input type="date" id="f_dob" required><span class="field-error">Please select a date of birth.</span></div>
+            <div class="field"><label>Gender <span class="req">*</span></label><select id="f_gender" required><option value="">Select…</option><option>Female</option><option>Male</option></select><span class="field-error">Please select a gender.</span></div>
+            <div class="field full"><label>Ghana Card Number <span class="req">*</span></label><input type="text" id="f_ghanaCard" placeholder="GHA-000000000-0" required><span class="hint">Format: GHA-XXXXXXXXX-X</span><span class="field-error">Please enter a valid Ghana Card number.</span></div>
+            <div class="field full"><label>Passport Photograph (optional)</label>
+              <div class="photo-upload">
+                <div class="photo-preview" id="photoPreview"><svg class="icon" viewBox="0 0 24 24" style="width:24px;height:24px;"><circle cx="12" cy="8" r="3.5"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg></div>
+                <input type="file" accept="image/*" id="f_photo" style="max-width:240px;">
+              </div>
+              <span class="hint">Photo is resized automatically to keep registrations lightweight.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-step">
+          <div class="form-step-head"><span class="form-step-num">2</span><h4>Address</h4></div>
+          <div class="form-grid">
+            <div class="field"><label>GPS Address</label><input type="text" id="f_gps" placeholder="GA-000-0000"></div>
+            <div class="field full"><label>Residential Address <span class="req">*</span></label><textarea id="f_address" rows="2" required></textarea><span class="field-error">Please enter a residential address.</span></div>
+          </div>
+        </div>
+
+        <div class="form-step">
+          <div class="form-step-head"><span class="form-step-num">3</span><h4>Contact Information</h4></div>
+          <div class="form-grid">
+            <div class="field"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="f_mobile" placeholder="024XXXXXXX" required><span class="field-error">Please enter a valid 10-digit mobile number.</span></div>
+            <div class="field"><label>WhatsApp Number <span class="req">*</span></label><input type="tel" id="f_whatsapp" placeholder="024XXXXXXX" required><span class="field-error">Please enter a valid 10-digit WhatsApp number.</span></div>
+            <div class="field full"><label>Email Address (optional)</label><input type="email" id="f_email"></div>
+          </div>
+        </div>
+
+        <div class="form-step">
+          <div class="form-step-head"><span class="form-step-num">4</span><h4>Emergency Contact</h4></div>
+          <div class="form-grid">
+            <div class="field"><label>Name <span class="req">*</span></label><input type="text" id="f_emName" required><span class="field-error">Please enter an emergency contact name.</span></div>
+            <div class="field"><label>Relationship <span class="req">*</span></label><input type="text" id="f_emRel" placeholder="e.g. Mother, Uncle" required><span class="field-error">Please enter a relationship.</span></div>
+            <div class="field"><label>Phone Number <span class="req">*</span></label><input type="tel" id="f_emPhone" placeholder="024XXXXXXX" required><span class="field-error">Please enter a valid 10-digit phone number.</span></div>
+          </div>
+        </div>
+
+        <div class="form-step">
+          <div class="form-step-head"><span class="form-step-num">5</span><h4>Course Selection</h4></div>
+          <div class="form-grid">
+            <div class="field full"><label>Program <span class="req">*</span></label><select id="f_course" required></select><span class="field-error">Please select a program.</span></div>
+          </div>
+        </div>
+
+        <div class="form-step" style="margin-bottom:6px;">
+          <div class="form-step-head"><span class="form-step-num">6</span><h4>Declaration</h4></div>
+          <label class="check-row"><input type="checkbox" id="f_declare" required> I confirm that the information provided is true.</label>
+          <span class="field-error" id="declareError" style="display:none;">Please confirm the declaration to continue.</span>
+        </div>
+
+        <div class="form-foot">
+          <button type="button" class="btn btn-outline" onclick="showView('programs')">Back to Programs</button>
+          <button type="submit" class="btn btn-primary">Submit Registration</button>
+        </div>
+      </form>
+
+      <!-- CONFIRMATION VIEW -->
+      <div id="regConfirm" style="display:none;max-width:520px;margin:0 auto;">
+        <div class="confirm-banner"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>Registration successful — you're on the list.</div>
+        <div class="slip-wrap">
+          <div class="slip" id="slipCard">
+            <div class="slip-head">
+              <span class="brand-mark"><img src="logo.png" alt="SkyDream logo"></span>
+              <div><div class="name">SkyDream Skills Training Academy</div><div class="sub">Registration Slip</div></div>
+            </div>
+            <div class="slip-body">
+              <div class="slip-reg" id="slipRegNumber">SDGD001/09/2026</div>
+              <div style="height:14px;"></div>
+              <div class="slip-row"><span>Student</span><span id="slipName">—</span></div>
+              <div class="slip-row"><span>Program</span><span id="slipCourse">—</span></div>
+              <div class="slip-row"><span>Training Days</span><span>Sat &amp; Sun</span></div>
+              <div class="slip-row"><span>Training Time</span><span>1–3 PM / 9 AM–2 PM</span></div>
+              <div class="slip-row"><span>Start Date</span><span id="slipStartDateText">26 Sept 2026</span></div>
+              <div class="slip-perf"></div>
+              <div class="slip-qr-row">
+                <div id="slipQR"></div>
+                <div class="slip-qr-note">Present this slip (printed or on your phone) at check-in on your first training day.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="slip-actions">
+          <button class="btn btn-primary" onclick="printSlip(currentSlipId)">Print / Save as PDF</button>
+          <button class="btn btn-outline" onclick="resetRegForm()">Register Another Student</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= CONTACT ============================================================= -->
+<section class="view-section" id="view-contact">
+  <div class="section">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Contact</span><h2>We'd love to hear from you</h2></div>
+      <div class="contact-grid">
+        <div>
+          <ul class="contact-info-list">
+            <li><svg class="icon" viewBox="0 0 24 24"><path d="M12 22s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><div><b>Office Address</b>SkyDream Training Centre, Accra</div></li>
+            <li><svg class="icon" viewBox="0 0 24 24"><path d="M6 3h3l1 5-2 2c1 3 3 5 6 6l2-2 5 1v3a2 2 0 0 1-2 2A16 16 0 0 1 4 5a2 2 0 0 1 2-2z"/></svg><div><b>Phone</b>0546586950</div></li>
+            <li><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="10" rx="3"/><path d="M9 17l-2 3v-3"/><circle cx="9" cy="10" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg><div><b>WhatsApp</b>0546586950</div></li>
+            <li><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 6l9 7 9-7"/></svg><div><b>Email</b>skydreamacademyghana@gmail.com</div></li>
+          </ul>
+          <div class="map-embed"><iframe src="https://www.google.com/maps?q=Accra,Ghana&output=embed" loading="lazy" title="Map placeholder — Accra, Ghana"></iframe></div>
+          <div class="note-callout"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg><div>Placeholder map centred on Accra — update the query in the map link with your exact address once you have one.</div></div>
+        </div>
+        <div>
+          <form id="contactForm" class="form-card" style="padding:24px;">
+            <div class="field full" style="margin-bottom:14px;"><label>Name <span class="req">*</span></label><input type="text" id="c_name" required></div>
+            <div class="field full" style="margin-bottom:14px;"><label>Email <span class="req">*</span></label><input type="email" id="c_email" required></div>
+            <div class="field full" style="margin-bottom:14px;"><label>Message <span class="req">*</span></label><textarea id="c_message" rows="4" required></textarea></div>
+            <button type="submit" class="btn btn-primary btn-block">Send Message</button>
+            <p class="hint" style="margin-top:12px;">This form saves your message for the academy to review. To send messages by email automatically, connect this form to a service like Formspree or Google Apps Script.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= STUDENT LOOKUP ============================================================= -->
+<section class="view-section" id="view-lookup">
+  <div class="section">
+    <div class="container" style="max-width:640px;">
+      <div class="section-head" style="text-align:center;margin:0 auto 32px;"><span class="eyebrow">Check Your Status</span><h2>Look up your registration</h2><p>Enter your registration number and the mobile number you registered with to see your program, payment and attendance status.</p></div>
+      <div class="form-card" style="padding:24px;max-width:460px;margin:0 auto 24px;">
+        <div class="field full" style="margin-bottom:14px;"><label>Registration Number</label><input type="text" id="lookup_reg" placeholder="e.g. SDGD001/09/2026"></div>
+        <div class="field full" style="margin-bottom:18px;"><label>Mobile Number</label><input type="tel" id="lookup_mobile" placeholder="024XXXXXXX"></div>
+        <button class="btn btn-primary btn-block" onclick="handleLookupStudent()">Check Status</button>
+      </div>
+      <div id="lookupEmpty" class="empty-state" style="display:none;"></div>
+      <div id="lookupResult" class="admin-user-form" style="display:none;max-width:460px;margin:0 auto;">
+        <h3 id="lookupName">—</h3>
+        <p class="sub-note" id="lookupReg"></p>
+        <div class="slip-row"><span>Program</span><span id="lookupCourse">—</span></div>
+        <div class="slip-row"><span>Status</span><span id="lookupStatus">—</span></div>
+        <div class="slip-row"><span>Payment</span><span id="lookupPayment">—</span></div>
+        <div class="slip-row"><span>Attendance</span><span id="lookupAttendance">—</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= ADMIN ============================================================= -->
+<section class="view-section" id="view-admin">
+  <div id="adminSection">
+    <div class="container">
+
+      <!-- SETUP -->
+      <div class="admin-shell" id="adminSetup">
+        <div class="admin-auth-wrap">
+          <h2>Set Up Admin Account</h2>
+          <p class="sub">No administrator exists yet. Create the first admin login for this dashboard.</p>
+          <div class="field full" style="margin-bottom:14px;"><label>Admin Name</label><input type="text" id="setup_name" placeholder="e.g. Program Coordinator"></div>
+          <div class="field full" style="margin-bottom:14px;"><label>Username</label><input type="text" id="setup_username" placeholder="admin"></div>
+          <div class="field full" style="margin-bottom:14px;"><label>PIN (4–8 digits)</label><input type="text" id="setup_pin" inputmode="numeric" placeholder="••••"></div>
+          <div class="field full" style="margin-bottom:20px;"><label>Confirm PIN</label><input type="text" id="setup_pin2" inputmode="numeric" placeholder="••••"></div>
+          <button class="btn btn-primary btn-block" onclick="handleAdminSetup()">Create Admin Account</button>
+        </div>
+      </div>
+
+      <!-- LOGIN -->
+      <div class="admin-shell" id="adminLogin">
+        <div class="admin-auth-wrap">
+          <h2>Admin Login</h2>
+          <p class="sub">Sign in to manage registrations.</p>
+          <div class="field full" style="margin-bottom:14px;"><label>Username</label><input type="text" id="login_username"></div>
+          <div class="field full" style="margin-bottom:20px;"><label>PIN</label><input type="text" id="login_pin" inputmode="numeric"></div>
+          <button class="btn btn-primary btn-block" onclick="handleAdminLogin()">Log In</button>
+          <div style="text-align:center;margin-top:16px;"><button class="reset-link" onclick="openResetModal()">Forgot PIN? Reset admin account</button></div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="admin-shell" id="adminDashboard">
+        <div class="admin-top">
+          <h2>Admin Dashboard</h2>
+          <div style="display:flex;gap:10px;">
+            <span id="adminWelcome" class="btn btn-ghost btn-sm" style="cursor:default;"></span>
+            <button class="btn btn-outline btn-sm" onclick="handleAdminLogout()">Log Out</button>
+          </div>
+        </div>
+
+        <div class="admin-tabs">
+          <button class="admin-tab-btn active" id="tabBtn-overview" onclick="switchAdminTab('overview')">Overview</button>
+          <button class="admin-tab-btn" id="tabBtn-registrations" onclick="switchAdminTab('registrations')">Registrations</button>
+          <button class="admin-tab-btn" id="tabBtn-attendance" onclick="switchAdminTab('attendance')">Attendance Tracker</button>
+          <button class="admin-tab-btn" id="tabBtn-facilitators" onclick="switchAdminTab('facilitators')">Facilitators</button>
+          <button class="admin-tab-btn" id="tabBtn-capacity" onclick="switchAdminTab('capacity')">Capacity & Fees</button>
+          <button class="admin-tab-btn" id="tabBtn-messages" onclick="switchAdminTab('messages')">Messages<span class="msg-badge" id="msgBadge" style="display:none;"></span></button>
+          <button class="admin-tab-btn" id="tabBtn-users" onclick="switchAdminTab('users')">Admin Users</button>
+          <button class="admin-tab-btn" id="tabBtn-account" onclick="switchAdminTab('account')">My Account</button>
+        </div>
+
+        <div class="admin-tab-panel active" id="adminTab-overview">
+          <div id="intakeCard"></div>
+          <div class="stat-grid" id="overviewStatGrid"></div>
+          <div class="admin-user-form" style="max-width:none;">
+            <h3>Program Breakdown (Current Intake)</h3>
+            <div class="table-wrap">
+              <table class="students">
+                <thead><tr><th>Program</th><th>Registered / Capacity</th><th>Fee Collected</th><th>Fee Expected</th></tr></thead>
+                <tbody id="overviewProgramBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-tab-panel" id="adminTab-registrations">
+          <div class="stat-grid" id="statGrid"></div>
+
+          <div class="admin-toolbar">
+            <div class="search-box">
+              <svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>
+              <input type="text" id="adminSearch" placeholder="Search by name, phone, Ghana Card or reg. number…" oninput="renderStudentsTable()">
+            </div>
+            <select id="adminCourseFilter" onchange="renderStudentsTable()"></select>
+            <select id="adminStatusFilter" onchange="renderStudentsTable()">
+              <option value="">All Statuses</option>
+              <option>Registered</option>
+              <option>Completed</option>
+              <option>Cancelled</option>
+            </select>
+            <div class="export-btns">
+              <button class="btn btn-primary btn-sm" onclick="openAddStudentModal()">Add Walk-in Student</button>
+              <button class="btn btn-outline btn-sm" onclick="exportExcel()">Export Excel</button>
+              <button class="btn btn-outline btn-sm" onclick="exportPDF()">Export PDF</button>
+              <button class="btn btn-outline btn-sm" onclick="exportCSV()">Download List (CSV)</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="students">
+              <thead><tr>
+                <th>Reg. Number</th><th>Name</th><th>Course</th><th>Mobile</th><th>Ghana Card</th><th>Status</th><th>Payment</th><th></th>Actions</th>
+              </tr></thead>
+              <tbody id="studentsTableBody"></tbody>
+            </table>
+          </div>
+          <div class="admin-footer-bar">
+            <span class="hint" id="studentCountLabel"></span>
+          </div>
+        </div>
+
+        <div class="admin-tab-panel" id="adminTab-attendance">
+          <div class="att-session-note">Weekend classes run every Saturday &amp; Sunday, starting with the intake on <b id="attIntakeNoteDate">26 September 2026</b>. Pick a program to see each student's attendance record.</div>
+          <div class="admin-toolbar">
+            <select id="attCourseFilter" onchange="renderAttendanceTrackerTab()"></select>
+            <div class="export-btns">
+              <button class="btn btn-outline btn-sm" onclick="exportAttendanceCSV()">Export Attendance (CSV)</button>
+            </div>
+          </div>
+          <div class="att-summary-row" id="attSummaryRow"></div>
+          <div class="att-risk-banner" id="attRiskBanner"></div>
+          <div class="table-wrap">
+            <table class="students">
+              <thead><tr>
+                <th>Reg. Number</th><th>Name</th><th>Sessions Held</th><th>Present</th><th>Absent</th><th>Attendance %</th><th>Alert</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="attendanceTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="admin-tab-panel" id="adminTab-facilitators">
+          <div class="admin-user-form" id="addFacilitatorForm">
+            <h3>Add Facilitator</h3>
+            <p class="sub-note">Create a login for a facilitator and assign the program(s) they will mark attendance for.</p>
+            <div class="field-row">
+              <div class="field"><label>Full Name</label><input type="text" id="newfac_name" placeholder="e.g. Ama Boateng"></div>
+              <div class="field"><label>Username</label><input type="text" id="newfac_username" placeholder="e.g. ama.facilitator"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>PIN (4–8 digits)</label><input type="text" id="newfac_pin" inputmode="numeric" placeholder="••••"></div>
+              <div class="field"><label>Confirm PIN</label><input type="text" id="newfac_pin2" inputmode="numeric" placeholder="••••"></div>
+            </div>
+            <label style="display:block;font-size:.82rem;font-weight:600;color:var(--ink-soft);margin-bottom:8px;">Assigned Program(s)</label>
+            <div class="att-course-picker" id="newfacCoursePicker" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;"></div>
+            <button class="btn btn-primary btn-sm" onclick="handleAddFacilitator()">Add Facilitator</button>
+          </div>
+          <div class="admin-user-list-wrap">
+            <h3>Existing Facilitators</h3>
+            <div id="facilitatorsList"></div>
+          </div>
+        </div>
+
+        <div class="admin-tab-panel" id="adminTab-capacity">
+          <div class="admin-user-form">
+            <h3>Program Capacity & Fees</h3>
+            <p class="sub-note">Set how many students can register per program (blank or 0 = default of ${DEFAULT_CAPACITY}) and each program's fee in GHS (blank or 0 = no fee tracked). Changing a fee updates payment status for everyone registered on that program.</p>
+            <div id="capacityList"></div>
+            <button class="btn btn-primary btn-sm" onclick="handleSaveCapacities()" style="margin-top:14px;">Save Changes</button>
+          </div>
+        </div>
+
+        <div class="admin-tab-panel" id="adminTab-messages">
+          <div class="admin-toolbar">
+            <span class="hint" id="messagesCountLabel"></span>
+          </div>
+          <div id="messagesList"></div>
+        </div>
+
+        <div class="admin-tab-panel" id="adminTab-users">
+          <div class="admin-user-form" id="addAdminUserForm">
+            <h3>Add Admin User</h3>
+            <p class="sub-note">Create another login so someone else can also sign in to this dashboard.</p>
+            <div class="field-row">
+              <div class="field"><label>Full Name</label><input type="text" id="newadmin_name" placeholder="e.g. Front Desk Officer"></div>
+              <div class="field"><label>Username</label><input type="text" id="newadmin_username" placeholder="e.g. frontdesk"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>PIN (4–8 digits)</label><input type="text" id="newadmin_pin" inputmode="numeric" placeholder="••••"></div>
+              <div class="field"><label>Confirm PIN</label><input type="text" id="newadmin_pin2" inputmode="numeric" placeholder="••••"></div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="handleAddAdminUser()">Add Admin User</button>
+          </div>
+          <div class="admin-user-form" id="addAdminUserDenied" style="display:none;">
+            <h3>Add Admin User</h3>
+            <p class="sub-note">Only the main admin account can add new admin users. Ask the main admin to add one for you.</p>
+          </div>
+
+          <div class="admin-user-list-wrap">
+            <h3>Existing Admin Users</h3>
+            <div id="adminUsersList"></div>
+          </div>
+        </div>
+
+        <div class="admin-tab-panel" id="adminTab-account">
+          <div class="admin-user-form">
+            <h3>My Account</h3>
+            <p class="sub-note" id="account_sub_note">Update your display name, username or PIN. You must enter your current PIN to save changes.</p>
+            <div class="field-row">
+              <div class="field"><label>Full Name</label><input type="text" id="account_name" placeholder="e.g. Front Desk Officer"></div>
+              <div class="field"><label>Username</label><input type="text" id="account_username" placeholder="e.g. frontdesk"></div>
+            </div>
+            <div class="field full" style="margin-bottom:14px;"><label>Current PIN</label><input type="text" id="account_current_pin" inputmode="numeric" placeholder="••••"></div>
+            <div class="field-row" id="account_new_pin_row">
+              <div class="field"><label>New PIN (4–8 digits)</label><input type="text" id="account_new_pin" inputmode="numeric" placeholder="Leave blank to keep current PIN"></div>
+              <div class="field"><label>Confirm New PIN</label><input type="text" id="account_new_pin2" inputmode="numeric" placeholder="••••"></div>
+            </div>
+            <p class="sub-note" id="account_staff_pin_note" style="display:none;color:var(--muted,#888);">Only the main admin can change a PIN. Contact the main admin to reset your PIN.</p>
+            <button class="btn btn-primary btn-sm" onclick="handleUpdateOwnAccount()">Save Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= FACILITATOR ============================================================= -->
+<section class="view-section" id="view-facilitator">
+  <div id="facilitatorSection">
+    <div class="container">
+
+      <!-- NO ACCOUNTS YET -->
+      <div class="admin-shell" id="facilitatorNoAccounts">
+        <div class="admin-auth-wrap">
+          <h2>Facilitator Portal</h2>
+          <p class="sub">No facilitator accounts exist yet. Ask the academy admin to create one for you from the Admin Dashboard's Facilitators tab.</p>
+        </div>
+      </div>
+
+      <!-- LOGIN -->
+      <div class="admin-shell" id="facilitatorLogin">
+        <div class="admin-auth-wrap">
+          <h2>Facilitator Login</h2>
+          <p class="sub">Sign in to mark student attendance for your program.</p>
+          <div class="field full" style="margin-bottom:14px;"><label>Username</label><input type="text" id="fac_login_username"></div>
+          <div class="field full" style="margin-bottom:20px;"><label>PIN</label><input type="text" id="fac_login_pin" inputmode="numeric"></div>
+          <button class="btn btn-primary btn-block" onclick="handleFacilitatorLogin()">Log In</button>
+          <p class="sub" style="text-align:center;margin-top:16px;">Forgot PIN? Ask your admin to reset it from the Facilitators tab.</p>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="admin-shell" id="facilitatorDashboard">
+        <div class="admin-top">
+          <h2>Facilitator Dashboard</h2>
+          <div style="display:flex;gap:10px;">
+            <span id="facilitatorWelcome" class="btn btn-ghost btn-sm" style="cursor:default;"></span>
+            <button class="btn btn-outline btn-sm" onclick="handleFacilitatorLogout()">Log Out</button>
+          </div>
+        </div>
+
+        <div class="att-session-note">Weekend classes run every Saturday &amp; Sunday, starting with the intake on <b id="facIntakeNoteDate">26 September 2026</b>. Choose your program and a session date, then mark each student present or absent — changes save instantly. Click a highlighted button again to undo/clear that mark.</div>
+        <div class="preview-mode-banner" id="previewModeBanner">Preview Mode is on — nothing you mark below is saved to the real database. Click "Exit Preview Mode" to go back to live attendance.</div>
+
+        <div class="admin-toolbar">
+          <select id="facCourseSelect" onchange="onFacilitatorCourseChange()"></select>
+          <select id="facDateSelect" onchange="renderFacilitatorRoster()"></select>
+          <button class="btn btn-outline btn-sm" onclick="markAllPresent()">Mark All Present</button>
+          <button class="btn btn-outline btn-sm" id="previewModeBtn" onclick="togglePreviewMode()">Enable Preview Mode</button>
+        </div>
+
+        <div class="att-summary-row" id="facSummaryRow"></div>
+
+        <div class="table-wrap">
+          <table class="students">
+            <thead><tr>
+              <th>Reg. Number</th><th>Name</th><th>Attendance</th><th>Note (optional)</th>
+            </tr></thead>
+            <tbody id="facilitatorRosterBody"></tbody>
+          </table>
+        </div>
+        <div class="admin-footer-bar">
+          <span class="hint" id="facRosterCountLabel"></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= FOOTER ============================================================= -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <div class="brand" style="margin-bottom:12px;"><span class="brand-mark"><img src="logo.png" alt="SkyDream logo"></span>SkyDream</div>
+        <p>Weekend vocational, language and digital skills training in Accra. Practical skills, real career paths.</p>
+      </div>
+      <div><h5>Explore</h5><ul class="footer-links">
+        <li><button onclick="showView('about')">About Us</button></li>
+        <li><button onclick="showView('programs')">Programs</button></li>
+        <li><button onclick="showView('schedule')">Schedule</button></li>
+        <li><button onclick="showView('register')">Register</button></li>
+      </ul></div>
+      <div><h5>Support</h5><ul class="footer-links">
+        <li><button onclick="showView('contact')">Contact Us</button></li>
+        <li><button onclick="showView('lookup')">Check Registration Status</button></li>
+        <li><button onclick="showView('facilitator')">Facilitator Login</button></li>
+        <li><button onclick="showView('admin')">Admin Login</button></li>
+      </ul></div>
+      <div><h5>Contact</h5><ul class="footer-links">
+        <li>SkyDream Training Centre</li>
+        <li>0546586950</li>
+        <li>skydreamacademyghana@gmail.com</li>
+      </ul></div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 SkyDream Skills Training Academy. All rights reserved.</span>
+      <span>Next intake: <span id="footerIntakeDate">26 September 2026</span></span>
+    </div>
+  </div>
+</footer>
+
+<!-- ============================================================= EDIT MODAL ============================================================= -->
+<div class="modal-overlay" id="editModalOverlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeEditModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h3>Edit Student Record</h3>
+    <div class="form-grid">
+      <div class="field full"><label>Full Name</label><input type="text" id="e_fullName"></div>
+      <div class="field"><label>Date of Birth</label><input type="date" id="e_dob"></div>
+      <div class="field"><label>Gender</label><select id="e_gender"><option>Female</option><option>Male</option></select></div>
+      <div class="field full"><label>Ghana Card Number</label><input type="text" id="e_ghanaCard"></div>
+      <div class="field"><label>GPS Address</label><input type="text" id="e_gps"></div>
+      <div class="field full"><label>Residential Address</label><textarea id="e_address" rows="2"></textarea></div>
+      <div class="field"><label>Mobile Number</label><input type="tel" id="e_mobile"></div>
+      <div class="field"><label>WhatsApp Number</label><input type="tel" id="e_whatsapp"></div>
+      <div class="field full"><label>Email</label><input type="email" id="e_email"></div>
+      <div class="field"><label>Emergency Name</label><input type="text" id="e_emName"></div>
+      <div class="field"><label>Emergency Relationship</label><input type="text" id="e_emRel"></div>
+      <div class="field"><label>Emergency Phone</label><input type="tel" id="e_emPhone"></div>
+      <div class="field"><label>Program</label><select id="e_course"></select></div>
+      <div class="field"><label>Status</label><select id="e_status"><option>Registered</option><option>Completed</option><option>Cancelled</option></select></div>
+      <div class="field"><label>Fee Paid (GHS)</label><input type="number" min="0" step="0.01" id="e_feePaid"></div>
+    </div>
+    <div class="form-foot">
+      <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================= ADD WALK-IN STUDENT MODAL ============================================================= -->
+<div class="modal-overlay" id="addStudentOverlay">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeAddStudentModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h3>Add Walk-in Student</h3>
+    <p class="sub-note">Register a student in person (e.g. someone who walked in without registering online). A registration number is generated automatically.</p>
+    <div class="form-grid">
+      <div class="field full"><label>Full Name <span class="req">*</span></label><input type="text" id="w_fullName"></div>
+      <div class="field"><label>Date of Birth <span class="req">*</span></label><input type="date" id="w_dob"></div>
+      <div class="field"><label>Gender <span class="req">*</span></label><select id="w_gender"><option value="">Select…</option><option>Female</option><option>Male</option></select></div>
+      <div class="field full"><label>Ghana Card Number <span class="req">*</span></label><input type="text" id="w_ghanaCard" placeholder="GHA-000000000-0"></div>
+      <div class="field"><label>GPS Address</label><input type="text" id="w_gps" placeholder="GA-000-0000"></div>
+      <div class="field full"><label>Residential Address <span class="req">*</span></label><textarea id="w_address" rows="2"></textarea></div>
+      <div class="field"><label>Mobile Number <span class="req">*</span></label><input type="tel" id="w_mobile" placeholder="024XXXXXXX"></div>
+      <div class="field"><label>WhatsApp Number <span class="req">*</span></label><input type="tel" id="w_whatsapp" placeholder="024XXXXXXX"></div>
+      <div class="field full"><label>Email</label><input type="email" id="w_email"></div>
+      <div class="field"><label>Emergency Name <span class="req">*</span></label><input type="text" id="w_emName"></div>
+      <div class="field"><label>Emergency Relationship <span class="req">*</span></label><input type="text" id="w_emRel" placeholder="e.g. Mother, Uncle"></div>
+      <div class="field"><label>Emergency Phone <span class="req">*</span></label><input type="tel" id="w_emPhone" placeholder="024XXXXXXX"></div>
+      <div class="field"><label>Program <span class="req">*</span></label><select id="w_course"></select></div>
+      <div class="field"><label>Fee Paid (GHS)</label><input type="number" min="0" step="0.01" id="w_feePaid" value="0"></div>
+    </div>
+    <div class="form-foot">
+      <button class="btn btn-outline" onclick="closeAddStudentModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="handleAddWalkInStudent()">Add Student</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================= VIEW SLIP MODAL ============================================================= -->
+<div class="modal-overlay" id="viewSlipOverlay">
+  <div class="modal-box" style="max-width:460px;">
+    <button class="modal-close" onclick="closeViewSlipModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <div class="slip-wrap">
+      <div class="slip">
+        <div class="slip-head">
+          <span class="brand-mark"><img src="logo.png" alt="SkyDream logo"></span>
+          <div><div class="name">SkyDream Skills Training Academy</div><div class="sub">Registration Slip</div></div>
+        </div>
+        <div class="slip-body">
+          <div class="slip-reg" id="vs_reg">—</div>
+          <div style="height:14px;"></div>
+          <div class="slip-row"><span>Student</span><span id="vs_name">—</span></div>
+          <div class="slip-row"><span>Program</span><span id="vs_course">—</span></div>
+          <div class="slip-row"><span>Training Days</span><span>Sat &amp; Sun</span></div>
+          <div class="slip-row"><span>Training Time</span><span>1–3 PM / 9 AM–2 PM</span></div>
+          <div class="slip-row"><span>Start Date</span><span id="vsStartDateText">26 Sept 2026</span></div>
+          <div class="slip-perf"></div>
+          <div class="slip-qr-row"><div id="vs_qr"></div><div class="slip-qr-note">Registration confirmation</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="slip-actions"><button class="btn btn-primary" onclick="printSlip(currentViewSlipId)">Print / Save as PDF</button></div>
+  </div>
+</div>
+
+<!-- ============================================================= ATTENDANCE DETAIL MODAL ============================================================= -->
+<div class="modal-overlay" id="attendanceDetailOverlay">
+  <div class="modal-box" style="max-width:520px;">
+    <button class="modal-close" onclick="closeAttendanceDetailModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h3 id="attDetailName">Attendance Record</h3>
+    <p class="sub-note" id="attDetailCourse"></p>
+    <div id="attDetailChips" style="margin:10px 0 4px;"></div>
+    <div id="attDetailNotes"></div>
+    <div class="form-foot"><button class="btn btn-outline" onclick="closeAttendanceDetailModal()">Close</button></div>
+  </div>
+</div>
+
+<!-- ============================================================= FACILITATOR RESET PIN MODAL ============================================================= -->
+<div class="modal-overlay" id="facResetPinOverlay">
+  <div class="modal-box" style="max-width:420px;">
+    <button class="modal-close" onclick="closeFacResetPin()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h3>Reset Facilitator PIN</h3>
+    <p style="color:var(--ink-soft);font-size:.9rem;">Set a new PIN for <b id="facResetPinName"></b>. Their username and assigned program(s) stay the same.</p>
+    <div class="field full" style="margin:14px 0;"><label>New PIN (4–8 digits)</label><input type="text" id="facResetPinNew" inputmode="numeric" placeholder="••••"></div>
+    <div class="field full" style="margin-bottom:14px;"><label>Confirm New PIN</label><input type="text" id="facResetPinNew2" inputmode="numeric" placeholder="••••"></div>
+    <div class="form-foot"><button class="btn btn-outline" onclick="closeFacResetPin()">Cancel</button><button class="btn btn-primary" onclick="confirmFacResetPin()">Reset PIN</button></div>
+  </div>
+</div>
+
+<!-- ============================================================= START NEXT INTAKE MODAL ============================================================= -->
+<div class="modal-overlay" id="startIntakeOverlay">
+  <div class="modal-box" style="max-width:440px;">
+    <button class="modal-close" onclick="closeStartIntakeModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h3>Start Next Intake</h3>
+    <p style="color:var(--ink-soft);font-size:.9rem;">This archives the current intake and switches new registrations, program capacity, and attendance tracking over to the new intake date. Export any reports you need for the current cohort first — historical attendance stays in the database, but the live dashboards will show the new cohort only.</p>
+    <div class="field full" style="margin:14px 0;"><label>New Intake Start Date</label><input type="date" id="newIntakeStartDate"></div>
+    <div class="field full" style="margin-bottom:14px;"><label>Label (optional)</label><input type="text" id="newIntakeLabel" placeholder="e.g. January 2027 Intake"></div>
+    <div class="form-foot"><button class="btn btn-outline" onclick="closeStartIntakeModal()">Cancel</button><button class="btn btn-primary" onclick="confirmStartIntake()">Start New Intake</button></div>
+  </div>
+</div>
+
+<!-- ============================================================= RESET ADMIN MODAL ============================================================= -->
+<div class="modal-overlay" id="resetModalOverlay">
+  <div class="modal-box" style="max-width:420px;">
+    <button class="modal-close" onclick="closeResetModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h3>Reset Admin Account</h3>
+    <p style="color:var(--ink-soft);font-size:.9rem;">This removes the current admin login so a new one can be created. Student registration data is not affected. Type <b>RESET</b> to confirm.</p>
+    <div class="field full" style="margin:14px 0;"><input type="text" id="resetConfirmInput" placeholder="Type RESET"></div>
+    <div class="form-foot"><button class="btn btn-outline" onclick="closeResetModal()">Cancel</button><button class="btn btn-danger" onclick="confirmResetAdmin()">Reset Account</button></div>
+  </div>
+</div>
+
+<!-- ============================================================= PRINT OVERLAY ============================================================= -->
+<div id="printOverlay" style="display:none;">
+  <div id="printArea"></div>
+</div>
+
+<div id="toastHost"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+/* ======================================================================
+   SKYDREAM SKILLS TRAINING ACADEMY — APP SCRIPT
+   Single-file front-end prototype. Data persists via window.storage,
+   backed by Firestore, so all visitors/admins on any device see the
+   same registrations. See closing chat message for setup instructions.
+   ====================================================================== */
+
+/* ---------------------------- FIREBASE CONFIG ----------------------------
+   Paste your own project's config here (Firebase Console > Project
+   settings > General > Your apps > SDK setup and configuration).
+   Until this is filled in, the site falls back to browser-only storage
+   (same as before) so it still runs, but data will NOT be shared across
+   devices — see the chat message for the full setup walkthrough.
+   ------------------------------------------------------------------------ */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDlj6cyl4Ul__DS6Bp-sIlC6K3cDoiYVvE",
+  authDomain: "skydream-academy.firebaseapp.com",
+  projectId: "skydream-academy",
+  storageBucket: "skydream-academy.firebasestorage.app",
+  messagingSenderId: "394576038705",
+  appId: "1:394576038705:web:2d055fb58a02c4b7cafe10"
+};
+const STORAGE_COLLECTION = 'sdta_storage';
+// Keys that must stay on this device only (who is logged in here), never shared via Firestore.
+const DEVICE_ONLY_KEYS = new Set(['sdta_admin_session', 'sdta_facilitator_session']);
+
+let firestoreDb = null;
+// Firestore rules require request.auth != null, so every visitor (public or logged-in)
+// signs in anonymously first — this blocks casual/unauthenticated REST scraping of the raw
+// database, though it's not a full fix: anyone running this same client code can also sign
+// in anonymously, so it doesn't hide data from a determined attacker with the source.
+let authReady = Promise.resolve();
+try{
+  if(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY' && window.firebase){
+    firebase.initializeApp(FIREBASE_CONFIG);
+    firestoreDb = firebase.firestore();
+    authReady = firebase.auth().signInAnonymously().catch(e=>{ console.error('Anonymous sign-in failed.', e); });
+  }
+}catch(e){ console.error('Firebase init failed, falling back to local-only storage.', e); firestoreDb = null; }
+
+/* ---------------------------- STORAGE LAYER ----------------------------
+   Provides window.storage backed by Firestore (shared across every
+   device) for app data, and localStorage for the device-only login
+   session. If Firestore isn't configured yet, everything falls back to
+   localStorage so the site keeps working locally. If a host environment
+   already supplies its own window.storage, that one is used instead.
+   ------------------------------------------------------------------------ */
+if(!window.storage){
+  const localGet = (key) => { try{ const v = localStorage.getItem(key); return v === null ? null : { value: v }; }catch(e){ return null; } };
+  const localSet = (key, value) => { try{ localStorage.setItem(key, value); return true; }catch(e){ return false; } };
+  const localDelete = (key) => { try{ localStorage.removeItem(key); return true; }catch(e){ return false; } };
+  // Sentinel an updateFn returns from transact() to signal "cancel, don't write".
+  const ABORT = Symbol('storage-abort');
+  window.storage = {
+    async get(key){
+      if(!firestoreDb || DEVICE_ONLY_KEYS.has(key)) return localGet(key);
+      await authReady;
+      try{
+        const doc = await firestoreDb.collection(STORAGE_COLLECTION).doc(key).get();
+        return doc.exists ? { value: doc.data().value } : null;
+      }catch(e){ console.error('Firestore get failed, using local copy.', e); return localGet(key); }
+    },
+    async set(key, value){
+      if(!firestoreDb || DEVICE_ONLY_KEYS.has(key)) return localSet(key, value);
+      await authReady;
+      try{ await firestoreDb.collection(STORAGE_COLLECTION).doc(key).set({ value }); return true; }
+      catch(e){ console.error('Firestore set failed.', e); return false; }
+    },
+    async delete(key){
+      if(!firestoreDb || DEVICE_ONLY_KEYS.has(key)) return localDelete(key);
+      await authReady;
+      try{ await firestoreDb.collection(STORAGE_COLLECTION).doc(key).delete(); return true; }
+      catch(e){ console.error('Firestore delete failed.', e); return false; }
+    },
+    ABORT,
+    // Read-modify-write as one atomic operation, safe against concurrent
+    // writers. updateFn(currentRawValue|null) must be synchronous and
+    // return the new raw value to store, or storage.ABORT to cancel.
+    // Resolves to { aborted, value, error }.
+    async transact(key, updateFn){
+      if(!firestoreDb || DEVICE_ONLY_KEYS.has(key)){
+        const current = localGet(key);
+        const result = updateFn(current ? current.value : null);
+        if(result === ABORT) return { aborted: true };
+        localSet(key, result);
+        return { aborted: false, value: result };
+      }
+      await authReady;
+      try{
+        const docRef = firestoreDb.collection(STORAGE_COLLECTION).doc(key);
+        let aborted = false, finalValue = null;
+        await firestoreDb.runTransaction(async (tx) => {
+          const doc = await tx.get(docRef);
+          const current = doc.exists ? doc.data().value : null;
+          const result = updateFn(current);
+          if(result === ABORT){ aborted = true; return; }
+          aborted = false; finalValue = result;
+          tx.set(docRef, { value: result });
+        });
+        return { aborted, value: finalValue };
+      }catch(e){ console.error('Firestore transaction failed.', e); return { aborted: true, error: e }; }
+    }
+  };
+}
+
+/* ---------------------------- PROGRAM DATA ---------------------------- */
+const DEFAULT_CAPACITY = 25;
+let PROGRAM_CAPACITIES = {};
+function getCapacity(courseId){
+  const v = PROGRAM_CAPACITIES[courseId];
+  return (typeof v === 'number' && v > 0) ? v : DEFAULT_CAPACITY;
+}
+
+let PROGRAM_FEES = {};
+function getFee(courseId){
+  const v = PROGRAM_FEES[courseId];
+  return (typeof v === 'number' && v > 0) ? v : 0;
+}
+// Fee status derived at render time from the course's current fee, so a fee
+// change is reflected for everyone rather than being frozen at registration time.
+function paymentStatus(student){
+  const fee = getFee(student.course);
+  const paid = Math.max(0, student.feePaid || 0);
+  const balance = Math.max(0, fee - paid);
+  let label = 'No Fee Set';
+  if(fee > 0){
+    label = paid >= fee ? 'Paid' : (paid > 0 ? 'Partial' : 'Unpaid');
+  }
+  return { fee, paid, balance, label };
+}
+
+const PROGRAMS = [
+  {id:"household-chemicals", name:"Household Chemicals Production", icon:"flask", duration:"3 months",
+    desc:"Learn to formulate, mix and package everyday cleaning and personal-care products — from liquid soap to disinfectants — using safe, repeatable methods.",
+    skills:["Liquid soap & detergent making","Disinfectant & sanitizer formulation","Product costing & packaging","Basic quality control"],
+    careers:["Cleaning Products Maker","Small-batch Manufacturer","Retail Supplier"]},
+  {id:"hair-dressing", name:"Hair Dressing", icon:"comb", duration:"3 months",
+    desc:"Master braiding, weaving, relaxing, styling and client care techniques used in modern Ghanaian salons.",
+    skills:["Braiding & weaving","Relaxing & texturizing","Styling for events","Client consultation"],
+    careers:["Salon Stylist","Mobile Hairdresser","Salon Owner"]},
+  {id:"cosmetology", name:"Cosmetology", icon:"sparkle", duration:"3 months",
+    desc:"Study skin care, make-up application, facials and nail care to prepare clients for everyday wear and special occasions.",
+    skills:["Skin analysis & facials","Make-up application","Manicure & pedicure","Hygiene & sanitation"],
+    careers:["Beauty Therapist","Make-up Artist","Spa Technician"]},
+  {id:"electricals", name:"Electricals", icon:"bolt", duration:"3 months",
+    desc:"Get hands-on with household wiring, fault-finding and safe installation practices for homes and small offices.",
+    skills:["House wiring","Circuit testing & fault-finding","Safety standards","Basic appliance repair"],
+    careers:["Electrician's Assistant","Independent Installer","Maintenance Technician"]},
+  {id:"floral-decor", name:"Floral Decor", icon:"flower", duration:"3 months",
+    desc:"Design bouquets, centerpieces and event installations using fresh and artificial flowers.",
+    skills:["Bouquet design","Event centerpieces","Colour & composition","Flower care & sourcing"],
+    careers:["Event Florist","Wedding Decorator","Flower Shop Owner"]},
+  {id:"fashion-design", name:"Fashion Design", icon:"needle", duration:"3 months",
+    desc:"Learn pattern drafting, cutting and sewing to design and construct garments from concept to finished piece.",
+    skills:["Pattern drafting","Machine sewing","Garment fitting","Fabric selection"],
+    careers:["Fashion Designer","Tailor / Seamstress","Boutique Owner"]},
+  {id:"beading", name:"Beading", icon:"beads", duration:"3 months",
+    desc:"Create jewelry and beaded accessories, from traditional Ghanaian waist beads to modern statement pieces.",
+    skills:["Bead stringing & knotting","Jewelry design","Waist beads & accessories","Wire work basics"],
+    careers:["Jewelry Maker","Craft Market Vendor","Accessories Designer"]},
+  {id:"french", name:"French Language", icon:"bubble", duration:"3 months",
+    desc:"Build conversational and workplace French for travel, trade and further study.",
+    skills:["Everyday conversation","Grammar fundamentals","Workplace vocabulary","Listening & pronunciation"],
+    careers:["Customer Service (Francophone markets)","Tour Guide","Further Language Study"]},
+  {id:"korean", name:"Korean Language", icon:"bubble2", duration:"3 months",
+    desc:"Learn Hangul, everyday conversation and workplace Korean, popular for study, work and cultural interest.",
+    skills:["Hangul reading & writing","Everyday conversation","Basic grammar","Cultural etiquette"],
+    careers:["Interpreter (entry-level)","Customer Service","Further Language Study"]},
+  {id:"pastries", name:"Pastries & Baking", icon:"cupcake", duration:"3 months",
+    desc:"Bake bread, cakes, meat pies and pastries to professional standard, with costing for a home bakery business.",
+    skills:["Bread & cake baking","Pastry & pies","Cake decorating","Costing & packaging"],
+    careers:["Home Baker","Pastry Chef","Bakery Business Owner"]},
+  {id:"graphic-design", name:"Graphic Design", icon:"pen", duration:"3 months",
+    desc:"Design logos, posters and social media graphics using industry-standard digital tools.",
+    skills:["Logo & brand design","Layout & typography","Social media graphics","Digital design software"],
+    careers:["Freelance Designer","Print & Signage Designer","Social Media Designer"]},
+  {id:"barbering", name:"Barbering", icon:"scissors", duration:"3 months",
+    desc:"Learn fades, line-ups, shaving and beard grooming to run a modern barbershop chair.",
+    skills:["Clipper cutting & fades","Line-ups & edging","Shaving & beard grooming","Client care"],
+    careers:["Barber","Barbershop Owner","Mobile Barber"]},
+  {id:"accounting", name:"Accounting", icon:"calculator", duration:"3 months",
+    desc:"Learn bookkeeping, basic financial statements and everyday business accounting for small enterprises.",
+    skills:["Bookkeeping","Invoicing & payments","Basic financial statements","Spreadsheet basics"],
+    careers:["Bookkeeper","Accounts Clerk","Small Business Owner"]}
+];
+
+// Two-letter code used in registration numbers, per program.
+const COURSE_CODES = {
+  "household-chemicals":"HC", "hair-dressing":"HD", "cosmetology":"CO", "electricals":"EE",
+  "floral-decor":"FD", "fashion-design":"FS", "beading":"BE", "french":"FL", "korean":"KL",
+  "pastries":"PA", "graphic-design":"GD", "barbering":"BA", "accounting":"AC"
+};
+
+const ICONS = {
+  flask:'<path d="M9 2h6M10 2v5l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V2"/><path d="M7.5 14h9"/>',
+  comb:'<path d="M4 4h16v3H4z"/><path d="M6 7v13M9 7v10M12 7v13M15 7v10M18 7v13"/>',
+  sparkle:'<path d="M12 3l1.5 5L19 10l-5.5 2L12 17l-1.5-5L5 10l5.5-2L12 3z"/><circle cx="18" cy="18" r="1.5"/>',
+  bolt:'<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/>',
+  flower:'<circle cx="12" cy="12" r="2.5"/><circle cx="12" cy="6" r="3"/><circle cx="12" cy="18" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="12" r="3"/>',
+  needle:'<path d="M20 4 8 16"/><circle cx="20.5" cy="3.5" r="1.6"/><path d="M8 16c-2 2-3 4-5 4 0-2 2-3 4-5"/><path d="M11 13c1 1.5 2.5 2 4 1"/>',
+  beads:'<path d="M4 12c4-6 12-6 16 0"/><circle cx="4" cy="12.5" r="1.6"/><circle cx="8" cy="9" r="1.6"/><circle cx="12" cy="7.5" r="1.6"/><circle cx="16" cy="9" r="1.6"/><circle cx="20" cy="12.5" r="1.6"/>',
+  bubble:'<path d="M4 5h16v10H9l-4 4v-4H4z"/><path d="M8 9h8M8 12h5"/>',
+  bubble2:'<rect x="4" y="5" width="16" height="10" rx="3"/><path d="M9 17l-2 3v-3"/><circle cx="9" cy="10" r="1"/><circle cx="12" cy="10" r="1"/><circle cx="15" cy="10" r="1"/>',
+  cupcake:'<path d="M6 11h12l-1.5 9a2 2 0 0 1-2 1.7h-5a2 2 0 0 1-2-1.7L6 11z"/><path d="M12 11V7"/><path d="M8 11a4 4 0 0 1 8 0"/><circle cx="12" cy="4.5" r="1.5"/>',
+  pen:'<path d="M4 20l1-4L16 5l3 3L8 19l-4 1z"/><path d="M14 7l3 3"/>',
+  scissors:'<circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><path d="M8 8 20 20M8 16 20 4"/>',
+  calculator:'<rect x="5" y="3" width="14" height="18" rx="2"/><rect x="7.5" y="5.5" width="9" height="4" rx="0.5"/><circle cx="8.5" cy="13" r="1"/><circle cx="12" cy="13" r="1"/><circle cx="15.5" cy="13" r="1"/><circle cx="8.5" cy="17" r="1"/><circle cx="12" cy="17" r="1"/><circle cx="15.5" cy="17" r="1"/>'
+};
+
+/* ---------------------------- APP STATE ---------------------------- */
+let STUDENTS = [];
+let ADMIN_ACCOUNTS = [];
+let currentAdminUsername = null;
+let isAdminLoggedIn = false;
+let FACILITATOR_ACCOUNTS = [];
+let currentFacilitatorUsername = null;
+let isFacilitatorLoggedIn = false;
+let ATTENDANCE = [];
+let currentSlipId = null;
+let currentViewSlipId = null;
+let editingStudentId = null;
+let expandedProgram = null;
+let CONTACT_MESSAGES = [];
+// The very first intake this app ever ran with, before multi-intake support existed —
+// legacy student records with no intakeStart field are treated as belonging to it.
+const LEGACY_INTAKE_START = '2026-09-26';
+let CURRENT_INTAKE = { startDate: LEGACY_INTAKE_START, label: 'September 2026 Intake' };
+let INTAKE_HISTORY = [];
+
+/* ---------------------------- UTILITIES ---------------------------- */
+function uid(){ return 'stu_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+
+async function sha256(text){
+  const enc = new TextEncoder().encode(text);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function toast(msg, type){
+  const host = document.getElementById('toastHost');
+  const el = document.createElement('div');
+  el.className = 'toast' + (type ? ' ' + type : '');
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(()=>{ el.remove(); }, 3400);
+}
+
+function escapeHtml(str){
+  if(str===undefined || str===null) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+
+function programById(id){ return PROGRAMS.find(p=>p.id===id); }
+
+function studentIntakeStart(s){ return s.intakeStart || LEGACY_INTAKE_START; }
+
+// Only counts students registered under the CURRENT intake against capacity,
+// so a program correctly opens back up once a new intake starts.
+function seatsTaken(courseId){
+  return STUDENTS.filter(s => s.course === courseId && s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate).length;
+}
+
+/* ---------------------------- STORAGE ---------------------------- */
+async function loadAllData(){
+  try{
+    const s = await window.storage.get('sdta_students', true);
+    STUDENTS = s && s.value ? JSON.parse(s.value) : [];
+  }catch(e){ STUDENTS = []; }
+  try{
+    const a = await window.storage.get('sdta_admins', true);
+    if(a && a.value){
+      ADMIN_ACCOUNTS = JSON.parse(a.value);
+    } else {
+      // Migrate from older single-admin storage format, if present.
+      const legacy = await window.storage.get('sdta_admin', true);
+      if(legacy && legacy.value){
+        const old = JSON.parse(legacy.value);
+        ADMIN_ACCOUNTS = old ? [{ id: uid(), name: old.name, username: old.username, pinHash: old.pinHash, role: 'owner' }] : [];
+        if(ADMIN_ACCOUNTS.length){ await window.storage.set('sdta_admins', JSON.stringify(ADMIN_ACCOUNTS), true); }
+        await window.storage.delete('sdta_admin', true);
+      } else {
+        ADMIN_ACCOUNTS = [];
+      }
+    }
+    // Ensure exactly one account (the earliest created) is marked as the protected owner account.
+    if(ADMIN_ACCOUNTS.length && !ADMIN_ACCOUNTS.some(a=>a.role === 'owner')){
+      ADMIN_ACCOUNTS[0].role = 'owner';
+      await window.storage.set('sdta_admins', JSON.stringify(ADMIN_ACCOUNTS), true);
+    }
+  }catch(e){ ADMIN_ACCOUNTS = []; }
+  try{
+    const sess = await window.storage.get('sdta_admin_session', true);
+    const sessUsername = sess && sess.value ? sess.value : null;
+    const match = sessUsername ? ADMIN_ACCOUNTS.find(a=>a.username === sessUsername) : null;
+    isAdminLoggedIn = !!match;
+    currentAdminUsername = match ? match.username : null;
+  }catch(e){ isAdminLoggedIn = false; currentAdminUsername = null; }
+  try{
+    const cap = await window.storage.get('sdta_capacities', true);
+    PROGRAM_CAPACITIES = cap && cap.value ? JSON.parse(cap.value) : {};
+  }catch(e){ PROGRAM_CAPACITIES = {}; }
+  try{
+    const fees = await window.storage.get('sdta_fees', true);
+    PROGRAM_FEES = fees && fees.value ? JSON.parse(fees.value) : {};
+  }catch(e){ PROGRAM_FEES = {}; }
+  try{
+    const f = await window.storage.get('sdta_facilitators', true);
+    FACILITATOR_ACCOUNTS = f && f.value ? JSON.parse(f.value) : [];
+  }catch(e){ FACILITATOR_ACCOUNTS = []; }
+  try{
+    const att = await window.storage.get('sdta_attendance', true);
+    ATTENDANCE = att && att.value ? JSON.parse(att.value) : [];
+  }catch(e){ ATTENDANCE = []; }
+  try{
+    const facSess = await window.storage.get('sdta_facilitator_session', true);
+    const facSessUsername = facSess && facSess.value ? facSess.value : null;
+    const facMatch = facSessUsername ? FACILITATOR_ACCOUNTS.find(f=>f.username === facSessUsername) : null;
+    isFacilitatorLoggedIn = !!facMatch;
+    currentFacilitatorUsername = facMatch ? facMatch.username : null;
+  }catch(e){ isFacilitatorLoggedIn = false; currentFacilitatorUsername = null; }
+  try{
+    const intake = await window.storage.get('sdta_intake', true);
+    if(intake && intake.value){
+      CURRENT_INTAKE = JSON.parse(intake.value);
+    } else {
+      // First-ever load: seed with the original hard-coded intake so existing data keeps working.
+      CURRENT_INTAKE = { startDate: LEGACY_INTAKE_START, label: 'September 2026 Intake' };
+      await window.storage.set('sdta_intake', JSON.stringify(CURRENT_INTAKE), true);
+    }
+  }catch(e){ CURRENT_INTAKE = { startDate: LEGACY_INTAKE_START, label: 'September 2026 Intake' }; }
+  try{
+    const hist = await window.storage.get('sdta_intake_history', true);
+    INTAKE_HISTORY = hist && hist.value ? JSON.parse(hist.value) : [];
+  }catch(e){ INTAKE_HISTORY = []; }
+  try{
+    const msgs = await window.storage.get('sdta_contact_messages', true);
+    CONTACT_MESSAGES = msgs && msgs.value ? JSON.parse(msgs.value) : [];
+  }catch(e){ CONTACT_MESSAGES = []; }
+}
+
+async function saveCapacities(changedIds){
+  // Merge only the programs being changed, so a concurrent capacity edit
+  // to a different program (from another admin) isn't overwritten.
+  const ids = changedIds || PROGRAMS.map(p=>p.id);
+  const res = await window.storage.transact('sdta_capacities', (raw) => {
+    const merged = raw ? JSON.parse(raw) : {};
+    ids.forEach(id=>{
+      if(Object.prototype.hasOwnProperty.call(PROGRAM_CAPACITIES, id)) merged[id] = PROGRAM_CAPACITIES[id];
+      else delete merged[id];
+    });
+    return JSON.stringify(merged);
+  });
+  if(res.aborted){ toast('Could not save program capacities.', 'error'); return; }
+  PROGRAM_CAPACITIES = JSON.parse(res.value);
+}
+
+async function saveFees(changedIds){
+  const ids = changedIds || PROGRAMS.map(p=>p.id);
+  const res = await window.storage.transact('sdta_fees', (raw) => {
+    const merged = raw ? JSON.parse(raw) : {};
+    ids.forEach(id=>{
+      if(Object.prototype.hasOwnProperty.call(PROGRAM_FEES, id)) merged[id] = PROGRAM_FEES[id];
+      else delete merged[id];
+    });
+    return JSON.stringify(merged);
+  });
+  if(res.aborted){ toast('Could not save program fees.', 'error'); return; }
+  PROGRAM_FEES = JSON.parse(res.value);
+}
+
+async function saveAdminSession(username){
+  try{
+    if(username){ await window.storage.set('sdta_admin_session', username, true); }
+    else{ await window.storage.delete('sdta_admin_session', true); }
+  }catch(e){}
+}
+
+/* Read-modify-write helpers: mutator(list) edits the array in place and
+   returns false to cancel the whole write (e.g. validation failed against
+   the latest server data). On success, the shared global array is
+   refreshed to match exactly what was written. */
+async function mutateStudents(mutator){
+  const res = await window.storage.transact('sdta_students', (raw) => {
+    const list = raw ? JSON.parse(raw) : [];
+    if(mutator(list) === false) return window.storage.ABORT;
+    return JSON.stringify(list);
+  });
+  if(res.aborted) return null;
+  STUDENTS = JSON.parse(res.value);
+  return STUDENTS;
+}
+
+async function mutateAdmins(mutator){
+  const res = await window.storage.transact('sdta_admins', (raw) => {
+    const list = raw ? JSON.parse(raw) : [];
+    if(mutator(list) === false) return window.storage.ABORT;
+    return JSON.stringify(list);
+  });
+  if(res.aborted) return null;
+  ADMIN_ACCOUNTS = JSON.parse(res.value);
+  return ADMIN_ACCOUNTS;
+}
+
+async function mutateFacilitators(mutator){
+  const res = await window.storage.transact('sdta_facilitators', (raw) => {
+    const list = raw ? JSON.parse(raw) : [];
+    if(mutator(list) === false) return window.storage.ABORT;
+    return JSON.stringify(list);
+  });
+  if(res.aborted) return null;
+  FACILITATOR_ACCOUNTS = JSON.parse(res.value);
+  return FACILITATOR_ACCOUNTS;
+}
+
+async function mutateAttendance(mutator){
+  const res = await window.storage.transact('sdta_attendance', (raw) => {
+    const list = raw ? JSON.parse(raw) : [];
+    if(mutator(list) === false) return window.storage.ABORT;
+    return JSON.stringify(list);
+  });
+  if(res.aborted) return null;
+  ATTENDANCE = JSON.parse(res.value);
+  return ATTENDANCE;
+}
+
+async function mutateContactMessages(mutator){
+  const res = await window.storage.transact('sdta_contact_messages', (raw) => {
+    const list = raw ? JSON.parse(raw) : [];
+    if(mutator(list) === false) return window.storage.ABORT;
+    return JSON.stringify(list);
+  });
+  if(res.aborted) return null;
+  CONTACT_MESSAGES = JSON.parse(res.value);
+  return CONTACT_MESSAGES;
+}
+
+// Archives the current intake into history and switches the app over to a new one.
+// Existing students/attendance keep their original intakeStart, so past cohorts stay intact.
+async function startNextIntake(newStartDate, label){
+  const archived = Object.assign({}, CURRENT_INTAKE, { endDate: newStartDate });
+  const histRes = await window.storage.transact('sdta_intake_history', (raw) => {
+    const list = raw ? JSON.parse(raw) : [];
+    list.push(archived);
+    return JSON.stringify(list);
+  });
+  INTAKE_HISTORY = histRes.value ? JSON.parse(histRes.value) : INTAKE_HISTORY.concat([archived]);
+  const newIntake = { startDate: newStartDate, label: label || (niceIntakeDateLong(newStartDate) + ' Intake') };
+  await window.storage.set('sdta_intake', JSON.stringify(newIntake), true);
+  CURRENT_INTAKE = newIntake;
+}
+
+async function saveFacilitatorSession(username){
+  try{
+    if(username){ await window.storage.set('sdta_facilitator_session', username, true); }
+    else{ await window.storage.delete('sdta_facilitator_session', true); }
+  }catch(e){}
+}
+
+async function deleteAllAdmins(){
+  try{ await window.storage.delete('sdta_admins', true); }catch(e){}
+  try{ await window.storage.delete('sdta_admin', true); }catch(e){}
+  ADMIN_ACCOUNTS = [];
+  currentAdminUsername = null;
+  await saveAdminSession(null);
+}
+
+/* ---------------------------- NAVIGATION ---------------------------- */
+function showView(view){
+  document.querySelectorAll('.view-section').forEach(s=>s.classList.remove('active'));
+  const target = document.getElementById('view-' + view);
+  if(target) target.classList.add('active');
+  document.querySelectorAll('.nav-links button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  document.getElementById('navLinks').classList.remove('open');
+  window.scrollTo({top:0, behavior:'auto'});
+  if(view === 'admin') renderAdminGate();
+  if(view === 'facilitator') renderFacilitatorGate();
+}
+
+function toggleMobileNav(){
+  document.getElementById('navLinks').classList.toggle('open');
+}
+
+/* ---------------------------- RENDER: PROGRAM CARDS ---------------------------- */
+function programCardHTML(p, compact){
+  const taken = seatsTaken(p.id);
+  const full = taken >= getCapacity(p.id);
+  const detailId = 'detail-' + p.id;
+  return `
+  <div class="prog-card">
+    <div class="prog-top">
+      <div class="prog-icon-wrap"><svg class="icon" style="width:24px;height:24px;" viewBox="0 0 24 24">${ICONS[p.icon]}</svg></div>
+      <span class="prog-duration">${p.duration}</span>
+    </div>
+    <h3>${p.name}</h3>
+    <p class="desc">${p.desc}</p>
+    ${!compact ? `
+    <button class="prog-more-toggle" onclick="toggleProgramDetail('${p.id}')" id="toggle-${p.id}">Show skills &amp; careers ▾</button>
+    <div class="prog-detail" id="${detailId}">
+      <h5>Skills You'll Learn</h5>
+      <div class="prog-tags">${p.skills.map(s=>`<span class="tag">${s}</span>`).join('')}</div>
+      <h5>Career Opportunities</h5>
+      <div class="prog-tags">${p.careers.map(c=>`<span class="tag career">${c}</span>`).join('')}</div>
+    </div>` : ''}
+    <button class="btn btn-primary btn-sm btn-block" onclick="goRegisterWithCourse('${p.id}')" ${full?'disabled':''}>${full? 'Program Full' : 'Register for this Program'}</button>
+  </div>`;
+}
+
+function toggleProgramDetail(id){
+  const el = document.getElementById('detail-' + id);
+  const btn = document.getElementById('toggle-' + id);
+  const open = el.classList.toggle('open');
+  btn.textContent = open ? "Hide skills & careers ▴" : "Show skills & careers ▾";
+}
+
+function renderProgramGrids(){
+  document.getElementById('homeProgramsPreview').innerHTML = PROGRAMS.slice(0,4).map(p=>programCardHTML(p,true)).join('');
+  document.getElementById('fullProgramsGrid').innerHTML = PROGRAMS.map(p=>programCardHTML(p,false)).join('');
+}
+
+function goRegisterWithCourse(courseId){
+  showView('register');
+  const sel = document.getElementById('f_course');
+  if(sel) sel.value = courseId;
+}
+
+/* ---------------------------- HERO SKY MAP ---------------------------- */
+function renderSkyMap(){
+  const positions = [
+    {t:'6%',l:'4%'}, {t:'2%',l:'46%'}, {t:'10%',l:'78%'},
+    {t:'40%',l:'20%'}, {t:'36%',l:'62%'},
+    {t:'68%',l:'6%'}, {t:'64%',l:'44%'}, {t:'72%',l:'80%'}
+  ];
+  const subset = [PROGRAMS[1],PROGRAMS[3],PROGRAMS[5],PROGRAMS[9],PROGRAMS[10],PROGRAMS[11],PROGRAMS[12],PROGRAMS[7]];
+  const html = subset.map((p,i)=>{
+    const pos = positions[i % positions.length];
+    const delay = (i*0.4).toFixed(1);
+    return `<div class="sky-tile" style="top:${pos.t};left:${pos.l};animation-delay:${delay}s;">
+      <svg class="icon" viewBox="0 0 24 24">${ICONS[p.icon]}</svg><span>${p.name.split(' ')[0]}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('heroSkyMap').innerHTML = html;
+}
+
+/* ---------------------------- COUNTDOWN ---------------------------- */
+function parseISODateUTC(iso){ return new Date(iso + 'T00:00:00+00:00'); }
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sept','Oct','Nov','Dec'];
+function niceIntakeDateLong(iso){ const d = parseISODateUTC(iso); return d.getUTCDate() + ' ' + MONTH_NAMES[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+function niceIntakeDateShort(iso){ const d = parseISODateUTC(iso); return d.getUTCDate() + ' ' + MONTH_SHORT[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+function currentIntakeDate(){ return parseISODateUTC(CURRENT_INTAKE.startDate); }
+function updateCountdowns(){
+  const now = new Date();
+  let diff = currentIntakeDate() - now;
+  if(diff < 0) diff = 0;
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  const heroHTML = `
+    <div class="count-cell"><b>${d}</b><span>days</span></div>
+    <div class="count-cell"><b>${h}</b><span>hrs</span></div>
+    <div class="count-cell"><b>${m}</b><span>min</span></div>`;
+  const ticketHTML = `
+    <div class="cd-cell"><b>${d}</b><span>Days</span></div>
+    <div class="cd-cell"><b>${h}</b><span>Hrs</span></div>
+    <div class="cd-cell"><b>${m}</b><span>Min</span></div>
+    <div class="cd-cell"><b>${s}</b><span>Sec</span></div>`;
+  const heroEl = document.getElementById('heroCountdown');
+  if(heroEl) heroEl.innerHTML = heroHTML;
+  const schedEl = document.getElementById('scheduleCountdown');
+  if(schedEl) schedEl.innerHTML = ticketHTML;
+  const schedEl2 = document.getElementById('scheduleCountdown2');
+  if(schedEl2) schedEl2.innerHTML = ticketHTML;
+}
+
+// Keeps every hard-coded "intake date" spot on the page in sync with the current intake.
+function applyIntakeTextsToDOM(){
+  const long = niceIntakeDateLong(CURRENT_INTAKE.startDate);
+  const short = niceIntakeDateShort(CURRENT_INTAKE.startDate);
+  ['heroIntakeDate','attIntakeNoteDate','facIntakeNoteDate','footerIntakeDate'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.textContent = long;
+  });
+  ['scheduleIntakeDateHome','scheduleIntakeDateFull','regIntakeHeadingDate','slipStartDateText','vsStartDateText'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.textContent = short;
+  });
+}
+
+/* ---------------------------- ATTENDANCE: SESSION DATES ----------------------------
+   Weekend classes (Sat & Sun) run for the length of the course (3 months)
+   starting from the intake date. Session dates are derived — never
+   hard-coded — but capped at the course's end date since the cohort
+   doesn't train beyond that.
+   ------------------------------------------------------------------------ */
+const COURSE_DURATION_MONTHS = 3;
+function intakeEndDateFor(startDate){ return new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + COURSE_DURATION_MONTHS, startDate.getUTCDate())); }
+function currentIntakeEndDate(){ return intakeEndDateFor(currentIntakeDate()); }
+function isWeekendDate(date){ const day = date.getUTCDay(); return day === 0 || day === 6; }
+function formatDateISO(date){ return date.toISOString().slice(0,10); }
+function niceSessionLabel(iso){
+  const d = new Date(iso + 'T00:00:00Z');
+  return d.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric', timeZone:'UTC' });
+}
+// Ascending list of every Saturday/Sunday session date from a given intake's start
+// (default: the current intake) up to that intake's end date (start + 3 months).
+function getSessionDates(startDateISO){
+  const start = parseISODateUTC(startDateISO || CURRENT_INTAKE.startDate);
+  const end = intakeEndDateFor(start);
+  const dates = [];
+  let cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  while(cur <= end){
+    if(isWeekendDate(cur)) dates.push(formatDateISO(cur));
+    cur = new Date(cur.getTime() + 86400000);
+  }
+  return dates;
+}
+// The session date facilitators should see by default: today if it's a
+// live session day, otherwise the most recent past session date, else the
+// very first session date (intake day) if training hasn't started yet.
+function defaultSessionDate(){
+  const all = getSessionDates();
+  if(!all.length) return null;
+  const todayISO = formatDateISO(new Date());
+  const pastOrToday = all.filter(d => d <= todayISO);
+  return pastOrToday.length ? pastOrToday[pastOrToday.length-1] : all[0];
+}
+
+/* ---------------------------- ABOUT: TRAINERS / GALLERY ---------------------------- */
+function renderTrainersAndGallery(){
+  const roles = ["Lead Trainer","Program Coordinator","Senior Instructor","Workshop Lead","Client Care Lead","Studio Manager"];
+  // Drop photo files into an "images" folder next to this HTML file, named trainer-1.jpg, trainer-2.jpg, ...
+  document.getElementById('trainerGrid').innerHTML = roles.map((r,i)=>`
+    <div class="trainer-card">
+      <div class="trainer-avatar">${String.fromCharCode(65+i)}<img src="images/trainer-${i+1}.jpg" alt="" onerror="this.remove()"></div>
+      <h5>Add Name</h5><span>${r}</span>
+    </div>`).join('');
+
+  // Drop photo files into an "images" folder next to this HTML file, named gallery-1.jpg, gallery-2.jpg, ...
+  document.getElementById('galleryGrid').innerHTML = PROGRAMS.slice(0,8).map((p,i)=>`
+    <div class="gallery-tile">
+      <svg class="icon" viewBox="0 0 24 24">${ICONS[p.icon]}</svg>
+      <span>${p.name}</span>
+      <img src="images/gallery-${i+1}.jpg" alt="${p.name}" onerror="this.remove()">
+    </div>`).join('');
+}
+
+/* ---------------------------- REGISTRATION FORM ---------------------------- */
+function populateCourseSelect(el, includeBlank){
+  el.innerHTML = (includeBlank ? '<option value="">Select a program…</option>' : '') +
+    PROGRAMS.map(p=>{
+      const taken = seatsTaken(p.id);
+      const full = taken >= getCapacity(p.id);
+      return `<option value="${p.id}" ${full?'disabled':''}>${p.name}${full?' — Full':''}</option>`;
+    }).join('');
+}
+
+let uploadedPhotoDataUrl = null;
+
+function readAndResizeImage(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if(w > h){ if(w > maxDim){ h = h * (maxDim / w); w = maxDim; } }
+        else { if(h > maxDim){ w = w * (maxDim / h); h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+document.addEventListener('change', function(e){
+  if(e.target && e.target.id === 'f_photo'){
+    const file = e.target.files[0];
+    if(!file) return;
+    readAndResizeImage(file, 300, 0.72).then(dataUrl=>{
+      uploadedPhotoDataUrl = dataUrl;
+      document.getElementById('photoPreview').innerHTML = `<img src="${dataUrl}" alt="Preview">`;
+    }).catch(()=> toast('Could not read that image — try a different file.', 'error'));
+  }
+});
+
+function fieldEl(id){ return document.getElementById(id); }
+function setInvalid(id, invalid){
+  const field = fieldEl(id).closest('.field');
+  if(field) field.classList.toggle('invalid', invalid);
+}
+
+function validateRegForm(){
+  let ok = true;
+  const req = ['f_fullName','f_dob','f_gender','f_ghanaCard','f_address','f_mobile','f_whatsapp','f_emName','f_emRel','f_emPhone','f_course'];
+  req.forEach(id=>{
+    const val = fieldEl(id).value.trim();
+    const invalid = !val;
+    setInvalid(id, invalid);
+    if(invalid) ok = false;
+  });
+  const phoneRe = /^0\d{9}$/;
+  ['f_mobile','f_whatsapp','f_emPhone'].forEach(id=>{
+    const val = fieldEl(id).value.trim();
+    if(val && !phoneRe.test(val)){ setInvalid(id, true); ok = false; }
+  });
+  const ghanaCard = fieldEl('f_ghanaCard').value.trim();
+  if(ghanaCard && !/^GHA-?\d{9}-?\d$/i.test(ghanaCard.replace(/\s/g,''))){
+    setInvalid('f_ghanaCard', true); ok = false;
+  }
+  const declareOk = fieldEl('f_declare').checked;
+  document.getElementById('declareError').style.display = declareOk ? 'none' : 'block';
+  if(!declareOk) ok = false;
+  return ok;
+}
+
+function nextRegNumber(courseId, list){
+  list = list || STUDENTS;
+  const code = COURSE_CODES[courseId] || courseId.slice(0,2).toUpperCase();
+  const prefix = 'SD' + code;
+  // Reuse the lowest free index for this course, so deleted registrations get recycled.
+  const used = new Set(list.filter(s=>s.course===courseId).map(s=>{
+    const m = s.regNumber && s.regNumber.match(new RegExp('^' + prefix + '(\\d{3})/'));
+    return m ? parseInt(m[1],10) : null;
+  }).filter(n=>n!==null));
+  let idx = 1;
+  while(used.has(idx)) idx++;
+  const intakeDate = currentIntakeDate();
+  const month = String(intakeDate.getUTCMonth()+1).padStart(2,'0');
+  const year = intakeDate.getUTCFullYear();
+  return prefix + String(idx).padStart(3,'0') + '/' + month + '/' + year;
+}
+
+document.getElementById('regForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  if(!validateRegForm()){
+    toast('Please fix the highlighted fields.', 'error');
+    return;
+  }
+  const submitBtn = e.target.querySelector('button[type=submit]');
+  submitBtn.disabled = true; submitBtn.textContent = 'Submitting…';
+
+  const courseId = fieldEl('f_course').value;
+  let capacityFull = false;
+  let student = null;
+  const result = await mutateStudents((list) => {
+    // Re-check capacity against the latest server data, so two people
+    // registering for the last seat at the same moment can't both get in.
+    const taken = list.filter(s => s.course === courseId && s.status !== 'Cancelled').length;
+    if(taken >= getCapacity(courseId)){ capacityFull = true; return false; }
+    student = {
+      id: uid(),
+      regNumber: nextRegNumber(courseId, list),
+      regDate: new Date().toISOString(),
+      fullName: fieldEl('f_fullName').value.trim(),
+      dob: fieldEl('f_dob').value,
+      gender: fieldEl('f_gender').value,
+      ghanaCard: fieldEl('f_ghanaCard').value.trim(),
+      photo: uploadedPhotoDataUrl || null,
+      gpsAddress: fieldEl('f_gps').value.trim(),
+      address: fieldEl('f_address').value.trim(),
+      mobile: fieldEl('f_mobile').value.trim(),
+      whatsapp: fieldEl('f_whatsapp').value.trim(),
+      email: fieldEl('f_email').value.trim(),
+      emName: fieldEl('f_emName').value.trim(),
+      emRel: fieldEl('f_emRel').value.trim(),
+      emPhone: fieldEl('f_emPhone').value.trim(),
+      course: courseId,
+      status: 'Registered',
+      feePaid: 0,
+      intakeStart: CURRENT_INTAKE.startDate
+    };
+    list.push(student);
+  });
+
+  if(!result){
+    toast(capacityFull ? 'Sorry, this program just filled up. Please choose another program.' : 'Could not save — storage may be unavailable.', 'error');
+    submitBtn.disabled = false; submitBtn.textContent = 'Submit Registration';
+    return;
+  }
+
+  currentSlipId = student.id;
+  document.getElementById('slipRegNumber').textContent = student.regNumber;
+  document.getElementById('slipName').textContent = student.fullName;
+  document.getElementById('slipCourse').textContent = programById(student.course).name;
+  renderQR('slipQR', studentQRText(student));
+
+  document.getElementById('regForm').style.display = 'none';
+  document.getElementById('regConfirm').style.display = 'block';
+  window.scrollTo({top:0, behavior:'auto'});
+  toast('Registration saved — ' + student.regNumber, 'success');
+
+  submitBtn.disabled = false; submitBtn.textContent = 'Submit Registration';
+});
+
+function resetRegForm(){
+  document.getElementById('regForm').reset();
+  document.getElementById('photoPreview').innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:24px;height:24px;"><circle cx="12" cy="8" r="3.5"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>';
+  uploadedPhotoDataUrl = null;
+  document.querySelectorAll('#regForm .field.invalid').forEach(f=>f.classList.remove('invalid'));
+  populateCourseSelect(document.getElementById('f_course'), true);
+  document.getElementById('regForm').style.display = 'block';
+  document.getElementById('regConfirm').style.display = 'none';
+}
+
+function renderQR(targetId, text){
+  const el = document.getElementById(targetId);
+  if(!el) return;
+  el.innerHTML = '';
+  if(typeof QRCode === 'undefined'){
+    el.innerHTML = '<span style="font-size:.7rem;color:var(--ink-faint)">QR unavailable offline</span>';
+    return;
+  }
+  new QRCode(el, { text: text, width: 128, height: 128, colorDark:'#1F3A93', colorLight:'#ffffff' });
+}
+
+// Full student details encoded in the QR so a phone scan shows the registration record, not just the number.
+function studentQRText(s){
+  const course = programById(s.course);
+  return [
+    'SkyDream Skills Training Academy',
+    'Reg No: ' + s.regNumber,
+    'Name: ' + s.fullName,
+    'DOB: ' + s.dob,
+    'Gender: ' + s.gender,
+    'Ghana Card: ' + s.ghanaCard,
+    'Program: ' + (course ? course.name : s.course),
+    'GPS: ' + (s.gpsAddress || '-'),
+    'Address: ' + s.address,
+    'Mobile: ' + s.mobile,
+    'WhatsApp: ' + s.whatsapp,
+    'Email: ' + (s.email || '-'),
+    'Emergency Contact: ' + s.emName + ' (' + s.emRel + ') ' + s.emPhone,
+    'Status: ' + s.status,
+    'Registered: ' + (s.regDate ? s.regDate.slice(0,10) : '-')
+  ].join('\n');
+}
+
+/* ---------------------------- PRINT SLIP ---------------------------- */
+function printSlip(studentId){
+  const student = STUDENTS.find(s=>s.id===studentId);
+  if(!student){ toast('Could not find that registration to print.', 'error'); return; }
+  const course = programById(student.course);
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = `
+    <div style="max-width:420px;margin:40px auto;border:1px solid #ddd;border-radius:14px;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;">
+      <div style="background:linear-gradient(150deg,#2F80ED,#1F3A93);color:#fff;padding:20px 22px;">
+        <div style="font-family:'Fraunces',serif;font-weight:700;font-size:1.1rem;">SkyDream Skills Training Academy</div>
+        <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;opacity:.85;">Registration Slip</div>
+      </div>
+      <div style="padding:22px;">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:1.3rem;color:#1F3A93;font-weight:600;">${student.regNumber}</div>
+        <div style="height:12px;"></div>
+        <table style="width:100%;font-size:.9rem;border-collapse:collapse;">
+          <tr><td style="color:#888;padding:6px 0;">Student</td><td style="text-align:right;font-weight:600;">${escapeHtml(student.fullName)}</td></tr>
+          <tr><td style="color:#888;padding:6px 0;">Program</td><td style="text-align:right;font-weight:600;">${escapeHtml(course ? course.name : '—')}</td></tr>
+          <tr><td style="color:#888;padding:6px 0;">Training Days</td><td style="text-align:right;font-weight:600;">Sat &amp; Sun</td></tr>
+          <tr><td style="color:#888;padding:6px 0;">Training Time</td><td style="text-align:right;font-weight:600;">1–3 PM / 9 AM–2 PM</td></tr>
+          <tr><td style="color:#888;padding:6px 0;">Start Date</td><td style="text-align:right;font-weight:600;">${niceIntakeDateShort(student.intakeStart || CURRENT_INTAKE.startDate)}</td></tr>
+        </table>
+        <div style="border-top:2px dashed #ddd;margin:14px 0;"></div>
+        <div id="printSlipQR"></div>
+      </div>
+    </div>`;
+  renderQR('printSlipQR', studentQRText(student));
+  document.body.classList.add('printing-slip');
+  window.print();
+}
+window.addEventListener('afterprint', ()=> document.body.classList.remove('printing-slip'));
+
+/* ---------------------------- PUBLIC: STUDENT LOOKUP ---------------------------- */
+function studentAttendanceSummary(student){
+  const startDate = studentIntakeStart(student);
+  const todayISO = formatDateISO(new Date());
+  const heldDates = getSessionDates(startDate).filter(d=>d <= todayISO);
+  const records = ATTENDANCE.filter(r=>r.course === student.course && r.studentId === student.id);
+  const present = records.filter(r=>r.status === 'Present').length;
+  const absent = records.filter(r=>r.status === 'Absent').length;
+  const pct = heldDates.length ? Math.round((present / heldDates.length) * 100) : 0;
+  return { sessionsHeld: heldDates.length, present, absent, pct };
+}
+
+// Deliberately requires both reg. number AND mobile number (not just the reg. number,
+// which is sequential/guessable) and only surfaces non-sensitive summary fields —
+// no Ghana Card, DOB, address or emergency contact — to limit exposure of this public lookup.
+function handleLookupStudent(){
+  const reg = document.getElementById('lookup_reg').value.trim();
+  const mobile = document.getElementById('lookup_mobile').value.trim();
+  const resultBox = document.getElementById('lookupResult');
+  const emptyBox = document.getElementById('lookupEmpty');
+  if(!reg || !mobile){ toast('Enter your registration number and mobile number.', 'error'); return; }
+  const digits = mobile.replace(/\D/g,'');
+  const student = STUDENTS.find(s => s.regNumber.toLowerCase() === reg.toLowerCase() && (s.mobile||'').replace(/\D/g,'') === digits);
+  if(!student){
+    resultBox.style.display = 'none';
+    emptyBox.style.display = 'block';
+    emptyBox.textContent = 'No registration found matching that registration number and mobile number. Please check and try again.';
+    return;
+  }
+  emptyBox.style.display = 'none';
+  resultBox.style.display = 'block';
+  const course = programById(student.course);
+  const pay = paymentStatus(student);
+  const att = studentAttendanceSummary(student);
+  document.getElementById('lookupName').textContent = student.fullName;
+  document.getElementById('lookupReg').textContent = student.regNumber;
+  document.getElementById('lookupCourse').textContent = course ? course.name : '—';
+  document.getElementById('lookupStatus').innerHTML = `<span class="status-pill ${student.status}">${student.status}</span>`;
+  document.getElementById('lookupPayment').innerHTML = `<span class="status-pill ${pay.label.replace(/\s+/g,'')}">${pay.label}</span>` +
+    (pay.fee > 0 ? ` <span class="hint">GHS ${pay.paid} of ${pay.fee} — balance GHS ${pay.balance}</span>` : '');
+  document.getElementById('lookupAttendance').textContent = att.sessionsHeld
+    ? `${att.present} present / ${att.absent} absent of ${att.sessionsHeld} session(s) held (${att.pct}%)`
+    : 'No sessions held yet for your intake.';
+}
+
+/* ---------------------------- ADMIN: AUTH ---------------------------- */
+function isCurrentAdminOwner(){
+  const current = ADMIN_ACCOUNTS.find(a=>a.username === currentAdminUsername);
+  return !!(current && current.role === 'owner');
+}
+
+function renderAdminGate(){
+  document.getElementById('adminSetup').classList.remove('active');
+  document.getElementById('adminLogin').classList.remove('active');
+  document.getElementById('adminDashboard').classList.remove('active');
+  const currentAdmin = ADMIN_ACCOUNTS.find(a=>a.username === currentAdminUsername);
+  if(isAdminLoggedIn && currentAdmin){
+    document.getElementById('adminDashboard').classList.add('active');
+    const roleLabel = currentAdmin.role === 'owner' ? 'Main Admin' : 'Staff';
+    document.getElementById('adminWelcome').textContent = 'Signed in as ' + currentAdmin.username + ' (' + roleLabel + ')';
+    renderAdminDashboard();
+  } else if(!ADMIN_ACCOUNTS.length){
+    document.getElementById('adminSetup').classList.add('active');
+  } else {
+    document.getElementById('adminLogin').classList.add('active');
+  }
+}
+
+async function handleAdminSetup(){
+  const name = document.getElementById('setup_name').value.trim();
+  const username = document.getElementById('setup_username').value.trim();
+  const pin = document.getElementById('setup_pin').value.trim();
+  const pin2 = document.getElementById('setup_pin2').value.trim();
+  if(!username || !pin){ toast('Username and PIN are required.', 'error'); return; }
+  if(!/^\d{4,8}$/.test(pin)){ toast('PIN must be 4–8 digits.', 'error'); return; }
+  if(pin !== pin2){ toast('PINs do not match.', 'error'); return; }
+  const pinHash = await sha256(pin);
+  let alreadyExists = false;
+  const result = await mutateAdmins((list) => {
+    // Guard against two browsers both completing first-admin setup at once.
+    if(list.length){ alreadyExists = true; return false; }
+    list.push({ id: uid(), name: name || username, username, pinHash, role: 'owner' });
+  });
+  if(!result){
+    toast(alreadyExists ? 'An admin account already exists — please log in.' : 'Could not create admin account.', 'error');
+    if(alreadyExists) renderAdminGate();
+    return;
+  }
+  isAdminLoggedIn = true;
+  currentAdminUsername = username;
+  await saveAdminSession(username);
+  toast('Admin account created.', 'success');
+  renderAdminGate();
+}
+
+async function handleAdminLogin(){
+  const username = document.getElementById('login_username').value.trim();
+  const pin = document.getElementById('login_pin').value.trim();
+  if(!ADMIN_ACCOUNTS.length){ toast('No admin account found.', 'error'); return; }
+  const pinHash = await sha256(pin);
+  const match = ADMIN_ACCOUNTS.find(a=>a.username === username && a.pinHash === pinHash);
+  if(match){
+    isAdminLoggedIn = true;
+    currentAdminUsername = match.username;
+    await saveAdminSession(match.username);
+    document.getElementById('login_pin').value = '';
+    toast('Welcome back.', 'success');
+    renderAdminGate();
+  } else {
+    toast('Incorrect username or PIN.', 'error');
+  }
+}
+
+async function handleAdminLogout(){
+  isAdminLoggedIn = false;
+  currentAdminUsername = null;
+  await saveAdminSession(null);
+  toast('Logged out.');
+  renderAdminGate();
+}
+
+function openResetModal(){ document.getElementById('resetModalOverlay').classList.add('open'); }
+function closeResetModal(){ document.getElementById('resetModalOverlay').classList.remove('open'); document.getElementById('resetConfirmInput').value=''; }
+async function confirmResetAdmin(){
+  if(document.getElementById('resetConfirmInput').value.trim() !== 'RESET'){
+    toast('Type RESET exactly to confirm.', 'error'); return;
+  }
+  await deleteAllAdmins();
+  isAdminLoggedIn = false;
+  closeResetModal();
+  toast('Admin account reset. Set up a new one.', 'success');
+  renderAdminGate();
+}
+
+/* ---------------------------- ADMIN: DASHBOARD ---------------------------- */
+function switchAdminTab(tab){
+  if((tab === 'capacity' || tab === 'facilitators') && !isCurrentAdminOwner()){
+    toast('Only the main admin can view this tab.', 'error');
+    return;
+  }
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.admin-tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tabBtn-' + tab).classList.add('active');
+  document.getElementById('adminTab-' + tab).classList.add('active');
+  if(tab === 'overview') renderOverviewTab();
+  if(tab === 'capacity') renderCapacityTab();
+  if(tab === 'users') renderAdminUsersList();
+  if(tab === 'account') renderAccountTab();
+  if(tab === 'attendance') renderAttendanceTrackerTab();
+  if(tab === 'facilitators') renderFacilitatorsTab();
+  if(tab === 'messages') renderMessagesTab();
+}
+
+function renderAdminDashboard(){
+  renderStatGrid();
+  renderOverviewTab();
+  updateMessagesBadge();
+  populateCourseSelect(document.getElementById('adminCourseFilter'), false);
+  document.getElementById('adminCourseFilter').insertAdjacentHTML('afterbegin', '<option value="">All Programs</option>');
+  renderStudentsTable();
+  renderAdminUsersList();
+  const capTabBtn = document.getElementById('tabBtn-capacity');
+  if(capTabBtn) capTabBtn.style.display = isCurrentAdminOwner() ? '' : 'none';
+  const facTabBtn = document.getElementById('tabBtn-facilitators');
+  if(facTabBtn) facTabBtn.style.display = isCurrentAdminOwner() ? '' : 'none';
+  if(!isCurrentAdminOwner() && (document.getElementById('adminTab-capacity').classList.contains('active') || document.getElementById('adminTab-facilitators').classList.contains('active'))){
+    switchAdminTab('registrations');
+  }
+}
+
+/* ---------------------------- ADMIN: OVERVIEW TAB ---------------------------- */
+function renderIntakeCard(){
+  const host = document.getElementById('intakeCard');
+  if(!host) return;
+  const start = niceIntakeDateLong(CURRENT_INTAKE.startDate);
+  const end = niceIntakeDateLong(formatDateISO(currentIntakeEndDate()));
+  const isOwner = isCurrentAdminOwner();
+  const historyHtml = INTAKE_HISTORY.length
+    ? `<p class="sub-note" style="margin:10px 0 0;">Past intakes: ${INTAKE_HISTORY.slice().reverse().map(h=>escapeHtml(h.label || niceIntakeDateLong(h.startDate))).join(', ')}</p>`
+    : '';
+  host.innerHTML = `
+    <div class="admin-user-form" style="max-width:none;">
+      <h3>Current Intake</h3>
+      <p class="sub-note">${escapeHtml(CURRENT_INTAKE.label || '')} — starts <b>${start}</b>, runs through <b>${end}</b> (3 months).</p>
+      ${isOwner ? `<button class="btn btn-outline btn-sm" onclick="openStartIntakeModal()">Start Next Intake</button>` : ''}
+      ${historyHtml}
+    </div>`;
+}
+
+function renderOverviewTab(){
+  renderIntakeCard();
+  const currentIntakeStudents = STUDENTS.filter(s=>s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate);
+  const totalRevenue = STUDENTS.reduce((sum,s)=> sum + Math.max(0, s.feePaid || 0), 0);
+  const totalExpected = STUDENTS.reduce((sum,s)=> sum + getFee(s.course), 0);
+  const outstanding = Math.max(0, totalExpected - totalRevenue);
+  const todayISO = formatDateISO(new Date());
+  const heldCount = getSessionDates().filter(d=>d <= todayISO).length;
+  let pctSum = 0, pctCount = 0;
+  currentIntakeStudents.forEach(s=>{
+    if(!heldCount) return;
+    const present = ATTENDANCE.filter(r=>r.course === s.course && r.studentId === s.id && r.status === 'Present').length;
+    pctSum += (present / heldCount) * 100; pctCount++;
+  });
+  const overallAttendance = pctCount ? Math.round(pctSum / pctCount) : 0;
+  const unreadMsgs = CONTACT_MESSAGES.filter(m=>!m.read).length;
+  const statGrid = document.getElementById('overviewStatGrid');
+  if(statGrid){
+    statGrid.innerHTML = `
+      <div class="stat-card total"><b>${currentIntakeStudents.length}</b><span>Registered This Intake</span></div>
+      <div class="stat-card"><b>GHS ${totalRevenue.toLocaleString()}</b><span>Fees Collected (All Time)</span></div>
+      <div class="stat-card${outstanding>0?' danger':''}"><b>GHS ${outstanding.toLocaleString()}</b><span>Outstanding Balance</span></div>
+      <div class="stat-card"><b>${overallAttendance}%</b><span>Avg. Attendance (This Intake)</span></div>
+      <div class="stat-card"><b>${FACILITATOR_ACCOUNTS.length}</b><span>Facilitators</span></div>
+      <div class="stat-card${unreadMsgs>0?' danger':''}"><b>${unreadMsgs}</b><span>Unread Messages</span></div>`;
+  }
+  const progBody = document.getElementById('overviewProgramBody');
+  if(progBody){
+    progBody.innerHTML = PROGRAMS.map(p=>{
+      const taken = seatsTaken(p.id);
+      const cap = getCapacity(p.id);
+      const progStudents = STUDENTS.filter(s=>s.course === p.id);
+      const collected = progStudents.reduce((sum,s)=> sum + Math.max(0, s.feePaid || 0), 0);
+      const expected = progStudents.reduce((sum,s)=> sum + getFee(p.id), 0);
+      return `<tr><td>${escapeHtml(p.name)}</td><td>${taken} / ${cap}</td><td>GHS ${collected.toLocaleString()}</td><td>GHS ${expected.toLocaleString()}</td></tr>`;
+    }).join('');
+  }
+}
+
+function openStartIntakeModal(){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can start a new intake.', 'error'); return; }
+  document.getElementById('newIntakeStartDate').value = formatDateISO(currentIntakeEndDate());
+  document.getElementById('newIntakeLabel').value = '';
+  document.getElementById('startIntakeOverlay').classList.add('open');
+}
+function closeStartIntakeModal(){ document.getElementById('startIntakeOverlay').classList.remove('open'); }
+async function confirmStartIntake(){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can start a new intake.', 'error'); return; }
+  const dateVal = document.getElementById('newIntakeStartDate').value;
+  const label = document.getElementById('newIntakeLabel').value.trim();
+  if(!dateVal){ toast('Pick a start date for the new intake.', 'error'); return; }
+  if(!confirm('Start a new intake beginning ' + niceIntakeDateLong(dateVal) + '? This affects registration, capacity and attendance for all users.')) return;
+  await startNextIntake(dateVal, label);
+  closeStartIntakeModal();
+  applyIntakeTextsToDOM();
+  updateCountdowns();
+  populateCourseSelect(document.getElementById('f_course'), true);
+  renderProgramGrids();
+  renderAdminDashboard();
+  toast('New intake started: ' + CURRENT_INTAKE.label, 'success');
+}
+
+/* ---------------------------- ADMIN: MESSAGES TAB ---------------------------- */
+function updateMessagesBadge(){
+  const badge = document.getElementById('msgBadge');
+  if(!badge) return;
+  const unread = CONTACT_MESSAGES.filter(m=>!m.read).length;
+  badge.textContent = unread;
+  badge.style.display = unread ? 'inline-block' : 'none';
+}
+
+function renderMessagesTab(){
+  const host = document.getElementById('messagesList');
+  const countLabel = document.getElementById('messagesCountLabel');
+  if(!host) return;
+  updateMessagesBadge();
+  if(!CONTACT_MESSAGES.length){
+    host.innerHTML = '<div class="empty-state">No messages yet.</div>';
+    if(countLabel) countLabel.textContent = '';
+    return;
+  }
+  const sorted = CONTACT_MESSAGES.slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
+  host.innerHTML = sorted.map(m=>`
+    <div class="admin-user-row" style="align-items:flex-start;">
+      <div class="who" style="max-width:70%;">
+        <b>${escapeHtml(m.name)}${!m.read ? '<span class="you-badge" style="background:var(--danger-tint);color:var(--danger);">New</span>' : ''}</b>
+        <span>${escapeHtml(m.email)} — ${new Date(m.date).toLocaleString()}</span>
+        <p style="margin:8px 0 0;color:var(--ink);font-size:.88rem;white-space:pre-wrap;">${escapeHtml(m.message)}</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0;">
+        ${!m.read ? `<button class="btn btn-outline btn-sm" onclick="markMessageRead('${m.id}')">Mark Read</button>` : ''}
+        <button class="btn btn-danger btn-sm" onclick="deleteMessage('${m.id}')">Delete</button>
+      </div>
+    </div>`).join('');
+  if(countLabel) countLabel.textContent = `${sorted.length} message(s) — ${sorted.filter(m=>!m.read).length} unread`;
+}
+
+async function markMessageRead(id){
+  const result = await mutateContactMessages((list) => {
+    const m = list.find(x=>x.id === id);
+    if(!m) return false;
+    m.read = true;
+  });
+  if(!result){ toast('Could not update message.', 'error'); return; }
+  renderMessagesTab();
+}
+
+async function deleteMessage(id){
+  if(!confirm('Delete this message? This cannot be undone.')) return;
+  const result = await mutateContactMessages((list) => {
+    const idx = list.findIndex(x=>x.id === id);
+    if(idx === -1) return false;
+    list.splice(idx, 1);
+  });
+  if(!result){ toast('Could not delete message.', 'error'); return; }
+  toast('Message deleted.', 'success');
+  renderMessagesTab();
+}
+
+function renderCapacityTab(){
+  const host = document.getElementById('capacityList');
+  if(!host) return;
+  host.innerHTML = PROGRAMS.map(p=>{
+    const taken = seatsTaken(p.id);
+    const capacity = getCapacity(p.id);
+    const fee = getFee(p.id);
+    return `
+    <div class="admin-user-row">
+      <div class="who">
+        <b>${escapeHtml(p.name)}</b>
+        <span>${taken} registered</span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <label style="font-size:.72rem;color:var(--ink-faint);">Capacity<br>
+        <input type="number" min="0" step="1" class="cap-input" id="cap_${p.id}" value="${capacity}" style="width:100px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;"></label>
+        <label style="font-size:.72rem;color:var(--ink-faint);">Fee (GHS)<br>
+        <input type="number" min="0" step="0.01" class="fee-input" id="fee_${p.id}" value="${fee}" style="width:110px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;"></label>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function handleSaveCapacities(){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can change program capacity or fees.', 'error'); return; }
+  const changedIds = [];
+  PROGRAMS.forEach(p=>{
+    const input = document.getElementById('cap_' + p.id);
+    if(!input) return;
+    const val = parseInt(input.value, 10);
+    if(val > 0) PROGRAM_CAPACITIES[p.id] = val;
+    else delete PROGRAM_CAPACITIES[p.id];
+    changedIds.push(p.id);
+  });
+  await saveCapacities(changedIds);
+  const feeChangedIds = [];
+  PROGRAMS.forEach(p=>{
+    const input = document.getElementById('fee_' + p.id);
+    if(!input) return;
+    const val = parseFloat(input.value);
+    if(val > 0) PROGRAM_FEES[p.id] = val;
+    else delete PROGRAM_FEES[p.id];
+    feeChangedIds.push(p.id);
+  });
+  await saveFees(feeChangedIds);
+  toast('Program capacity and fees updated.', 'success');
+  renderCapacityTab();
+}
+
+function renderAdminUsersList(){
+  const isOwner = isCurrentAdminOwner();
+  const addForm = document.getElementById('addAdminUserForm');
+  const deniedNotice = document.getElementById('addAdminUserDenied');
+  if(addForm) addForm.style.display = isOwner ? '' : 'none';
+  if(deniedNotice) deniedNotice.style.display = isOwner ? 'none' : '';
+  const host = document.getElementById('adminUsersList');
+  if(!host) return;
+  if(!ADMIN_ACCOUNTS.length){
+    host.innerHTML = '<div class="empty-state">No admin users yet.</div>';
+    return;
+  }
+  host.innerHTML = ADMIN_ACCOUNTS.map(a=>{
+    const isSelf = a.username === currentAdminUsername;
+    const isOwner = a.role === 'owner';
+    const canDelete = isCurrentAdminOwner() && ADMIN_ACCOUNTS.length > 1 && !isSelf && !isOwner;
+    return `
+    <div class="admin-user-row">
+      <div class="who">
+        <b>${escapeHtml(a.name || a.username)}${isOwner ? '<span class="you-badge">Admin</span>' : ''}${isSelf ? '<span class="you-badge">You</span>' : ''}</b>
+        <span>@${escapeHtml(a.username)}</span>
+      </div>
+      ${canDelete ? `<button class="btn btn-outline btn-sm" onclick="handleDeleteAdminUser('${a.id}')">Remove</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function handleAddAdminUser(){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can add new admin users.', 'error'); return; }
+  const name = document.getElementById('newadmin_name').value.trim();
+  const username = document.getElementById('newadmin_username').value.trim();
+  const pin = document.getElementById('newadmin_pin').value.trim();
+  const pin2 = document.getElementById('newadmin_pin2').value.trim();
+  if(!username || !pin){ toast('Username and PIN are required.', 'error'); return; }
+  if(!/^\d{4,8}$/.test(pin)){ toast('PIN must be 4–8 digits.', 'error'); return; }
+  if(pin !== pin2){ toast('PINs do not match.', 'error'); return; }
+  const pinHash = await sha256(pin);
+  let duplicate = false;
+  const result = await mutateAdmins((list) => {
+    if(list.some(a=>a.username.toLowerCase() === username.toLowerCase())){ duplicate = true; return false; }
+    list.push({ id: uid(), name: name || username, username, pinHash, role: 'staff' });
+  });
+  if(!result){ toast(duplicate ? 'That username is already taken.' : 'Could not add admin user.', 'error'); return; }
+  document.getElementById('newadmin_name').value = '';
+  document.getElementById('newadmin_username').value = '';
+  document.getElementById('newadmin_pin').value = '';
+  document.getElementById('newadmin_pin2').value = '';
+  toast('Admin user added.', 'success');
+  renderAdminUsersList();
+}
+
+async function handleDeleteAdminUser(id){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can remove admin users.', 'error'); return; }
+  let reason = null;
+  const result = await mutateAdmins((list) => {
+    if(list.length <= 1){ reason = 'last'; return false; }
+    const target = list.find(a=>a.id===id);
+    if(!target){ reason = 'missing'; return false; }
+    if(target.role === 'owner'){ reason = 'owner'; return false; }
+    if(target.username === currentAdminUsername){ reason = 'self'; return false; }
+    const idx = list.findIndex(a=>a.id===id);
+    list.splice(idx, 1);
+  });
+  if(!result){
+    const messages = {
+      last: 'At least one admin user must remain.',
+      missing: 'Admin user not found.',
+      owner: 'The main admin account cannot be removed.',
+      self: 'You cannot remove your own account while logged in.'
+    };
+    toast(messages[reason] || 'Could not remove admin user.', 'error');
+    return;
+  }
+  toast('Admin user removed.', 'success');
+  renderAdminUsersList();
+}
+
+function renderAccountTab(){
+  const currentAdmin = ADMIN_ACCOUNTS.find(a=>a.username === currentAdminUsername);
+  if(!currentAdmin) return;
+  document.getElementById('account_name').value = currentAdmin.name || '';
+  document.getElementById('account_username').value = currentAdmin.username || '';
+  document.getElementById('account_current_pin').value = '';
+  document.getElementById('account_new_pin').value = '';
+  document.getElementById('account_new_pin2').value = '';
+  const isOwner = currentAdmin.role === 'owner';
+  document.getElementById('account_new_pin_row').style.display = isOwner ? '' : 'none';
+  document.getElementById('account_staff_pin_note').style.display = isOwner ? 'none' : '';
+  document.getElementById('account_sub_note').textContent = isOwner
+    ? 'Update your display name, username or PIN. You must enter your current PIN to save changes.'
+    : 'Update your display name or username. You must enter your current PIN to save changes.';
+}
+
+async function handleUpdateOwnAccount(){
+  const currentAdmin = ADMIN_ACCOUNTS.find(a=>a.username === currentAdminUsername);
+  if(!currentAdmin){ toast('You must be logged in to update your account.', 'error'); return; }
+  const name = document.getElementById('account_name').value.trim();
+  const username = document.getElementById('account_username').value.trim();
+  const currentPin = document.getElementById('account_current_pin').value.trim();
+  const newPin = document.getElementById('account_new_pin').value.trim();
+  const newPin2 = document.getElementById('account_new_pin2').value.trim();
+  if(!username){ toast('Username is required.', 'error'); return; }
+  if(!currentPin){ toast('Enter your current PIN to save changes.', 'error'); return; }
+  const currentPinHash = await sha256(currentPin);
+  if(currentPinHash !== currentAdmin.pinHash){ toast('Current PIN is incorrect.', 'error'); return; }
+  if(newPin && currentAdmin.role !== 'owner'){ toast('Only the main admin can change a PIN.', 'error'); return; }
+  if(newPin && !/^\d{4,8}$/.test(newPin)){ toast('New PIN must be 4–8 digits.', 'error'); return; }
+  if(newPin && newPin !== newPin2){ toast('New PINs do not match.', 'error'); return; }
+  const newPinHash = newPin ? await sha256(newPin) : null;
+  let reason = null;
+  const result = await mutateAdmins((list) => {
+    const acc = list.find(a=>a.id === currentAdmin.id);
+    if(!acc){ reason = 'missing'; return false; }
+    if(currentPinHash !== acc.pinHash){ reason = 'pin'; return false; }
+    if(list.some(a=>a.id !== acc.id && a.username.toLowerCase() === username.toLowerCase())){ reason = 'dup'; return false; }
+    if(newPinHash) acc.pinHash = newPinHash;
+    acc.name = name || username;
+    acc.username = username;
+  });
+  if(!result){
+    const messages = {
+      missing: 'Your account could not be found — please log in again.',
+      pin: 'Current PIN is incorrect.',
+      dup: 'That username is already taken.'
+    };
+    toast(messages[reason] || 'Could not update account.', 'error');
+    return;
+  }
+  currentAdminUsername = username;
+  await saveAdminSession(username);
+  document.getElementById('account_current_pin').value = '';
+  document.getElementById('account_new_pin').value = '';
+  document.getElementById('account_new_pin2').value = '';
+  toast('Account updated.', 'success');
+  renderAdminGate();
+}
+
+/* ---------------------------- FACILITATOR: AUTH ---------------------------- */
+function renderFacilitatorGate(){
+  document.getElementById('facilitatorNoAccounts').classList.remove('active');
+  document.getElementById('facilitatorLogin').classList.remove('active');
+  document.getElementById('facilitatorDashboard').classList.remove('active');
+  const currentFac = FACILITATOR_ACCOUNTS.find(f=>f.username === currentFacilitatorUsername);
+  if(isFacilitatorLoggedIn && currentFac){
+    document.getElementById('facilitatorDashboard').classList.add('active');
+    document.getElementById('facilitatorWelcome').textContent = 'Signed in as ' + currentFac.username;
+    renderFacilitatorDashboard();
+  } else if(!FACILITATOR_ACCOUNTS.length){
+    document.getElementById('facilitatorNoAccounts').classList.add('active');
+  } else {
+    document.getElementById('facilitatorLogin').classList.add('active');
+  }
+}
+
+async function handleFacilitatorLogin(){
+  const username = document.getElementById('fac_login_username').value.trim();
+  const pin = document.getElementById('fac_login_pin').value.trim();
+  if(!FACILITATOR_ACCOUNTS.length){ toast('No facilitator account found.', 'error'); return; }
+  const pinHash = await sha256(pin);
+  const match = FACILITATOR_ACCOUNTS.find(f=>f.username === username && f.pinHash === pinHash);
+  if(match){
+    isFacilitatorLoggedIn = true;
+    currentFacilitatorUsername = match.username;
+    await saveFacilitatorSession(match.username);
+    document.getElementById('fac_login_pin').value = '';
+    toast('Welcome back.', 'success');
+    renderFacilitatorGate();
+  } else {
+    toast('Incorrect username or PIN.', 'error');
+  }
+}
+
+async function handleFacilitatorLogout(){
+  isFacilitatorLoggedIn = false;
+  currentFacilitatorUsername = null;
+  await saveFacilitatorSession(null);
+  exitPreviewMode();
+  toast('Logged out.');
+  renderFacilitatorGate();
+}
+
+/* ---------------------------- FACILITATOR: PREVIEW MODE ----------------------------
+   Lets a facilitator try marking attendance without writing anything to Firestore —
+   marks live only in PREVIEW_ATTENDANCE (a local array) instead of the real ATTENDANCE
+   list, so testing never pollutes real attendance records. */
+let facilitatorPreviewMode = false;
+let PREVIEW_ATTENDANCE = [];
+function activeAttendanceList(){ return facilitatorPreviewMode ? PREVIEW_ATTENDANCE : ATTENDANCE; }
+function exitPreviewMode(){
+  facilitatorPreviewMode = false;
+  PREVIEW_ATTENDANCE = [];
+  const btn = document.getElementById('previewModeBtn');
+  const banner = document.getElementById('previewModeBanner');
+  if(btn){ btn.textContent = 'Enable Preview Mode'; btn.classList.remove('btn-gold'); }
+  if(banner) banner.style.display = 'none';
+}
+function togglePreviewMode(){
+  facilitatorPreviewMode = !facilitatorPreviewMode;
+  PREVIEW_ATTENDANCE = [];
+  const btn = document.getElementById('previewModeBtn');
+  const banner = document.getElementById('previewModeBanner');
+  if(facilitatorPreviewMode){
+    btn.textContent = 'Exit Preview Mode'; btn.classList.add('btn-gold');
+    banner.style.display = 'block';
+    toast('Preview Mode on — marks below will not be saved.', 'success');
+  } else {
+    btn.textContent = 'Enable Preview Mode'; btn.classList.remove('btn-gold');
+    banner.style.display = 'none';
+    toast('Preview Mode off — back to live attendance.', 'success');
+  }
+  renderFacilitatorRoster();
+}
+
+/* ---------------------------- FACILITATOR: DASHBOARD ---------------------------- */
+function renderFacilitatorDashboard(){
+  const fac = FACILITATOR_ACCOUNTS.find(f=>f.username === currentFacilitatorUsername);
+  if(!fac) return;
+  const courseSelect = document.getElementById('facCourseSelect');
+  const myCourses = (fac.courses || []).map(id=>programById(id)).filter(Boolean);
+  courseSelect.innerHTML = myCourses.length
+    ? myCourses.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')
+    : '<option value="">No program assigned</option>';
+  onFacilitatorCourseChange();
+}
+
+function onFacilitatorCourseChange(){
+  populateFacilitatorDateSelect();
+  renderFacilitatorRoster();
+}
+
+function populateFacilitatorDateSelect(){
+  const dateSelect = document.getElementById('facDateSelect');
+  const dates = getSessionDates();
+  if(!dates.length){
+    dateSelect.innerHTML = '<option value="">No sessions yet</option>';
+    return;
+  }
+  dateSelect.innerHTML = dates.slice().reverse().map(d=>`<option value="${d}">${niceSessionLabel(d)}</option>`).join('');
+  const def = defaultSessionDate();
+  if(def) dateSelect.value = def;
+}
+
+function renderFacilitatorRoster(){
+  const courseId = document.getElementById('facCourseSelect').value;
+  const date = document.getElementById('facDateSelect').value;
+  const body = document.getElementById('facilitatorRosterBody');
+  const summary = document.getElementById('facSummaryRow');
+  const countLabel = document.getElementById('facRosterCountLabel');
+  if(!courseId){
+    body.innerHTML = `<tr><td colspan="4"><div class="empty-state">You have no assigned program yet — ask the admin to assign one.</div></td></tr>`;
+    summary.innerHTML = ''; countLabel.textContent = '';
+    return;
+  }
+  if(!date){
+    body.innerHTML = `<tr><td colspan="4"><div class="empty-state">No session dates yet — weekend classes begin Sat ${niceIntakeDateShort(CURRENT_INTAKE.startDate)}.</div></td></tr>`;
+    summary.innerHTML = ''; countLabel.textContent = '';
+    return;
+  }
+  const roster = STUDENTS.filter(s=>s.course === courseId && s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate);
+  let present = 0, absent = 0, unmarked = 0;
+  if(roster.length === 0){
+    body.innerHTML = `<tr><td colspan="4"><div class="empty-state">No students registered for this program yet.</div></td></tr>`;
+  } else {
+    body.innerHTML = roster.slice().sort((a,b)=>a.fullName.localeCompare(b.fullName)).map(s=>{
+      const rec = activeAttendanceList().find(r=>r.course === courseId && r.date === date && r.studentId === s.id);
+      const status = rec ? rec.status : null;
+      if(status === 'Present') present++; else if(status === 'Absent') absent++; else unmarked++;
+      return `<tr>
+        <td class="reg">${s.regNumber}</td>
+        <td>${escapeHtml(s.fullName)}</td>
+        <td><div class="att-toggle">
+          <button class="att-btn present ${status==='Present'?'active':''}" onclick="markAttendance('${s.id}','Present')">Present</button>
+          <button class="att-btn absent ${status==='Absent'?'active':''}" onclick="markAttendance('${s.id}','Absent')">Absent</button>
+        </div></td>
+        <td><input type="text" class="att-note-input" style="width:100%;border:1.5px solid var(--line);border-radius:8px;padding:7px 10px;font-size:.82rem;font-family:inherit;" placeholder="${status ? 'e.g. reason for absence' : 'Mark present/absent first'}" value="${escapeHtml(rec && rec.note ? rec.note : '')}" ${status ? '' : 'disabled'} onchange="saveAttendanceNote('${s.id}', this.value)"></td>
+      </tr>`;
+    }).join('');
+  }
+  summary.innerHTML = `
+    <div class="stat-card total"><b>${roster.length}</b><span>On Roster</span></div>
+    <div class="stat-card"><b>${present}</b><span>Present</span></div>
+    <div class="stat-card"><b>${absent}</b><span>Absent</span></div>
+    <div class="stat-card"><b>${unmarked}</b><span>Not Marked</span></div>`;
+  countLabel.textContent = roster.length ? `${niceSessionLabel(date)} — ${programById(courseId) ? programById(courseId).name : ''}` : '';
+}
+
+async function markAttendance(studentId, status){
+  const courseId = document.getElementById('facCourseSelect').value;
+  const date = document.getElementById('facDateSelect').value;
+  if(!courseId || !date) return;
+  const markedBy = currentFacilitatorUsername;
+  let cleared = false;
+  const applyMark = (list) => {
+    const idx = list.findIndex(r=>r.course === courseId && r.date === date && r.studentId === studentId);
+    // Clicking the already-active status again undoes the mark (back to Not Marked).
+    if(idx !== -1 && list[idx].status === status){
+      list.splice(idx, 1);
+      cleared = true;
+    } else if(idx !== -1){
+      list[idx].status = status; list[idx].markedBy = markedBy; list[idx].updatedAt = new Date().toISOString();
+    } else {
+      list.push({ id: uid(), course: courseId, date, studentId, status, markedBy, note: '', updatedAt: new Date().toISOString() });
+    }
+  };
+  if(facilitatorPreviewMode){
+    applyMark(PREVIEW_ATTENDANCE);
+    toast(cleared ? 'Preview mark cleared (not saved).' : 'Marked in Preview Mode (not saved).', 'success');
+    renderFacilitatorRoster();
+    return;
+  }
+  const result = await mutateAttendance(applyMark);
+  if(!result){ toast('Could not save attendance.', 'error'); return; }
+  if(cleared) toast('Attendance mark cleared.', 'success');
+  renderFacilitatorRoster();
+}
+
+async function saveAttendanceNote(studentId, note){
+  const courseId = document.getElementById('facCourseSelect').value;
+  const date = document.getElementById('facDateSelect').value;
+  if(!courseId || !date) return;
+  if(facilitatorPreviewMode){
+    const rec = PREVIEW_ATTENDANCE.find(r=>r.course === courseId && r.date === date && r.studentId === studentId);
+    if(rec){ rec.note = note.trim(); rec.updatedAt = new Date().toISOString(); }
+    toast('Note saved in Preview Mode (not saved to database).', 'success');
+    return;
+  }
+  const result = await mutateAttendance((list) => {
+    const rec = list.find(r=>r.course === courseId && r.date === date && r.studentId === studentId);
+    if(!rec) return false;
+    rec.note = note.trim();
+    rec.updatedAt = new Date().toISOString();
+  });
+  if(!result){ toast('Could not save note.', 'error'); return; }
+  toast('Note saved.', 'success');
+}
+
+async function markAllPresent(){
+  const courseId = document.getElementById('facCourseSelect').value;
+  const date = document.getElementById('facDateSelect').value;
+  if(!courseId || !date) return;
+  const roster = STUDENTS.filter(s=>s.course === courseId && s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate);
+  if(!roster.length){ toast('No students on this roster.', 'error'); return; }
+  if(!confirm(`Mark all ${roster.length} student(s) present for ${niceSessionLabel(date)}?`)) return;
+  const markedBy = currentFacilitatorUsername;
+  const applyMarks = (list) => {
+    roster.forEach(s=>{
+      const rec = list.find(r=>r.course === courseId && r.date === date && r.studentId === s.id);
+      if(rec){ rec.status = 'Present'; rec.markedBy = markedBy; rec.updatedAt = new Date().toISOString(); }
+      else{ list.push({ id: uid(), course: courseId, date, studentId: s.id, status: 'Present', markedBy, note: '', updatedAt: new Date().toISOString() }); }
+    });
+  };
+  if(facilitatorPreviewMode){
+    applyMarks(PREVIEW_ATTENDANCE);
+    toast('All students marked present in Preview Mode (not saved).', 'success');
+    renderFacilitatorRoster();
+    return;
+  }
+  const result = await mutateAttendance(applyMarks);
+  if(!result){ toast('Could not save attendance.', 'error'); return; }
+  toast('All students marked present.', 'success');
+  renderFacilitatorRoster();
+}
+
+/* ---------------------------- ADMIN: FACILITATORS TAB ---------------------------- */
+function renderFacilitatorsTab(){
+  const picker = document.getElementById('newfacCoursePicker');
+  if(picker){
+    picker.innerHTML = PROGRAMS.map(p=>`<label class="fac-course-check"><input type="checkbox" value="${p.id}" class="newfac-course-cb"> ${escapeHtml(p.name)}</label>`).join('');
+  }
+  const host = document.getElementById('facilitatorsList');
+  if(!host) return;
+  if(!FACILITATOR_ACCOUNTS.length){
+    host.innerHTML = '<div class="empty-state">No facilitators yet.</div>';
+    return;
+  }
+  host.innerHTML = FACILITATOR_ACCOUNTS.map(f=>{
+    const courseNames = (f.courses || []).map(id=>programById(id) ? programById(id).name : null).filter(Boolean).join(', ') || 'No program assigned';
+    return `
+    <div class="admin-user-row">
+      <div class="who">
+        <b>${escapeHtml(f.name || f.username)}</b>
+        <span>@${escapeHtml(f.username)} — ${escapeHtml(courseNames)}</span>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="openFacResetPin('${f.id}')">Reset PIN</button>
+      <button class="btn btn-outline btn-sm" onclick="handleDeleteFacilitator('${f.id}')">Remove</button>
+    </div>`;
+  }).join('');
+}
+
+async function handleAddFacilitator(){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can add facilitators.', 'error'); return; }
+  const name = document.getElementById('newfac_name').value.trim();
+  const username = document.getElementById('newfac_username').value.trim();
+  const pin = document.getElementById('newfac_pin').value.trim();
+  const pin2 = document.getElementById('newfac_pin2').value.trim();
+  const courses = Array.from(document.querySelectorAll('.newfac-course-cb:checked')).map(cb=>cb.value);
+  if(!username || !pin){ toast('Username and PIN are required.', 'error'); return; }
+  if(!/^\d{4,8}$/.test(pin)){ toast('PIN must be 4–8 digits.', 'error'); return; }
+  if(pin !== pin2){ toast('PINs do not match.', 'error'); return; }
+  if(!courses.length){ toast('Assign at least one program.', 'error'); return; }
+  const pinHash = await sha256(pin);
+  let duplicate = false;
+  const result = await mutateFacilitators((list) => {
+    if(list.some(f=>f.username.toLowerCase() === username.toLowerCase())){ duplicate = true; return false; }
+    list.push({ id: uid(), name: name || username, username, pinHash, courses });
+  });
+  if(!result){ toast(duplicate ? 'That username is already taken.' : 'Could not add facilitator.', 'error'); return; }
+  document.getElementById('newfac_name').value = '';
+  document.getElementById('newfac_username').value = '';
+  document.getElementById('newfac_pin').value = '';
+  document.getElementById('newfac_pin2').value = '';
+  document.querySelectorAll('.newfac-course-cb').forEach(cb=>cb.checked = false);
+  toast('Facilitator added.', 'success');
+  renderFacilitatorsTab();
+}
+
+async function handleDeleteFacilitator(id){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can remove facilitators.', 'error'); return; }
+  if(!confirm('Remove this facilitator account? They will no longer be able to log in.')) return;
+  const result = await mutateFacilitators((list) => {
+    const idx = list.findIndex(f=>f.id === id);
+    if(idx === -1) return false;
+    list.splice(idx, 1);
+  });
+  if(!result){ toast('Could not remove facilitator.', 'error'); return; }
+  toast('Facilitator removed.', 'success');
+  renderFacilitatorsTab();
+}
+
+let facResetPinId = null;
+function openFacResetPin(id){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can reset a facilitator PIN.', 'error'); return; }
+  const f = FACILITATOR_ACCOUNTS.find(x=>x.id === id);
+  if(!f) return;
+  facResetPinId = id;
+  document.getElementById('facResetPinName').textContent = f.name || f.username;
+  document.getElementById('facResetPinNew').value = '';
+  document.getElementById('facResetPinNew2').value = '';
+  document.getElementById('facResetPinOverlay').classList.add('open');
+}
+function closeFacResetPin(){
+  document.getElementById('facResetPinOverlay').classList.remove('open');
+  facResetPinId = null;
+}
+async function confirmFacResetPin(){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can reset a facilitator PIN.', 'error'); return; }
+  const id = facResetPinId;
+  const pin = document.getElementById('facResetPinNew').value.trim();
+  const pin2 = document.getElementById('facResetPinNew2').value.trim();
+  if(!/^\d{4,8}$/.test(pin)){ toast('PIN must be 4\u20138 digits.', 'error'); return; }
+  if(pin !== pin2){ toast('PINs do not match.', 'error'); return; }
+  const pinHash = await sha256(pin);
+  const result = await mutateFacilitators((list) => {
+    const f = list.find(x=>x.id === id);
+    if(!f) return false;
+    f.pinHash = pinHash;
+  });
+  if(!result){ toast('Could not reset PIN \u2014 facilitator may have been removed.', 'error'); return; }
+  toast('Facilitator PIN reset.', 'success');
+  closeFacResetPin();
+  renderFacilitatorsTab();
+}
+
+/* ---------------------------- ADMIN: ATTENDANCE TRACKER TAB ---------------------------- */
+const LOW_ATTENDANCE_STREAK = 3;
+function computeAttendanceStats(courseId){
+  const todayISO = formatDateISO(new Date());
+  const heldDates = getSessionDates().filter(d=>d <= todayISO);
+  const sessionsHeld = heldDates.length;
+  const roster = STUDENTS.filter(s=>s.course === courseId && s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate);
+  return roster.slice().sort((a,b)=>a.fullName.localeCompare(b.fullName)).map(s=>{
+    const records = ATTENDANCE.filter(r=>r.course === courseId && r.studentId === s.id);
+    const present = records.filter(r=>r.status === 'Present').length;
+    const absent = records.filter(r=>r.status === 'Absent').length;
+    const pct = sessionsHeld ? Math.round((present / sessionsHeld) * 100) : 0;
+    // Consecutive Absent markings counting back from the most recent held session.
+    let streak = 0;
+    for(let i = heldDates.length - 1; i >= 0; i--){
+      const rec = records.find(r=>r.date === heldDates[i]);
+      if(rec && rec.status === 'Absent') streak++;
+      else break;
+    }
+    const atRisk = streak >= LOW_ATTENDANCE_STREAK;
+    return { student: s, sessionsHeld, present, absent, pct, streak, atRisk };
+  });
+}
+
+function renderAttendanceTrackerTab(){
+  const filterSelect = document.getElementById('attCourseFilter');
+  const prevValue = filterSelect.value;
+  populateCourseSelect(filterSelect, false);
+  filterSelect.value = (prevValue && programById(prevValue)) ? prevValue : PROGRAMS[0].id;
+  const courseId = filterSelect.value;
+  const rows = computeAttendanceStats(courseId);
+  const sessionsHeld = getSessionDates().filter(d=>d <= formatDateISO(new Date())).length;
+  const atRiskRows = rows.filter(r=>r.atRisk);
+  const summary = document.getElementById('attSummaryRow');
+  summary.innerHTML = `
+    <div class="stat-card total"><b>${sessionsHeld}</b><span>Sessions Held So Far</span></div>
+    <div class="stat-card"><b>${rows.length}</b><span>Students On Roster</span></div>
+    <div class="stat-card${atRiskRows.length ? ' danger' : ''}"><b>${atRiskRows.length}</b><span>At Risk (${LOW_ATTENDANCE_STREAK}+ Absences In A Row)</span></div>`;
+  const banner = document.getElementById('attRiskBanner');
+  if(banner){
+    banner.innerHTML = atRiskRows.length
+      ? `<b>\u26a0 ${atRiskRows.length} student(s) have missed ${LOW_ATTENDANCE_STREAK} or more sessions in a row:</b> ${atRiskRows.map(r=>escapeHtml(r.student.fullName)).join(', ')}`
+      : '';
+    banner.style.display = atRiskRows.length ? 'block' : 'none';
+  }
+  const body = document.getElementById('attendanceTableBody');
+  if(!sessionsHeld){
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">Classes haven't started yet — the first weekend session is Sat ${niceIntakeDateShort(CURRENT_INTAKE.startDate)}.</div></td></tr>`;
+    return;
+  }
+  if(rows.length === 0){
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">No students registered for this program yet.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(r=>`
+    <tr>
+      <td class="reg">${r.student.regNumber}</td>
+      <td>${escapeHtml(r.student.fullName)}</td>
+      <td>${r.sessionsHeld}</td>
+      <td>${r.present}</td>
+      <td>${r.absent}</td>
+      <td class="att-pct">${r.pct}%</td>
+      <td>${r.atRisk ? `<span class="status-pill Cancelled" title="${r.streak} consecutive absences">\u26a0 At Risk</span>` : ''}</td>
+      <td><button class="btn btn-outline btn-sm" onclick="openAttendanceDetailModal('${r.student.id}','${courseId}')">View</button></td>
+    </tr>`).join('');
+}
+
+function openAttendanceDetailModal(studentId, courseId){
+  const s = STUDENTS.find(x=>x.id === studentId);
+  const course = programById(courseId);
+  if(!s || !course) return;
+  document.getElementById('attDetailName').textContent = s.fullName + ' — ' + s.regNumber;
+  document.getElementById('attDetailCourse').textContent = course.name;
+  const todayISO = formatDateISO(new Date());
+  const heldDates = getSessionDates().filter(d=>d <= todayISO);
+  const chipsHost = document.getElementById('attDetailChips');
+  const notesHost = document.getElementById('attDetailNotes');
+  if(!heldDates.length){
+    chipsHost.innerHTML = '<div class="empty-state">No sessions have been held yet.</div>';
+    notesHost.innerHTML = '';
+  } else {
+    const notedRecords = [];
+    chipsHost.innerHTML = heldDates.map(d=>{
+      const rec = ATTENDANCE.find(r=>r.course === courseId && r.date === d && r.studentId === studentId);
+      const cls = rec ? (rec.status === 'Present' ? 'present' : 'absent') : 'unmarked';
+      const label = rec ? (rec.status === 'Present' ? 'P' : 'A') : '–';
+      const title = niceSessionLabel(d) + (rec && rec.note ? ': ' + rec.note : '');
+      if(rec && rec.note) notedRecords.push({ date: d, status: rec.status, note: rec.note });
+      return `<span class="att-chip ${cls}" title="${escapeHtml(title)}">${label}</span>`;
+    }).join('');
+    notesHost.innerHTML = notedRecords.length
+      ? '<h5 style="margin:14px 0 6px;font-size:.85rem;">Notes</h5>' + notedRecords.map(n=>`<div class="admin-user-row" style="padding:10px 14px;"><div class="who"><b>${niceSessionLabel(n.date)} (${n.status})</b><span>${escapeHtml(n.note)}</span></div></div>`).join('')
+      : '';
+  }
+  document.getElementById('attendanceDetailOverlay').classList.add('open');
+}
+function closeAttendanceDetailModal(){ document.getElementById('attendanceDetailOverlay').classList.remove('open'); }
+
+function exportAttendanceCSV(){
+  const courseId = document.getElementById('attCourseFilter').value;
+  const course = programById(courseId);
+  const rows = computeAttendanceStats(courseId);
+  if(rows.length === 0){ toast('No attendance data to export.', 'error'); return; }
+  const headers = ['Registration Number','Full Name','Program','Sessions Held','Present','Absent','Attendance %','At Risk'];
+  const csvLines = [headers.join(',')].concat(rows.map(r=>[
+    r.student.regNumber,
+    `"${(r.student.fullName||'').replace(/"/g,'""')}"`,
+    `"${(course ? course.name : '').replace(/"/g,'""')}"`,
+    r.sessionsHeld, r.present, r.absent, r.pct, r.atRisk ? 'Yes' : 'No'
+  ].join(',')));
+  const blob = new Blob([csvLines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'SkyDream-Attendance.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function renderStatGrid(){
+  const total = STUDENTS.filter(s=>s.status!=='Cancelled').length;
+  let html = `<div class="stat-card total"><b>${total}</b><span>Total Students</span></div>`;
+  PROGRAMS.forEach(p=>{
+    html += `<div class="stat-card"><b>${seatsTaken(p.id)}</b><span>${p.name}</span></div>`;
+  });
+  document.getElementById('statGrid').innerHTML = html;
+}
+
+function filteredStudents(){
+  const q = (document.getElementById('adminSearch').value || '').toLowerCase().trim();
+  const courseFilter = document.getElementById('adminCourseFilter').value;
+  const statusFilter = document.getElementById('adminStatusFilter').value;
+  return STUDENTS.filter(s=>{
+    if(courseFilter && s.course !== courseFilter) return false;
+    if(statusFilter && s.status !== statusFilter) return false;
+    if(!q) return true;
+    return [s.fullName, s.mobile, s.whatsapp, s.ghanaCard, s.regNumber].some(v => (v||'').toLowerCase().includes(q));
+  });
+}
+
+function renderStudentsTable(){
+  const list = filteredStudents();
+  const body = document.getElementById('studentsTableBody');
+  const canDeleteStudents = isCurrentAdminOwner();
+  if(list.length === 0){
+    body.innerHTML = `<tr><td colspan="8"><div class="empty-state"><svg class="icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg><div>No matching registrations.</div></div></td></tr>`;
+  } else {
+    body.innerHTML = list.slice().reverse().map(s=>{
+      const course = programById(s.course);
+      const pay = paymentStatus(s);
+      const payTitle = pay.fee > 0 ? `GHS ${pay.paid} of ${pay.fee} paid \u2014 balance GHS ${pay.balance}` : 'No fee set for this program';
+      return `<tr>
+        <td class="reg">${s.regNumber}</td>
+        <td>${escapeHtml(s.fullName)}</td>
+        <td>${course ? escapeHtml(course.name) : '—'}</td>
+        <td>${escapeHtml(s.mobile)}</td>
+        <td>${escapeHtml(s.ghanaCard)}</td>
+        <td><span class="status-pill ${s.status}">${s.status}</span></td>
+        <td><span class="status-pill ${pay.label.replace(/\s+/g,'')}" title="${escapeHtml(payTitle)}">${pay.label}</span></td>
+        <td><div class="row-actions">
+          <button class="icon-btn" title="View / Print Slip" onclick="openViewSlipModal('${s.id}')"><svg class="icon" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18h12v3H6v-3zM4 9h16v7H4z"/></svg></button>
+          <button class="icon-btn" title="Edit" onclick="openEditModal('${s.id}')"><svg class="icon" viewBox="0 0 24 24"><path d="M4 20l1-4 11-11 3 3-11 11-4 1z"/></svg></button>
+          ${canDeleteStudents ? `<button class="icon-btn danger" title="Delete" onclick="deleteStudent('${s.id}')"><svg class="icon" viewBox="0 0 24 24"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+  document.getElementById('studentCountLabel').textContent = `${list.length} of ${STUDENTS.length} registration(s) shown`;
+}
+
+/* ---------------------------- ADMIN: VIEW SLIP MODAL ---------------------------- */
+function openViewSlipModal(id){
+  const s = STUDENTS.find(x=>x.id===id);
+  if(!s) return;
+  currentViewSlipId = id;
+  document.getElementById('vs_reg').textContent = s.regNumber;
+  document.getElementById('vs_name').textContent = s.fullName;
+  document.getElementById('vs_course').textContent = programById(s.course) ? programById(s.course).name : '—';
+  renderQR('vs_qr', studentQRText(s));
+  document.getElementById('viewSlipOverlay').classList.add('open');
+}
+function closeViewSlipModal(){ document.getElementById('viewSlipOverlay').classList.remove('open'); }
+
+/* ---------------------------- ADMIN: EDIT MODAL ---------------------------- */
+function openEditModal(id){
+  const s = STUDENTS.find(x=>x.id===id);
+  if(!s) return;
+  editingStudentId = id;
+  fieldEl('e_fullName').value = s.fullName;
+  fieldEl('e_dob').value = s.dob;
+  fieldEl('e_gender').value = s.gender;
+  fieldEl('e_ghanaCard').value = s.ghanaCard;
+  fieldEl('e_gps').value = s.gpsAddress;
+  fieldEl('e_address').value = s.address;
+  fieldEl('e_mobile').value = s.mobile;
+  fieldEl('e_whatsapp').value = s.whatsapp;
+  fieldEl('e_email').value = s.email;
+  fieldEl('e_emName').value = s.emName;
+  fieldEl('e_emRel').value = s.emRel;
+  fieldEl('e_emPhone').value = s.emPhone;
+  populateCourseSelect(fieldEl('e_course'), false);
+  fieldEl('e_course').value = s.course;
+  fieldEl('e_status').value = s.status;
+  fieldEl('e_feePaid').value = s.feePaid || 0;
+  document.getElementById('editModalOverlay').classList.add('open');
+}
+function closeEditModal(){ document.getElementById('editModalOverlay').classList.remove('open'); editingStudentId = null; }
+
+async function saveEditModal(){
+  const editId = editingStudentId;
+  const updates = {
+    fullName: fieldEl('e_fullName').value.trim(),
+    dob: fieldEl('e_dob').value,
+    gender: fieldEl('e_gender').value,
+    ghanaCard: fieldEl('e_ghanaCard').value.trim(),
+    gpsAddress: fieldEl('e_gps').value.trim(),
+    address: fieldEl('e_address').value.trim(),
+    mobile: fieldEl('e_mobile').value.trim(),
+    whatsapp: fieldEl('e_whatsapp').value.trim(),
+    email: fieldEl('e_email').value.trim(),
+    emName: fieldEl('e_emName').value.trim(),
+    emRel: fieldEl('e_emRel').value.trim(),
+    emPhone: fieldEl('e_emPhone').value.trim(),
+    course: fieldEl('e_course').value,
+    status: fieldEl('e_status').value,
+    feePaid: Math.max(0, parseFloat(fieldEl('e_feePaid').value) || 0)
+  };
+  const result = await mutateStudents((list) => {
+    const s = list.find(x=>x.id===editId);
+    if(!s) return false;
+    Object.assign(s, updates);
+  });
+  if(!result){ toast('Could not save — this record may have been deleted by another admin.', 'error'); return; }
+  closeEditModal();
+  renderAdminDashboard();
+  toast('Student record updated.', 'success');
+}
+
+function openAddStudentModal(){
+  ['w_fullName','w_dob','w_gender','w_ghanaCard','w_gps','w_address','w_mobile','w_whatsapp','w_email','w_emName','w_emRel','w_emPhone'].forEach(id=>{ fieldEl(id).value = ''; });
+  populateCourseSelect(fieldEl('w_course'), true);
+  fieldEl('w_feePaid').value = 0;
+  document.getElementById('addStudentOverlay').classList.add('open');
+}
+function closeAddStudentModal(){ document.getElementById('addStudentOverlay').classList.remove('open'); }
+
+async function handleAddWalkInStudent(){
+  const req = ['w_fullName','w_dob','w_gender','w_ghanaCard','w_address','w_mobile','w_whatsapp','w_emName','w_emRel','w_emPhone','w_course'];
+  const missing = req.some(id => !fieldEl(id).value.trim());
+  if(missing){ toast('Please fill in all required fields.', 'error'); return; }
+  const courseId = fieldEl('w_course').value;
+  let capacityFull = false;
+  let student = null;
+  const result = await mutateStudents((list) => {
+    const taken = list.filter(s => s.course === courseId && s.status !== 'Cancelled').length;
+    if(taken >= getCapacity(courseId)){ capacityFull = true; return false; }
+    student = {
+      id: uid(),
+      regNumber: nextRegNumber(courseId, list),
+      regDate: new Date().toISOString(),
+      fullName: fieldEl('w_fullName').value.trim(),
+      dob: fieldEl('w_dob').value,
+      gender: fieldEl('w_gender').value,
+      ghanaCard: fieldEl('w_ghanaCard').value.trim(),
+      photo: null,
+      gpsAddress: fieldEl('w_gps').value.trim(),
+      address: fieldEl('w_address').value.trim(),
+      mobile: fieldEl('w_mobile').value.trim(),
+      whatsapp: fieldEl('w_whatsapp').value.trim(),
+      email: fieldEl('w_email').value.trim(),
+      emName: fieldEl('w_emName').value.trim(),
+      emRel: fieldEl('w_emRel').value.trim(),
+      emPhone: fieldEl('w_emPhone').value.trim(),
+      course: courseId,
+      status: 'Registered',
+      feePaid: Math.max(0, parseFloat(fieldEl('w_feePaid').value) || 0),
+      intakeStart: CURRENT_INTAKE.startDate
+    };
+    list.push(student);
+  });
+  if(!result){
+    toast(capacityFull ? 'Sorry, this program is full.' : 'Could not save — storage may be unavailable.', 'error');
+    return;
+  }
+  closeAddStudentModal();
+  renderAdminDashboard();
+  toast('Walk-in student added — ' + student.regNumber, 'success');
+}
+
+async function deleteStudent(id){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can delete registrations.', 'error'); return; }
+  const s = STUDENTS.find(x=>x.id===id);
+  if(!s) return;
+  if(!confirm(`Delete the registration for ${s.fullName} (${s.regNumber})? This cannot be undone.`)) return;
+  const result = await mutateStudents((list) => {
+    const idx = list.findIndex(x=>x.id===id);
+    if(idx === -1) return false;
+    list.splice(idx, 1);
+  });
+  if(!result){ toast('Could not delete — the record may already be gone.', 'error'); return; }
+  renderAdminDashboard();
+  toast('Registration deleted.');
+}
+
+/* ---------------------------- ADMIN: EXPORTS ---------------------------- */
+function exportRows(){
+  return filteredStudents().map(s=>{
+    const pay = paymentStatus(s);
+    return {
+    'Registration Number': s.regNumber,
+    'Date Registered': s.regDate ? s.regDate.slice(0,10) : '',
+    'Full Name': s.fullName,
+    'Date of Birth': s.dob,
+    'Gender': s.gender,
+    'Residential Address': s.address,
+    'GPS Address': s.gpsAddress,
+    'Mobile': s.mobile,
+    'WhatsApp': s.whatsapp,
+    'Email': s.email,
+    'Emergency Contact Name': s.emName,
+    'Emergency Relationship': s.emRel,
+    'Emergency Phone': s.emPhone,
+    'Ghana Card Number': s.ghanaCard,
+    'Course': programById(s.course) ? programById(s.course).name : '',
+    'Status': s.status,
+    'Program Fee (GHS)': pay.fee,
+    'Fee Paid (GHS)': pay.paid,
+    'Balance (GHS)': pay.balance,
+    'Payment Status': pay.label
+    };
+  });
+}
+
+function exportExcel(){
+  if(typeof XLSX === 'undefined'){ toast('Excel export library did not load — check your connection.', 'error'); return; }
+  const rows = exportRows();
+  if(rows.length === 0){ toast('No registrations to export.', 'error'); return; }
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Students');
+  XLSX.writeFile(wb, 'SkyDream-Students.xlsx');
+}
+
+function exportCSV(){
+  const rows = exportRows();
+  if(rows.length === 0){ toast('No registrations to export.', 'error'); return; }
+  const headers = Object.keys(rows[0]);
+  const csvLines = [headers.join(',')].concat(rows.map(r => headers.map(h=>{
+    const v = (r[h] ?? '').toString().replace(/"/g,'""');
+    return `"${v}"`;
+  }).join(',')));
+  const blob = new Blob([csvLines.join('\n')], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'SkyDream-Students.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportPDF(){
+  if(typeof window.jspdf === 'undefined'){ toast('PDF export library did not load — check your connection.', 'error'); return; }
+  const rows = filteredStudents();
+  if(rows.length === 0){ toast('No registrations to export.', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({orientation:'landscape'});
+  doc.setFontSize(14);
+  doc.text('SkyDream Skills Training Academy — Student Registrations', 14, 16);
+  doc.setFontSize(9);
+  doc.text('Generated ' + new Date().toLocaleDateString(), 14, 22);
+  const body = rows.map(s=>{
+    const pay = paymentStatus(s);
+    return [s.regNumber, s.fullName, programById(s.course)?programById(s.course).name:'', s.mobile, s.ghanaCard, s.status, pay.label];
+  });
+  doc.autoTable({
+    startY: 28,
+    head: [['Reg. Number','Name','Course','Mobile','Ghana Card','Status','Payment']],
+    body: body,
+    styles:{fontSize:8},
+    headStyles:{fillColor:[31,58,147]}
+  });
+  doc.save('SkyDream-Students.pdf');
+}
+
+/* ---------------------------- CONTACT FORM ---------------------------- */
+document.getElementById('contactForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const name = document.getElementById('c_name').value.trim();
+  const email = document.getElementById('c_email').value.trim();
+  const message = document.getElementById('c_message').value.trim();
+  if(!name || !email || !message){ toast('Please fill in all fields.', 'error'); return; }
+  const result = await mutateContactMessages((list) => {
+    list.push({ id: uid(), name, email, message, date: new Date().toISOString(), read: false });
+  });
+  if(!result){ toast('Could not send your message \u2014 please try again.', 'error'); return; }
+  toast('Message received — thank you!', 'success');
+  e.target.reset();
+});
+
+/* ---------------------------- MODAL BACKDROP CLICKS ---------------------------- */
+document.querySelectorAll('.modal-overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target === ov) ov.classList.remove('open'); });
+});
+
+/* ---------------------------- INIT ---------------------------- */
+async function init(){
+  if(!firestoreDb){
+    toast('Cloud sync not configured — data will only be saved on this device. See setup notes.', 'error');
+  }
+  await loadAllData();
+  renderProgramGrids();
+  renderSkyMap();
+  renderTrainersAndGallery();
+  populateCourseSelect(document.getElementById('f_course'), true);
+  applyIntakeTextsToDOM();
+  updateCountdowns();
+  setInterval(updateCountdowns, 1000);
+  renderAdminGate();
+}
+init();
+</script>
+</body>
+</html>

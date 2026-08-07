@@ -698,7 +698,9 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           <div class="field full" style="margin-bottom:14px;"><label>Admin Name</label><input type="text" id="setup_name" placeholder="e.g. Program Coordinator"></div>
           <div class="field full" style="margin-bottom:14px;"><label>Username</label><input type="text" id="setup_username" placeholder="admin"></div>
           <div class="field full" style="margin-bottom:14px;"><label>PIN (4–8 digits)</label><input type="text" id="setup_pin" inputmode="numeric" placeholder="••••"></div>
-          <div class="field full" style="margin-bottom:20px;"><label>Confirm PIN</label><input type="text" id="setup_pin2" inputmode="numeric" placeholder="••••"></div>
+          <div class="field full" style="margin-bottom:14px;"><label>Confirm PIN</label><input type="text" id="setup_pin2" inputmode="numeric" placeholder="••••"></div>
+          <div class="field full" style="margin-bottom:14px;"><label>Recovery Passphrase (min. 6 characters)</label><input type="password" id="setup_recovery" placeholder="Only you should know this" autocomplete="off"><span class="hint">Needed later to reset your account if you forget your PIN. Store it somewhere safe.</span></div>
+          <div class="field full" style="margin-bottom:20px;"><label>Confirm Recovery Passphrase</label><input type="password" id="setup_recovery2" placeholder="Re-enter passphrase" autocomplete="off"></div>
           <button class="btn btn-primary btn-block" onclick="handleAdminSetup()">Create Admin Account</button>
         </div>
       </div>
@@ -883,6 +885,10 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
               <div class="field"><label>Confirm New PIN</label><input type="text" id="account_new_pin2" inputmode="numeric" placeholder="••••"></div>
             </div>
             <p class="sub-note" id="account_staff_pin_note" style="display:none;color:var(--muted,#888);">Only the main admin can change a PIN. Contact the main admin to reset your PIN.</p>
+            <div class="field-row" id="account_recovery_row">
+              <div class="field"><label>New Recovery Passphrase</label><input type="password" id="account_new_recovery" placeholder="Leave blank to keep current" autocomplete="off"><span class="hint">Used to verify it's really you if you ever need to reset a forgotten PIN.</span></div>
+              <div class="field"><label>Confirm Recovery Passphrase</label><input type="password" id="account_new_recovery2" placeholder="••••••" autocomplete="off"></div>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="handleUpdateOwnAccount()">Save Changes</button>
           </div>
         </div>
@@ -1114,8 +1120,9 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
   <div class="modal-box" style="max-width:420px;">
     <button class="modal-close" onclick="closeResetModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h3>Reset Admin Account</h3>
-    <p style="color:var(--ink-soft);font-size:.9rem;">This removes the current admin login so a new one can be created. Student registration data is not affected. Type <b>RESET</b> to confirm.</p>
-    <div class="field full" style="margin:14px 0;"><input type="text" id="resetConfirmInput" placeholder="Type RESET"></div>
+    <p style="color:var(--ink-soft);font-size:.9rem;">This removes the current admin login so a new one can be created. Student registration data is not affected. Enter the recovery passphrase set by the main admin, then type <b>RESET</b> to confirm.</p>
+    <div class="field full" style="margin:14px 0;"><label>Recovery Passphrase</label><input type="password" id="resetRecoveryInput" placeholder="Recovery passphrase" autocomplete="off"></div>
+    <div class="field full" style="margin-bottom:14px;"><input type="text" id="resetConfirmInput" placeholder="Type RESET"></div>
     <div class="form-foot"><button class="btn btn-outline" onclick="closeResetModal()">Cancel</button><button class="btn btn-danger" onclick="confirmResetAdmin()">Reset Account</button></div>
   </div>
 </div>
@@ -2078,15 +2085,20 @@ async function handleAdminSetup(){
   const username = document.getElementById('setup_username').value.trim();
   const pin = document.getElementById('setup_pin').value.trim();
   const pin2 = document.getElementById('setup_pin2').value.trim();
+  const recovery = document.getElementById('setup_recovery').value.trim();
+  const recovery2 = document.getElementById('setup_recovery2').value.trim();
   if(!username || !pin){ toast('Username and PIN are required.', 'error'); return; }
   if(!/^\d{4,8}$/.test(pin)){ toast('PIN must be 4–8 digits.', 'error'); return; }
   if(pin !== pin2){ toast('PINs do not match.', 'error'); return; }
+  if(recovery.length < 6){ toast('Recovery passphrase must be at least 6 characters.', 'error'); return; }
+  if(recovery !== recovery2){ toast('Recovery passphrases do not match.', 'error'); return; }
   const pinHash = await sha256(pin);
+  const recoveryHash = await sha256(recovery);
   let alreadyExists = false;
   const result = await mutateAdmins((list) => {
     // Guard against two browsers both completing first-admin setup at once.
     if(list.length){ alreadyExists = true; return false; }
-    list.push({ id: uid(), name: name || username, username, pinHash, role: 'owner' });
+    list.push({ id: uid(), name: name || username, username, pinHash, recoveryHash, role: 'owner' });
   });
   if(!result){
     toast(alreadyExists ? 'An admin account already exists — please log in.' : 'Could not create admin account.', 'error');
@@ -2127,11 +2139,24 @@ async function handleAdminLogout(){
 }
 
 function openResetModal(){ document.getElementById('resetModalOverlay').classList.add('open'); }
-function closeResetModal(){ document.getElementById('resetModalOverlay').classList.remove('open'); document.getElementById('resetConfirmInput').value=''; }
+function closeResetModal(){
+  document.getElementById('resetModalOverlay').classList.remove('open');
+  document.getElementById('resetConfirmInput').value='';
+  document.getElementById('resetRecoveryInput').value='';
+}
 async function confirmResetAdmin(){
+  const owner = ADMIN_ACCOUNTS.find(a=>a.role === 'owner');
+  if(!owner || !owner.recoveryHash){
+    toast('No recovery passphrase is set up for this account yet. Log in and set one under Account settings first, or contact your developer for help.', 'error');
+    return;
+  }
+  const recovery = document.getElementById('resetRecoveryInput').value.trim();
+  if(!recovery){ toast('Enter the recovery passphrase.', 'error'); return; }
   if(document.getElementById('resetConfirmInput').value.trim() !== 'RESET'){
     toast('Type RESET exactly to confirm.', 'error'); return;
   }
+  const recoveryHash = await sha256(recovery);
+  if(recoveryHash !== owner.recoveryHash){ toast('Recovery passphrase is incorrect.', 'error'); return; }
   await deleteAllAdmins();
   isAdminLoggedIn = false;
   closeResetModal();
@@ -2447,9 +2472,12 @@ function renderAccountTab(){
   document.getElementById('account_current_pin').value = '';
   document.getElementById('account_new_pin').value = '';
   document.getElementById('account_new_pin2').value = '';
+  document.getElementById('account_new_recovery').value = '';
+  document.getElementById('account_new_recovery2').value = '';
   const isOwner = currentAdmin.role === 'owner';
   document.getElementById('account_new_pin_row').style.display = isOwner ? '' : 'none';
   document.getElementById('account_staff_pin_note').style.display = isOwner ? 'none' : '';
+  document.getElementById('account_recovery_row').style.display = isOwner ? '' : 'none';
   document.getElementById('account_sub_note').textContent = isOwner
     ? 'Update your display name, username or PIN. You must enter your current PIN to save changes.'
     : 'Update your display name or username. You must enter your current PIN to save changes.';
@@ -2463,6 +2491,8 @@ async function handleUpdateOwnAccount(){
   const currentPin = document.getElementById('account_current_pin').value.trim();
   const newPin = document.getElementById('account_new_pin').value.trim();
   const newPin2 = document.getElementById('account_new_pin2').value.trim();
+  const newRecovery = document.getElementById('account_new_recovery').value.trim();
+  const newRecovery2 = document.getElementById('account_new_recovery2').value.trim();
   if(!username){ toast('Username is required.', 'error'); return; }
   if(!currentPin){ toast('Enter your current PIN to save changes.', 'error'); return; }
   const currentPinHash = await sha256(currentPin);
@@ -2470,7 +2500,11 @@ async function handleUpdateOwnAccount(){
   if(newPin && currentAdmin.role !== 'owner'){ toast('Only the main admin can change a PIN.', 'error'); return; }
   if(newPin && !/^\d{4,8}$/.test(newPin)){ toast('New PIN must be 4–8 digits.', 'error'); return; }
   if(newPin && newPin !== newPin2){ toast('New PINs do not match.', 'error'); return; }
+  if(newRecovery && currentAdmin.role !== 'owner'){ toast('Only the main admin can set a recovery passphrase.', 'error'); return; }
+  if(newRecovery && newRecovery.length < 6){ toast('Recovery passphrase must be at least 6 characters.', 'error'); return; }
+  if(newRecovery && newRecovery !== newRecovery2){ toast('Recovery passphrases do not match.', 'error'); return; }
   const newPinHash = newPin ? await sha256(newPin) : null;
+  const newRecoveryHash = newRecovery ? await sha256(newRecovery) : null;
   let reason = null;
   const result = await mutateAdmins((list) => {
     const acc = list.find(a=>a.id === currentAdmin.id);
@@ -2478,6 +2512,7 @@ async function handleUpdateOwnAccount(){
     if(currentPinHash !== acc.pinHash){ reason = 'pin'; return false; }
     if(list.some(a=>a.id !== acc.id && a.username.toLowerCase() === username.toLowerCase())){ reason = 'dup'; return false; }
     if(newPinHash) acc.pinHash = newPinHash;
+    if(newRecoveryHash) acc.recoveryHash = newRecoveryHash;
     acc.name = name || username;
     acc.username = username;
   });
@@ -2495,7 +2530,9 @@ async function handleUpdateOwnAccount(){
   document.getElementById('account_current_pin').value = '';
   document.getElementById('account_new_pin').value = '';
   document.getElementById('account_new_pin2').value = '';
-  toast('Account updated.', 'success');
+  document.getElementById('account_new_recovery').value = '';
+  document.getElementById('account_new_recovery2').value = '';
+  toast(newRecoveryHash ? 'Account updated. Recovery passphrase saved.' : 'Account updated.', 'success');
   renderAdminGate();
 }
 

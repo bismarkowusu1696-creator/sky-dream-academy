@@ -93,7 +93,7 @@ img{max-width:100%;display:block;}
 /* ============================= HERO ============================= */
 .hero{position:relative;overflow:hidden;padding:64px 0 40px;background:
     radial-gradient(700px 380px at 85% -10%, var(--sky-tint) 0%, rgba(234,242,253,0) 70%);}
-.hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;}
+.hero-grid{display:grid;grid-template-columns:1fr;gap:56px;align-items:center;max-width:760px;}
 .hero-copy h1{font-size:clamp(2.1rem,4.2vw,3.35rem);}
 .hero-copy .lead{font-size:1.12rem;color:var(--ink-soft);max-width:46ch;}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0 30px;}
@@ -105,15 +105,9 @@ img{max-width:100%;display:block;}
 .count-cell{text-align:center;}
 .count-cell b{display:block;font-size:1.15rem;color:var(--sky-deep);}
 .count-cell span{font-size:.62rem;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em;}
-.hero-visual{position:relative;aspect-ratio:1/1;max-width:460px;justify-self:end;}
-.sky-map{position:absolute;inset:0;}
-.sky-tile{position:absolute;width:74px;height:74px;background:#fff;border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;box-shadow:var(--shadow-sm);animation:float 6s ease-in-out infinite;}
-.sky-tile .icon{width:22px;height:22px;color:var(--sky-deep);}
-.sky-tile span{font-size:.56rem;color:var(--ink-soft);font-weight:600;text-align:center;padding:0 4px;}
-@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
 .hero-copy .kicker-line{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
 .hero-copy .kicker-line::after{content:"";flex:1;height:1px;background:var(--line);}
-@media (max-width:900px){.hero-grid{grid-template-columns:1fr;}.hero-visual{display:none;}}
+@media (max-width:900px){.hero-grid{grid-template-columns:1fr;}}
 
 /* ============================= WHY CHOOSE ============================= */
 .why-band{background:linear-gradient(160deg,var(--navy),var(--navy-deep));color:#fff;padding:60px 0;}
@@ -414,9 +408,6 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           </div>
           <div class="count-row" id="heroCountdown"></div>
         </div>
-      </div>
-      <div class="hero-visual">
-        <div class="sky-map" id="heroSkyMap"></div>
       </div>
     </div>
   </div>
@@ -1661,24 +1652,6 @@ function goRegisterWithCourse(courseId){
   showView('register');
   const sel = document.getElementById('f_course');
   if(sel) sel.value = courseId;
-}
-
-/* ---------------------------- HERO SKY MAP ---------------------------- */
-function renderSkyMap(){
-  const positions = [
-    {t:'6%',l:'4%'}, {t:'2%',l:'46%'}, {t:'10%',l:'78%'},
-    {t:'40%',l:'20%'}, {t:'36%',l:'62%'},
-    {t:'68%',l:'6%'}, {t:'64%',l:'44%'}, {t:'72%',l:'80%'}
-  ];
-  const subset = [PROGRAMS[1],PROGRAMS[3],PROGRAMS[5],PROGRAMS[9],PROGRAMS[10],PROGRAMS[11],PROGRAMS[12],PROGRAMS[7]];
-  const html = subset.map((p,i)=>{
-    const pos = positions[i % positions.length];
-    const delay = (i*0.4).toFixed(1);
-    return `<div class="sky-tile" style="top:${pos.t};left:${pos.l};animation-delay:${delay}s;">
-      <svg class="icon" viewBox="0 0 24 24">${ICONS[p.icon]}</svg><span>${p.name.split(' ')[0]}</span>
-    </div>`;
-  }).join('');
-  document.getElementById('heroSkyMap').innerHTML = html;
 }
 
 /* ---------------------------- COUNTDOWN ---------------------------- */
@@ -3271,7 +3244,6 @@ async function init(){
   }
   await loadAllData();
   renderProgramGrids();
-  renderSkyMap();
   renderTrainersAndGallery();
   populateCourseSelect(document.getElementById('f_course'), true);
   applyIntakeTextsToDOM();

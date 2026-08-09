@@ -533,6 +533,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
             <div class="field full"><label>Full Name <span class="req">*</span></label><input type="text" id="f_fullName" required><span class="field-error">Please enter the student's full name.</span></div>
             <div class="field"><label>Date of Birth <span class="req">*</span></label><input type="date" id="f_dob" required><span class="field-error">Please select a date of birth.</span></div>
             <div class="field"><label>Gender <span class="req">*</span></label><select id="f_gender" required><option value="">Select…</option><option>Female</option><option>Male</option></select><span class="field-error">Please select a gender.</span></div>
+            <div class="field"><label>Religion</label><select id="f_religion"><option value="">Select…</option><option>Christianity</option><option>Islam</option><option>Traditional</option><option>Other</option><option>Prefer not to say</option></select></div>
             <div class="field full"><label>Ghana Card Number <span class="req">*</span></label><input type="text" id="f_ghanaCard" placeholder="GHA-000000000-0" required><span class="hint">Format: GHA-XXXXXXXXX-X</span><span class="field-error">Please enter a valid Ghana Card number.</span></div>
             <div class="field full"><label>Passport Photograph (optional)</label>
               <div class="photo-upload">
@@ -994,6 +995,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <div class="field full"><label>Full Name</label><input type="text" id="e_fullName"></div>
       <div class="field"><label>Date of Birth</label><input type="date" id="e_dob"></div>
       <div class="field"><label>Gender</label><select id="e_gender"><option>Female</option><option>Male</option></select></div>
+      <div class="field"><label>Religion</label><select id="e_religion"><option value="">Select…</option><option>Christianity</option><option>Islam</option><option>Traditional</option><option>Other</option><option>Prefer not to say</option></select></div>
       <div class="field full"><label>Ghana Card Number</label><input type="text" id="e_ghanaCard"></div>
       <div class="field"><label>GPS Address</label><input type="text" id="e_gps"></div>
       <div class="field full"><label>Residential Address</label><textarea id="e_address" rows="2"></textarea></div>
@@ -1024,6 +1026,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <div class="field full"><label>Full Name <span class="req">*</span></label><input type="text" id="w_fullName"></div>
       <div class="field"><label>Date of Birth <span class="req">*</span></label><input type="date" id="w_dob"></div>
       <div class="field"><label>Gender <span class="req">*</span></label><select id="w_gender"><option value="">Select…</option><option>Female</option><option>Male</option></select></div>
+      <div class="field"><label>Religion</label><select id="w_religion"><option value="">Select…</option><option>Christianity</option><option>Islam</option><option>Traditional</option><option>Other</option><option>Prefer not to say</option></select></div>
       <div class="field full"><label>Ghana Card Number <span class="req">*</span></label><input type="text" id="w_ghanaCard" placeholder="GHA-000000000-0"></div>
       <div class="field"><label>GPS Address</label><input type="text" id="w_gps" placeholder="GA-000-0000"></div>
       <div class="field full"><label>Residential Address <span class="req">*</span></label><textarea id="w_address" rows="2"></textarea></div>
@@ -1872,6 +1875,7 @@ document.getElementById('regForm').addEventListener('submit', async function(e){
       fullName: fieldEl('f_fullName').value.trim(),
       dob: fieldEl('f_dob').value,
       gender: fieldEl('f_gender').value,
+      religion: fieldEl('f_religion').value,
       ghanaCard: fieldEl('f_ghanaCard').value.trim(),
       photo: uploadedPhotoDataUrl || null,
       gpsAddress: fieldEl('f_gps').value.trim(),
@@ -1940,6 +1944,7 @@ function studentQRText(s){
     'Name: ' + s.fullName,
     'DOB: ' + s.dob,
     'Gender: ' + s.gender,
+    'Religion: ' + (s.religion || '-'),
     'Ghana Card: ' + s.ghanaCard,
     'Program: ' + (course ? course.name : s.course),
     'GPS: ' + (s.gpsAddress || '-'),
@@ -3025,6 +3030,7 @@ function openEditModal(id){
   fieldEl('e_fullName').value = s.fullName;
   fieldEl('e_dob').value = s.dob;
   fieldEl('e_gender').value = s.gender;
+  fieldEl('e_religion').value = s.religion || '';
   fieldEl('e_ghanaCard').value = s.ghanaCard;
   fieldEl('e_gps').value = s.gpsAddress;
   fieldEl('e_address').value = s.address;
@@ -3048,6 +3054,7 @@ async function saveEditModal(){
     fullName: fieldEl('e_fullName').value.trim(),
     dob: fieldEl('e_dob').value,
     gender: fieldEl('e_gender').value,
+    religion: fieldEl('e_religion').value,
     ghanaCard: fieldEl('e_ghanaCard').value.trim(),
     gpsAddress: fieldEl('e_gps').value.trim(),
     address: fieldEl('e_address').value.trim(),
@@ -3073,7 +3080,7 @@ async function saveEditModal(){
 }
 
 function openAddStudentModal(){
-  ['w_fullName','w_dob','w_gender','w_ghanaCard','w_gps','w_address','w_mobile','w_whatsapp','w_email','w_emName','w_emRel','w_emPhone'].forEach(id=>{ fieldEl(id).value = ''; });
+  ['w_fullName','w_dob','w_gender','w_religion','w_ghanaCard','w_gps','w_address','w_mobile','w_whatsapp','w_email','w_emName','w_emRel','w_emPhone'].forEach(id=>{ fieldEl(id).value = ''; });
   populateCourseSelect(fieldEl('w_course'), true);
   fieldEl('w_feePaid').value = 0;
   document.getElementById('addStudentOverlay').classList.add('open');
@@ -3097,6 +3104,7 @@ async function handleAddWalkInStudent(){
       fullName: fieldEl('w_fullName').value.trim(),
       dob: fieldEl('w_dob').value,
       gender: fieldEl('w_gender').value,
+      religion: fieldEl('w_religion').value,
       ghanaCard: fieldEl('w_ghanaCard').value.trim(),
       photo: null,
       gpsAddress: fieldEl('w_gps').value.trim(),
@@ -3148,6 +3156,7 @@ function exportRows(){
     'Full Name': s.fullName,
     'Date of Birth': s.dob,
     'Gender': s.gender,
+    'Religion': s.religion || '',
     'Residential Address': s.address,
     'GPS Address': s.gpsAddress,
     'Mobile': s.mobile,

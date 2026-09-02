@@ -30,7 +30,7 @@
   --font-mono:'IBM Plex Mono',monospace;
 }
 *,*::before,*::after{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
+html{scroll-behavior:smooth;overflow-x:hidden;}
 body{margin:0;font-family:var(--font-body);color:var(--ink);background:var(--paper);line-height:1.55;}
 h1,h2,h3,h4{font-family:var(--font-display);color:var(--navy);margin:0 0 .4em;line-height:1.15;font-weight:600;}
 p{margin:0 0 1em;}
@@ -89,6 +89,37 @@ img{max-width:100%;display:block;}
   .nav-toggle{display:block;}
   .nav-cta .btn span.long{display:none;}
 }
+
+/* ============================= SITE ANNOUNCEMENTS ============================= */
+.announce-bar{display:flex;align-items:flex-start;gap:12px;background:var(--gold);color:var(--navy-deep);padding:12px 24px;font-size:.88rem;font-weight:500;border-bottom:1px solid rgba(0,0,0,.08);}
+.announce-bar .icon{width:18px;height:18px;flex-shrink:0;margin-top:1px;}
+.announce-bar span{flex:1;white-space:pre-wrap;}
+.announce-bar .announce-close{background:none;border:none;color:var(--navy-deep);cursor:pointer;padding:2px;flex-shrink:0;opacity:.7;}
+.announce-bar .announce-close:hover{opacity:1;}
+.announce-bar .announce-close .icon{width:15px;height:15px;margin:0;}
+.waitlist-block{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);width:100%;}
+.waitlist-block b{display:block;font-size:.78rem;color:var(--ink-soft);margin-bottom:6px;}
+.faq-list{display:flex;flex-direction:column;gap:14px;max-width:760px;margin:0 auto;}
+.faq-item{border:1.5px solid var(--line);border-radius:var(--radius-sm);padding:16px 20px;background:#fff;}
+.faq-item h4{margin:0 0 6px;font-family:var(--font-display);font-size:1.05rem;color:var(--navy);}
+.faq-item p{margin:0;color:var(--ink-soft);font-size:.9rem;line-height:1.55;}
+.testimonials-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;}
+.testimonial-card{background:#fff;border:1.5px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow-sm);}
+.testimonial-card .quote{font-style:italic;color:var(--ink);margin:0 0 14px;line-height:1.6;}
+.testimonial-card .who{display:flex;flex-direction:column;}
+.testimonial-card .who b{color:var(--navy);}
+.testimonial-card .who span{font-size:.8rem;color:var(--ink-faint);}
+.trend-chart{display:flex;gap:18px;align-items:flex-end;height:170px;padding:10px 4px 0;overflow-x:auto;}
+.trend-col{display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end;min-width:56px;}
+.trend-bars{display:flex;gap:4px;align-items:flex-end;height:120px;}
+.trend-bar{width:14px;border-radius:4px 4px 0 0;min-height:3px;}
+.trend-bar.count{background:var(--sky);}
+.trend-bar.revenue{background:var(--gold);}
+.trend-label{font-size:.68rem;color:var(--ink-faint);text-align:center;max-width:74px;}
+.trend-legend{display:flex;gap:16px;margin-top:10px;font-size:.76rem;color:var(--ink-soft);}
+.trend-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;font-style:normal;}
+.trend-legend i.count{background:var(--sky);}
+.trend-legend i.revenue{background:var(--gold);}
 
 /* ============================= HERO ============================= */
 .hero{position:relative;overflow:hidden;padding:64px 0 40px;background:
@@ -298,8 +329,10 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 .empty-state .icon{width:34px;height:34px;margin-bottom:10px;}
 .admin-footer-bar{display:flex;justify-content:space-between;align-items:center;padding:18px 0 40px;flex-wrap:wrap;gap:10px;}
 .reset-link{background:none;border:none;color:var(--ink-faint);font-size:.8rem;cursor:pointer;text-decoration:underline;}
-.admin-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);margin-bottom:20px;}
-.admin-tab-btn{background:none;border:none;cursor:pointer;padding:10px 16px;font-size:.88rem;font-weight:600;color:var(--ink-faint);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;}
+.admin-tabs-wrap{position:relative;margin-bottom:20px;}
+.admin-tabs-wrap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:30px;background:linear-gradient(to right, rgba(255,255,255,0), var(--paper));pointer-events:none;}
+.admin-tabs{display:flex;gap:6px;border-bottom:1px solid var(--line);overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.admin-tab-btn{background:none;border:none;cursor:pointer;padding:10px 16px;font-size:.88rem;font-weight:600;color:var(--ink-faint);border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit;flex-shrink:0;white-space:nowrap;}
 .admin-tab-btn:hover{color:var(--sky-deep);}
 .admin-tab-btn.active{color:var(--sky-deep);border-bottom-color:var(--sky-deep);}
 .msg-badge{background:var(--danger);color:#fff;border-radius:999px;font-size:.65rem;font-weight:700;padding:2px 7px;margin-left:6px;}
@@ -374,10 +407,10 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
     </button> 
     <ul class="nav-links" id="navLinks">
       <li><button data-view="home" onclick="showView('home')">Home</button></li>
-      <li><button data-view="about" onclick="showView('about')">About Us</button></li>
       <li><button data-view="programs" onclick="showView('programs')">Programs</button></li>
       <li><button data-view="schedule" onclick="showView('schedule')">Schedule</button></li>
       <li><button data-view="lookup" onclick="showView('lookup')">Check Status</button></li>
+      <li><button data-view="about" onclick="showView('about')">About Us</button></li>
       <li><button data-view="contact" onclick="showView('contact')">Contact</button></li>
     </ul>
     <div class="nav-cta">
@@ -388,6 +421,8 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
     </div>
   </div>
 </nav>
+
+<div id="siteAnnouncements"></div>
 
 <!-- ============================================================= HOME ============================================================= -->
 <section class="view-section active" id="view-home">
@@ -404,7 +439,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
         <div class="hero-ticket">
           <div>
             <div class="t-label">Next intake starts</div>
-            <div class="t-date" id="heroIntakeDate">26 September 2026</div>
+            <div class="t-date" id="heroIntakeDate">3 October 2026</div>
           </div>
           <div class="count-row" id="heroCountdown"></div>
         </div>
@@ -432,6 +467,13 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
     </div>
   </div>
 
+  <div class="section" id="testimonialsSection" style="display:none;">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Testimonials</span><h2>What our graduates say</h2></div>
+      <div class="testimonials-grid" id="testimonialsGrid"></div>
+    </div>
+  </div>
+
   <div class="section section-alt">
     <div class="container">
       <div class="section-head"><span class="eyebrow">Training Schedule</span><h2>Two days a week. One new skill.</h2></div>
@@ -441,7 +483,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           <div class="timetable-row"><span class="day"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Sunday</span><span class="time">9:00 AM – 2:00 PM</span></div>
         </div>
         <div class="ticket-stub">
-          <div><span class="eyebrow">Next Intake</span><h3 id="scheduleIntakeDateHome">26 Sept 2026</h3><div class="stub-date">Program Starts</div></div>
+          <div><span class="eyebrow">Next Intake</span><h3 id="scheduleIntakeDateHome">3 Oct 2026</h3><div class="stub-date">Program Starts</div></div>
         </div>
       </div>
       <div style="text-align:center;margin-top:30px;"><button class="btn btn-primary" onclick="showView('register')">Reserve Your Seat</button></div>
@@ -486,6 +528,19 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <div style="height:44px;"></div>
       <div class="section-head"><span class="eyebrow">Gallery</span><h2>A glimpse into the workshop</h2></div>
       <div class="gallery-grid" id="galleryGrid"></div>
+
+      <div style="height:44px;"></div>
+      <div class="section-head"><span class="eyebrow">FAQ</span><h2>Frequently asked questions</h2></div>
+      <div class="faq-list">
+        <div class="faq-item"><h4>How do I register?</h4><p>Use the Register page to fill in your details online — you'll get a registration number and a printable slip immediately. You can also register in person at the training centre.</p></div>
+        <div class="faq-item"><h4>What do I need to register?</h4><p>Your Ghana Card number, a valid mobile and WhatsApp number, a residential address, and an emergency contact. A passport photo is optional.</p></div>
+        <div class="faq-item"><h4>How much are the fees, and how do I pay?</h4><p>Fees vary by program — see the Programs page or ask at registration. You can pay in full or in installments; the office keeps a running record of what you've paid and what's outstanding.</p></div>
+        <div class="faq-item"><h4>What if my program is full?</h4><p>You can still select it when registering — you'll be added to a waitlist and contacted as soon as a seat opens up.</p></div>
+        <div class="faq-item"><h4>What days and times are classes held?</h4><p>Every Saturday (1:00 PM – 3:00 PM) and Sunday (9:00 AM – 2:00 PM). See the Schedule page for the current intake's exact term dates.</p></div>
+        <div class="faq-item"><h4>How do I check my registration or payment status?</h4><p>Go to Check Status and enter your full name and mobile number to see your program, payment and attendance status.</p></div>
+        <div class="faq-item"><h4>Can I change my program after registering?</h4><p>Yes — contact the office and an admin can update your registration for you.</p></div>
+        <div class="faq-item"><h4>What happens if I miss a class?</h4><p>Attendance is tracked every session. If you know you'll be absent, let your facilitator or the office know in advance.</p></div>
+      </div>
     </div>
   </div>
 </section>
@@ -511,10 +566,26 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           <div class="timetable-row"><span class="day"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>Sunday</span><span class="time">9:00 AM – 2:00 PM</span></div>
         </div>
         <div class="ticket-stub">
-          <div><span class="eyebrow">Next Intake</span><h3 id="scheduleIntakeDateFull">26 Sept 2026</h3><div class="stub-date">Program Starts</div></div>
+          <div><span class="eyebrow">Next Intake</span><h3 id="scheduleIntakeDateFull">3 Oct 2026</h3><div class="stub-date">Program Starts</div></div>
         </div>
       </div>
       <div style="text-align:center;margin-top:30px;"><button class="btn btn-primary" onclick="showView('register')">Reserve Your Seat</button></div>
+    </div>
+  </div>
+
+  <div class="section section-alt">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Academic Calendar</span><h2>Key dates for this intake</h2></div>
+      <div class="slip" style="max-width:520px;margin:0 auto;">
+        <div class="slip-body">
+          <div class="slip-row" id="calRow-orientation"><span>Orientation</span><span id="calOrientationDate">3 October 2026</span></div>
+          <div class="slip-row" id="calRow-classesStart"><span>Classes Begin</span><span id="calClassesStartDate">4 October 2026</span></div>
+          <div class="slip-row" id="calRow-break"><span>Christmas Break Begins</span><span id="calBreakStartDate">14 December 2026</span></div>
+          <div class="slip-row" id="calRow-resume"><span>Classes Resume</span><span id="calResumeDate">9 January 2027</span></div>
+          <div class="slip-row" id="calRow-end"><span>Graduation</span><span id="calEndDate">27 February 2027</span></div>
+          <div class="slip-row" id="calRow-thanksgiving"><span>Thanksgiving Service</span><span id="calThanksgivingDate">28 February 2027</span></div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -523,7 +594,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 <section class="view-section" id="view-register">
   <div class="section">
     <div class="container">
-      <div class="section-head" style="margin:0 auto 32px;text-align:center;max-width:600px;"><span class="eyebrow">Online Registration</span><h2>Reserve your seat for the <span id="regIntakeHeadingDate">26 Sept 2026</span> intake</h2><p>Fields marked <span class="req">*</span> are required. Registration takes about 3 minutes.</p></div>
+      <div class="section-head" style="margin:0 auto 32px;text-align:center;max-width:600px;"><span class="eyebrow">Online Registration</span><h2>Reserve your seat for the <span id="regIntakeHeadingDate">3 Oct 2026</span> intake</h2><p>Fields marked <span class="req">*</span> are required. Registration takes about 3 minutes.</p></div>
 
       <!-- FORM VIEW -->
       <form id="regForm" class="form-card" novalidate>
@@ -574,7 +645,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
         <div class="form-step">
           <div class="form-step-head"><span class="form-step-num">5</span><h4>Course Selection</h4></div>
           <div class="form-grid">
-            <div class="field full"><label>Program <span class="req">*</span></label><select id="f_course" required></select><span class="field-error">Please select a program.</span></div>
+            <div class="field full"><label>Program <span class="req">*</span></label><select id="f_course" required></select><span class="hint">Shows "Full (waitlist)" once seats are taken — you can still select it to join the waitlist.</span><span class="field-error">Please select a program.</span></div>
           </div>
         </div>
 
@@ -606,7 +677,8 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
               <div class="slip-row"><span>Program</span><span id="slipCourse">—</span></div>
               <div class="slip-row"><span>Training Days</span><span>Sat &amp; Sun</span></div>
               <div class="slip-row"><span>Training Time</span><span>1–3 PM / 9 AM–2 PM</span></div>
-              <div class="slip-row"><span>Start Date</span><span id="slipStartDateText">26 Sept 2026</span></div>
+              <div class="slip-row"><span>Orientation</span><span id="slipStartDateText">3 Oct 2026</span></div>
+              <div class="slip-row"><span>Classes Begin</span><span id="slipClassesStartText">4 Oct 2026</span></div>
               <div class="slip-perf"></div>
               <div class="slip-qr-row">
                 <div id="slipQR"></div>
@@ -646,7 +718,6 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
             <div class="field full" style="margin-bottom:14px;"><label>Email <span class="req">*</span></label><input type="email" id="c_email" required></div>
             <div class="field full" style="margin-bottom:14px;"><label>Message <span class="req">*</span></label><textarea id="c_message" rows="4" required></textarea></div>
             <button type="submit" class="btn btn-primary btn-block">Send Message</button>
-            <p class="hint" style="margin-top:12px;">This form saves your message for the academy to review. To send messages by email automatically, connect this form to a service like Formspree or Google Apps Script.</p>
           </form>
         </div>
       </div>
@@ -658,9 +729,9 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 <section class="view-section" id="view-lookup">
   <div class="section">
     <div class="container" style="max-width:640px;">
-      <div class="section-head" style="text-align:center;margin:0 auto 32px;"><span class="eyebrow">Check Your Status</span><h2>Look up your registration</h2><p>Enter your registration number and the mobile number you registered with to see your program, payment and attendance status.</p></div>
+      <div class="section-head" style="text-align:center;margin:0 auto 32px;"><span class="eyebrow">Check Your Status</span><h2>Look up your registration</h2><p>Enter your full name and the mobile number you registered with to see your program, payment and attendance status.</p></div>
       <div class="form-card" style="padding:24px;max-width:460px;margin:0 auto 24px;">
-        <div class="field full" style="margin-bottom:14px;"><label>Registration Number</label><input type="text" id="lookup_reg" placeholder="e.g. SDGD001/09/2026"></div>
+        <div class="field full" style="margin-bottom:14px;"><label>Full Name</label><input type="text" id="lookup_name" placeholder="e.g. Ama Boateng"></div>
         <div class="field full" style="margin-bottom:18px;"><label>Mobile Number</label><input type="tel" id="lookup_mobile" placeholder="024XXXXXXX"></div>
         <button class="btn btn-primary btn-block" onclick="handleLookupStudent()">Check Status</button>
       </div>
@@ -719,16 +790,17 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           </div>
         </div>
 
-        <div class="admin-tabs">
+        <div class="admin-tabs-wrap"><div class="admin-tabs">
           <button class="admin-tab-btn active" id="tabBtn-overview" onclick="switchAdminTab('overview')">Overview</button>
           <button class="admin-tab-btn" id="tabBtn-registrations" onclick="switchAdminTab('registrations')">Registrations</button>
           <button class="admin-tab-btn" id="tabBtn-attendance" onclick="switchAdminTab('attendance')">Attendance Tracker</button>
           <button class="admin-tab-btn" id="tabBtn-facilitators" onclick="switchAdminTab('facilitators')">Facilitators</button>
           <button class="admin-tab-btn" id="tabBtn-capacity" onclick="switchAdminTab('capacity')">Capacity & Fees</button>
           <button class="admin-tab-btn" id="tabBtn-messages" onclick="switchAdminTab('messages')">Messages<span class="msg-badge" id="msgBadge" style="display:none;"></span></button>
+          <button class="admin-tab-btn" id="tabBtn-broadcast" onclick="switchAdminTab('broadcast')">Announcements</button>
           <button class="admin-tab-btn" id="tabBtn-users" onclick="switchAdminTab('users')">Admin Users</button>
           <button class="admin-tab-btn" id="tabBtn-account" onclick="switchAdminTab('account')">My Account</button>
-        </div>
+        </div></div>
 
         <div class="admin-tab-panel active" id="adminTab-overview">
           <div id="intakeCard"></div>
@@ -741,6 +813,10 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
                 <tbody id="overviewProgramBody"></tbody>
               </table>
             </div>
+          </div>
+          <div class="admin-user-form" style="max-width:none;">
+            <h3>Enrollment & Revenue by Intake</h3>
+            <div id="intakeTrendChart"></div>
           </div>
         </div>
 
@@ -781,7 +857,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
         </div>
 
         <div class="admin-tab-panel" id="adminTab-attendance">
-          <div class="att-session-note">Weekend classes run every Saturday &amp; Sunday, starting with the intake on <b id="attIntakeNoteDate">26 September 2026</b>. Pick a program to see each student's attendance record.</div>
+          <div class="att-session-note">Weekend classes run every Saturday &amp; Sunday, starting with classes on <b id="attIntakeNoteDate">4 October 2026</b> (the day after orientation). Pick a program to see each student's attendance record.</div>
           <div class="admin-toolbar">
             <select id="attCourseFilter" onchange="renderAttendanceTrackerTab()"></select>
             <div class="export-btns">
@@ -793,7 +869,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           <div class="table-wrap">
             <table class="students">
               <thead><tr>
-                <th>Reg. Number</th><th>Name</th><th>Sessions Held</th><th>Present</th><th>Absent</th><th>Attendance %</th><th>Alert</th><th>Actions</th>
+                <th>Reg. Number</th><th>Name</th><th>Course</th><th>Sessions Held</th><th>Present</th><th>Absent</th><th>Attendance %</th><th>Alert</th><th>Actions</th>
               </tr></thead>
               <tbody id="attendanceTableBody"></tbody>
             </table>
@@ -803,10 +879,13 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
         <div class="admin-tab-panel" id="adminTab-facilitators">
           <div class="admin-user-form" id="addFacilitatorForm">
             <h3>Add Facilitator</h3>
-            <p class="sub-note">Create a login for a facilitator and assign the program(s) they will mark attendance for.</p>
+            <p class="sub-note">Create a login for a facilitator and assign the program(s) they will mark attendance for. Their contact number is texted to students who register for those programs.</p>
             <div class="field-row">
               <div class="field"><label>Full Name</label><input type="text" id="newfac_name" placeholder="e.g. Ama Boateng"></div>
               <div class="field"><label>Username</label><input type="text" id="newfac_username" placeholder="e.g. ama.facilitator"></div>
+            </div>
+            <div class="field-row">
+              <div class="field"><label>Contact Number <span class="req">*</span></label><input type="tel" id="newfac_phone" placeholder="024XXXXXXX"></div>
             </div>
             <div class="field-row">
               <div class="field"><label>PIN (4–8 digits)</label><input type="text" id="newfac_pin" inputmode="numeric" placeholder="••••"></div>
@@ -825,7 +904,6 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
         <div class="admin-tab-panel" id="adminTab-capacity">
           <div class="admin-user-form">
             <h3>Program Capacity & Fees</h3>
-            <p class="sub-note">Set how many students can register per program (blank or 0 = default of ${DEFAULT_CAPACITY}) and each program's fee in GHS (blank or 0 = no fee tracked). Changing a fee updates payment status for everyone registered on that program.</p>
             <div id="capacityList"></div>
             <button class="btn btn-primary btn-sm" onclick="handleSaveCapacities()" style="margin-top:14px;">Save Changes</button>
           </div>
@@ -836,6 +914,20 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
             <span class="hint" id="messagesCountLabel"></span>
           </div>
           <div id="messagesList"></div>
+        </div>
+
+        <div class="admin-tab-panel" id="adminTab-broadcast">
+          <div class="admin-user-form" style="max-width:none;">
+            <h3>Post a New Announcement</h3>
+            <p class="sub-note">Shown as a banner near the top of every page on the website — including the Check Status page — until you delete it, or a visitor closes it on their own device.</p>
+            <div class="field full" style="margin-bottom:14px;"><label>Title (optional)</label><input type="text" id="broadcastTitle" placeholder="e.g. Orientation Update"></div>
+            <div class="field full" style="margin-bottom:14px;"><label>Message</label><textarea id="broadcastMessage" rows="3" placeholder="Type the announcement students should see…"></textarea></div>
+            <button class="btn btn-primary btn-sm" onclick="handlePostBroadcast()">Post Announcement</button>
+          </div>
+          <div class="admin-user-list-wrap">
+            <h3>Posted Announcements</h3>
+            <div id="broadcastList"></div>
+          </div>
         </div>
 
         <div class="admin-tab-panel" id="adminTab-users">
@@ -924,7 +1016,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           </div>
         </div>
 
-        <div class="att-session-note">Weekend classes run every Saturday &amp; Sunday, starting with the intake on <b id="facIntakeNoteDate">26 September 2026</b>. Choose your program and a session date, then mark each student present or absent — changes save instantly. Click a highlighted button again to undo/clear that mark.</div>
+        <div class="att-session-note">Weekend classes run every Saturday &amp; Sunday, starting with classes on <b id="facIntakeNoteDate">4 October 2026</b> (the day after orientation). Choose your program and a session date, then mark each student present or absent — changes save instantly. Click a highlighted button again to undo/clear that mark.</div>
         <div class="preview-mode-banner" id="previewModeBanner">Preview Mode is on — nothing you mark below is saved to the real database. Click "Exit Preview Mode" to go back to live attendance.</div>
 
         <div class="admin-toolbar">
@@ -981,7 +1073,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
     </div>
     <div class="footer-bottom">
       <span>© 2026 SkyDream Skills Training Academy. All rights reserved.</span>
-      <span>Next intake: <span id="footerIntakeDate">26 September 2026</span></span>
+      <span>Next intake: <span id="footerIntakeDate">3 October 2026</span></span>
     </div>
   </div>
 </footer>
@@ -1007,7 +1099,17 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <div class="field"><label>Emergency Phone</label><input type="tel" id="e_emPhone"></div>
       <div class="field"><label>Program</label><select id="e_course"></select></div>
       <div class="field"><label>Status</label><select id="e_status"><option>Registered</option><option>Completed</option><option>Cancelled</option></select></div>
-      <div class="field"><label>Fee Paid (GHS)</label><input type="number" min="0" step="0.01" id="e_feePaid"></div>
+      <div class="field full">
+        <label>Fee Paid (GHS)</label>
+        <input type="number" min="0" step="0.01" id="e_feePaid" readonly style="background:var(--sky-tint);cursor:not-allowed;">
+        <span class="hint">Total is calculated from the payments below — use "Add Payment" to record a new one instead of editing this number.</span>
+        <div class="field-row" style="margin-top:10px;">
+          <div class="field"><label>Add Payment (GHS)</label><input type="number" min="0" step="0.01" id="e_paymentAmount" placeholder="0.00"></div>
+          <div class="field"><label>Note (optional)</label><input type="text" id="e_paymentNote" placeholder="e.g. Cash, Mobile Money"></div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="handleAddPayment()" style="margin-top:8px;">Add Payment</button>
+        <div id="e_paymentHistory" style="margin-top:12px;"></div>
+      </div>
     </div>
     <div class="form-foot">
       <button class="btn btn-outline" onclick="closeEditModal()">Cancel</button>
@@ -1046,6 +1148,18 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
   </div>
 </div>
 
+<!-- ============================================================= MESSAGE STUDENT MODAL ============================================================= -->
+<div class="modal-overlay" id="messageStudentOverlay">
+  <div class="modal-box" style="max-width:460px;">
+    <button class="modal-close" onclick="closeMessageStudentModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    <h3>Send Text Message</h3>
+    <p class="sub-note" id="ms_studentName">—</p>
+    <div class="field full" style="margin-bottom:14px;"><label>Message</label><textarea id="ms_message" rows="4" maxlength="480" placeholder="Type the message to send to this student's mobile number…"></textarea><span class="hint">Sent as a text message (SMS) to the mobile number on file.</span></div>
+    <div class="field full" style="margin-bottom:14px;"><label>Confirm Your Admin PIN</label><input type="password" id="ms_pin" inputmode="numeric" placeholder="••••" autocomplete="off"><span class="hint">Required to confirm this send.</span></div>
+    <div class="form-foot"><button class="btn btn-outline" onclick="closeMessageStudentModal()">Cancel</button><button class="btn btn-primary" id="msSendBtn" onclick="confirmSendStudentMessage()">Send Text</button></div>
+  </div>
+</div>
+
 <!-- ============================================================= VIEW SLIP MODAL ============================================================= -->
 <div class="modal-overlay" id="viewSlipOverlay">
   <div class="modal-box" style="max-width:460px;">
@@ -1063,7 +1177,8 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           <div class="slip-row"><span>Program</span><span id="vs_course">—</span></div>
           <div class="slip-row"><span>Training Days</span><span>Sat &amp; Sun</span></div>
           <div class="slip-row"><span>Training Time</span><span>1–3 PM / 9 AM–2 PM</span></div>
-          <div class="slip-row"><span>Start Date</span><span id="vsStartDateText">26 Sept 2026</span></div>
+          <div class="slip-row"><span>Orientation</span><span id="vsStartDateText">3 Oct 2026</span></div>
+          <div class="slip-row"><span>Classes Begin</span><span id="vsClassesStartText">4 Oct 2026</span></div>
           <div class="slip-perf"></div>
           <div class="slip-qr-row"><div id="vs_qr"></div><div class="slip-qr-note">Registration confirmation</div></div>
         </div>
@@ -1099,12 +1214,20 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 
 <!-- ============================================================= START NEXT INTAKE MODAL ============================================================= -->
 <div class="modal-overlay" id="startIntakeOverlay">
-  <div class="modal-box" style="max-width:440px;">
+  <div class="modal-box" style="max-width:440px;max-height:88vh;overflow-y:auto;">
     <button class="modal-close" onclick="closeStartIntakeModal()"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
     <h3>Start Next Intake</h3>
     <p style="color:var(--ink-soft);font-size:.9rem;">This archives the current intake and switches new registrations, program capacity, and attendance tracking over to the new intake date. Export any reports you need for the current cohort first — historical attendance stays in the database, but the live dashboards will show the new cohort only.</p>
-    <div class="field full" style="margin:14px 0;"><label>New Intake Start Date</label><input type="date" id="newIntakeStartDate"></div>
+    <div class="field full" style="margin:14px 0;"><label>Orientation / Start Date</label><input type="date" id="newIntakeStartDate"></div>
     <div class="field full" style="margin-bottom:14px;"><label>Label (optional)</label><input type="text" id="newIntakeLabel" placeholder="e.g. January 2027 Intake"></div>
+    <div class="field full" style="margin-bottom:14px;"><label>Classes Begin (first teaching day)</label><input type="date" id="newIntakeClassesStart"></div>
+    <div class="field full" style="margin-bottom:14px;"><label>Graduation / End Date</label><input type="date" id="newIntakeEnd"></div>
+    <p style="color:var(--ink-faint);font-size:.78rem;margin:0 0 8px;">Only fill these in if this intake has a scheduled break:</p>
+    <div class="field-row">
+      <div class="field"><label>Break Starts</label><input type="date" id="newIntakeBreakStart"></div>
+      <div class="field"><label>Classes Resume</label><input type="date" id="newIntakeResume"></div>
+    </div>
+    <div class="field full" style="margin:14px 0;"><label>Thanksgiving / Closing Ceremony (optional)</label><input type="date" id="newIntakeThanksgiving"></div>
     <div class="form-foot"><button class="btn btn-outline" onclick="closeStartIntakeModal()">Cancel</button><button class="btn btn-primary" onclick="confirmStartIntake()">Start New Intake</button></div>
   </div>
 </div>
@@ -1131,6 +1254,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
 <script>
 /* ======================================================================
    SKYDREAM SKILLS TRAINING ACADEMY — APP SCRIPT
@@ -1159,6 +1283,7 @@ const STORAGE_COLLECTION = 'sdta_storage';
 const DEVICE_ONLY_KEYS = new Set(['sdta_admin_session', 'sdta_facilitator_session']);
 
 let firestoreDb = null;
+let functionsRef = null;
 // Firestore rules require request.auth != null, so every visitor (public or logged-in)
 // signs in anonymously first — this blocks casual/unauthenticated REST scraping of the raw
 // database, though it's not a full fix: anyone running this same client code can also sign
@@ -1168,6 +1293,7 @@ try{
   if(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY' && window.firebase){
     firebase.initializeApp(FIREBASE_CONFIG);
     firestoreDb = firebase.firestore();
+    functionsRef = firebase.functions();
     authReady = firebase.auth().signInAnonymously().catch(e=>{ console.error('Anonymous sign-in failed.', e); });
   }
 }catch(e){ console.error('Firebase init failed, falling back to local-only storage.', e); firestoreDb = null; }
@@ -1325,6 +1451,24 @@ const COURSE_CODES = {
   "pastries":"PA", "graphic-design":"GD", "barbering":"BA", "accounting":"AC"
 };
 
+// Add real graduate testimonials here as { name, program, quote } — this section
+// only appears on the public site once at least one entry exists, so no
+// placeholder or fabricated content is ever shown to visitors.
+const TESTIMONIALS = [];
+
+function renderTestimonials(){
+  const section = document.getElementById('testimonialsSection');
+  const grid = document.getElementById('testimonialsGrid');
+  if(!section || !grid) return;
+  if(!TESTIMONIALS.length){ section.style.display = 'none'; return; }
+  section.style.display = '';
+  grid.innerHTML = TESTIMONIALS.map(t=>`
+    <div class="testimonial-card">
+      <p class="quote">\u201c${escapeHtml(t.quote)}\u201d</p>
+      <div class="who"><b>${escapeHtml(t.name)}</b><span>${escapeHtml(t.program || '')}</span></div>
+    </div>`).join('');
+}
+
 const ICONS = {
   flask:'<path d="M9 2h6M10 2v5l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V2"/><path d="M7.5 14h9"/>',
   comb:'<path d="M4 4h16v3H4z"/><path d="M6 7v13M9 7v10M12 7v13M15 7v10M18 7v13"/>',
@@ -1353,13 +1497,28 @@ let ATTENDANCE = [];
 let currentSlipId = null;
 let currentViewSlipId = null;
 let editingStudentId = null;
+let pendingWaitlistPromoteId = null;
+let messageStudentId = null;
 let expandedProgram = null;
 let CONTACT_MESSAGES = [];
+let BROADCASTS = [];
+let WAITLIST = [];
 // The very first intake this app ever ran with, before multi-intake support existed —
 // legacy student records with no intakeStart field are treated as belonging to it.
 const LEGACY_INTAKE_START = '2026-09-26';
-let CURRENT_INTAKE = { startDate: LEGACY_INTAKE_START, label: 'September 2026 Intake' };
+// Orientation (startDate) is a welcome day only — the first real class is the next day.
+// Classes run every Sat & Sun, pausing for the Christmas break, until graduation (endDate).
+let CURRENT_INTAKE = {
+  startDate: '2026-10-03', label: 'October 2026 Intake',
+  classesStartDate: '2026-10-04',
+  breakStartDate: '2026-12-14', resumeDate: '2027-01-09',
+  endDate: '2027-02-27', thanksgivingDate: '2027-02-28'
+};
 let INTAKE_HISTORY = [];
+// One-time backfill for intakes saved before the detailed-calendar fields existed.
+const INTAKE_CALENDAR_BACKFILL = {
+  '2026-10-03': { classesStartDate:'2026-10-04', breakStartDate:'2026-12-14', resumeDate:'2027-01-09', endDate:'2027-02-27', thanksgivingDate:'2027-02-28' }
+};
 
 /* ---------------------------- UTILITIES ---------------------------- */
 function uid(){ return 'stu_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
@@ -1369,6 +1528,37 @@ async function sha256(text){
   const buf = await crypto.subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+
+// Normalizes a Ghana Card number for comparison (strips dashes/spaces, uppercases),
+// so "GHA-000000000-0" and "gha000000000 0" are recognised as the same number.
+function normalizeGhanaCard(v){ return String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,''); }
+
+// Shared by admin & facilitator login — locks an account out for a cooldown
+// period after too many wrong PINs in a row, to slow down PIN-guessing.
+const LOGIN_LOCKOUT_THRESHOLD = 5;
+const LOGIN_LOCKOUT_MINUTES = 15;
+function accountLockMinutesLeft(account){
+  if(!account || !account.lockedUntil) return 0;
+  const ms = new Date(account.lockedUntil).getTime() - Date.now();
+  return ms > 0 ? Math.ceil(ms / 60000) : 0;
+}
+
+/* ---------------------------- SESSION AUTO-LOGOUT ----------------------------
+   Signs an admin/facilitator out after a period of no mouse/keyboard/touch/scroll
+   activity, so a dashboard left open on a shared device doesn't stay signed in
+   indefinitely. */
+const SESSION_IDLE_MINUTES = 30;
+let idleLogoutTimer = null;
+function resetIdleTimer(){
+  if(idleLogoutTimer){ clearTimeout(idleLogoutTimer); idleLogoutTimer = null; }
+  if(!isAdminLoggedIn && !isFacilitatorLoggedIn) return;
+  idleLogoutTimer = setTimeout(async () => {
+    const idleMsg = `You were logged out after ${SESSION_IDLE_MINUTES} minutes of inactivity.`;
+    if(isAdminLoggedIn) await handleAdminLogout(idleMsg);
+    if(isFacilitatorLoggedIn) await handleFacilitatorLogout(idleMsg);
+  }, SESSION_IDLE_MINUTES * 60000);
+}
+['mousedown','keydown','touchstart','scroll'].forEach(evt => document.addEventListener(evt, resetIdleTimer, { passive: true }));
 
 function toast(msg, type){
   const host = document.getElementById('toastHost');
@@ -1387,6 +1577,12 @@ function escapeHtml(str){
 function programById(id){ return PROGRAMS.find(p=>p.id===id); }
 
 function studentIntakeStart(s){ return s.intakeStart || LEGACY_INTAKE_START; }
+
+// Resolves a student's first real teaching day (the day after orientation).
+// Only the current intake records a distinct classesStartDate; older cohorts reuse their intake date.
+function classesStartFor(intakeStartISO){
+  return (intakeStartISO === CURRENT_INTAKE.startDate && CURRENT_INTAKE.classesStartDate) ? CURRENT_INTAKE.classesStartDate : intakeStartISO;
+}
 
 // Only counts students registered under the CURRENT intake against capacity,
 // so a program correctly opens back up once a new intake starts.
@@ -1456,6 +1652,11 @@ async function loadAllData(){
     const intake = await window.storage.get('sdta_intake', true);
     if(intake && intake.value){
       CURRENT_INTAKE = JSON.parse(intake.value);
+      // Backfill the detailed calendar for intakes saved before those fields existed.
+      if(!CURRENT_INTAKE.endDate && INTAKE_CALENDAR_BACKFILL[CURRENT_INTAKE.startDate]){
+        CURRENT_INTAKE = Object.assign({}, CURRENT_INTAKE, INTAKE_CALENDAR_BACKFILL[CURRENT_INTAKE.startDate]);
+        await window.storage.set('sdta_intake', JSON.stringify(CURRENT_INTAKE), true);
+      }
     } else {
       // First-ever load: seed with the original hard-coded intake so existing data keeps working.
       CURRENT_INTAKE = { startDate: LEGACY_INTAKE_START, label: 'September 2026 Intake' };
@@ -1470,6 +1671,14 @@ async function loadAllData(){
     const msgs = await window.storage.get('sdta_contact_messages', true);
     CONTACT_MESSAGES = msgs && msgs.value ? JSON.parse(msgs.value) : [];
   }catch(e){ CONTACT_MESSAGES = []; }
+  try{
+    const bc = await window.storage.get('sdta_broadcasts', true);
+    BROADCASTS = bc && bc.value ? JSON.parse(bc.value) : [];
+  }catch(e){ BROADCASTS = []; }
+  try{
+    const wl = await window.storage.get('sdta_waitlist', true);
+    WAITLIST = wl && wl.value ? JSON.parse(wl.value) : [];
+  }catch(e){ WAITLIST = []; }
 }
 
 async function saveCapacities(changedIds){
@@ -1568,9 +1777,31 @@ async function mutateContactMessages(mutator){
   return CONTACT_MESSAGES;
 }
 
+async function mutateBroadcasts(mutator){
+  const res = await window.storage.transact('sdta_broadcasts', (raw) => {
+    const list = raw ? JSON.parse(raw) : [];
+    if(mutator(list) === false) return window.storage.ABORT;
+    return JSON.stringify(list);
+  });
+  if(res.aborted) return null;
+  BROADCASTS = JSON.parse(res.value);
+  return BROADCASTS;
+}
+
+async function mutateWaitlist(mutator){
+  const res = await window.storage.transact('sdta_waitlist', (raw) => {
+    const list = raw ? JSON.parse(raw) : [];
+    if(mutator(list) === false) return window.storage.ABORT;
+    return JSON.stringify(list);
+  });
+  if(res.aborted) return null;
+  WAITLIST = JSON.parse(res.value);
+  return WAITLIST;
+}
+
 // Archives the current intake into history and switches the app over to a new one.
 // Existing students/attendance keep their original intakeStart, so past cohorts stay intact.
-async function startNextIntake(newStartDate, label){
+async function startNextIntake(newStartDate, label, extra){
   const archived = Object.assign({}, CURRENT_INTAKE, { endDate: newStartDate });
   const histRes = await window.storage.transact('sdta_intake_history', (raw) => {
     const list = raw ? JSON.parse(raw) : [];
@@ -1578,7 +1809,7 @@ async function startNextIntake(newStartDate, label){
     return JSON.stringify(list);
   });
   INTAKE_HISTORY = histRes.value ? JSON.parse(histRes.value) : INTAKE_HISTORY.concat([archived]);
-  const newIntake = { startDate: newStartDate, label: label || (niceIntakeDateLong(newStartDate) + ' Intake') };
+  const newIntake = Object.assign({ startDate: newStartDate, label: label || (niceIntakeDateLong(newStartDate) + ' Intake') }, extra || {});
   await window.storage.set('sdta_intake', JSON.stringify(newIntake), true);
   CURRENT_INTAKE = newIntake;
 }
@@ -1691,40 +1922,74 @@ function updateCountdowns(){
 
 // Keeps every hard-coded "intake date" spot on the page in sync with the current intake.
 function applyIntakeTextsToDOM(){
-  const long = niceIntakeDateLong(CURRENT_INTAKE.startDate);
-  const short = niceIntakeDateShort(CURRENT_INTAKE.startDate);
-  ['heroIntakeDate','attIntakeNoteDate','facIntakeNoteDate','footerIntakeDate'].forEach(id=>{
-    const el = document.getElementById(id); if(el) el.textContent = long;
+  const startLong = niceIntakeDateLong(CURRENT_INTAKE.startDate);
+  const startShort = niceIntakeDateShort(CURRENT_INTAKE.startDate);
+  const classesStart = CURRENT_INTAKE.classesStartDate || CURRENT_INTAKE.startDate;
+  const classesLong = niceIntakeDateLong(classesStart);
+  const classesShort = niceIntakeDateShort(classesStart);
+
+  ['heroIntakeDate','footerIntakeDate'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.textContent = startLong;
+  });
+  ['attIntakeNoteDate','facIntakeNoteDate'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.textContent = classesLong;
   });
   ['scheduleIntakeDateHome','scheduleIntakeDateFull','regIntakeHeadingDate','slipStartDateText','vsStartDateText'].forEach(id=>{
-    const el = document.getElementById(id); if(el) el.textContent = short;
+    const el = document.getElementById(id); if(el) el.textContent = startShort;
   });
+  ['slipClassesStartText','vsClassesStartText'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.textContent = classesShort;
+  });
+
+  // Full academic calendar (Schedule page) — rows with no date (e.g. no break this cycle) are hidden.
+  const calRow = (rowId, spanId, iso) => {
+    const row = document.getElementById(rowId), span = document.getElementById(spanId);
+    if(!row || !span) return;
+    if(iso){ span.textContent = niceIntakeDateLong(iso); row.style.display = ''; }
+    else { row.style.display = 'none'; }
+  };
+  calRow('calRow-orientation','calOrientationDate', CURRENT_INTAKE.startDate);
+  calRow('calRow-classesStart','calClassesStartDate', classesStart);
+  calRow('calRow-break','calBreakStartDate', CURRENT_INTAKE.breakStartDate);
+  calRow('calRow-resume','calResumeDate', CURRENT_INTAKE.resumeDate);
+  calRow('calRow-end','calEndDate', formatDateISO(currentIntakeEndDate()));
+  calRow('calRow-thanksgiving','calThanksgivingDate', CURRENT_INTAKE.thanksgivingDate);
 }
 
 /* ---------------------------- ATTENDANCE: SESSION DATES ----------------------------
-   Weekend classes (Sat & Sun) run for the length of the course (3 months)
-   starting from the intake date. Session dates are derived — never
-   hard-coded — but capped at the course's end date since the cohort
-   doesn't train beyond that.
+   Weekend classes (Sat & Sun) run from the day after orientation through the
+   intake's graduation date, pausing for any scheduled break (e.g. Christmas).
+   Session dates are derived — never hard-coded — from the current intake's
+   calendar (classesStartDate / breakStartDate / resumeDate / endDate).
    ------------------------------------------------------------------------ */
-const COURSE_DURATION_MONTHS = 3;
+const COURSE_DURATION_MONTHS = 4;
 function intakeEndDateFor(startDate){ return new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + COURSE_DURATION_MONTHS, startDate.getUTCDate())); }
-function currentIntakeEndDate(){ return intakeEndDateFor(currentIntakeDate()); }
+// Prefers the intake's real graduation date; falls back to the naive 4-month estimate
+// for intakes that were started before an explicit end date was recorded.
+function currentIntakeEndDate(){ return CURRENT_INTAKE.endDate ? parseISODateUTC(CURRENT_INTAKE.endDate) : intakeEndDateFor(currentIntakeDate()); }
 function isWeekendDate(date){ const day = date.getUTCDay(); return day === 0 || day === 6; }
 function formatDateISO(date){ return date.toISOString().slice(0,10); }
+function addDaysISO(iso, days){ const d = parseISODateUTC(iso); d.setUTCDate(d.getUTCDate() + days); return formatDateISO(d); }
 function niceSessionLabel(iso){
   const d = new Date(iso + 'T00:00:00Z');
   return d.toLocaleDateString('en-GB', { weekday:'short', day:'2-digit', month:'short', year:'numeric', timeZone:'UTC' });
 }
-// Ascending list of every Saturday/Sunday session date from a given intake's start
-// (default: the current intake) up to that intake's end date (start + 3 months).
+// Ascending list of every Saturday/Sunday session date for an intake, from its first
+// real teaching day (the day after orientation) to its graduation date — skipping any
+// scheduled break. Only the CURRENT intake carries this level of detail; older/other
+// intakes fall back to the naive "every weekend for ~4 months" estimate.
 function getSessionDates(startDateISO){
+  const isCurrent = !startDateISO || startDateISO === CURRENT_INTAKE.startDate;
   const start = parseISODateUTC(startDateISO || CURRENT_INTAKE.startDate);
-  const end = intakeEndDateFor(start);
+  const classesStart = (isCurrent && CURRENT_INTAKE.classesStartDate) ? parseISODateUTC(CURRENT_INTAKE.classesStartDate) : start;
+  const end = (isCurrent && CURRENT_INTAKE.endDate) ? parseISODateUTC(CURRENT_INTAKE.endDate) : intakeEndDateFor(start);
+  const breakStart = (isCurrent && CURRENT_INTAKE.breakStartDate) ? parseISODateUTC(CURRENT_INTAKE.breakStartDate) : null;
+  const resume = (isCurrent && CURRENT_INTAKE.resumeDate) ? parseISODateUTC(CURRENT_INTAKE.resumeDate) : null;
   const dates = [];
-  let cur = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth(), start.getUTCDate()));
+  let cur = new Date(Date.UTC(classesStart.getUTCFullYear(), classesStart.getUTCMonth(), classesStart.getUTCDate()));
   while(cur <= end){
-    if(isWeekendDate(cur)) dates.push(formatDateISO(cur));
+    const onBreak = breakStart && resume && cur >= breakStart && cur < resume;
+    if(isWeekendDate(cur) && !onBreak) dates.push(formatDateISO(cur));
     cur = new Date(cur.getTime() + 86400000);
   }
   return dates;
@@ -1741,14 +2006,33 @@ function defaultSessionDate(){
 }
 
 /* ---------------------------- ABOUT: TRAINERS / GALLERY ---------------------------- */
+// One trainer per program, in PROGRAMS order. Photos are added later — drop
+// trainer-1.jpg ... trainer-13.jpg into images/ to replace the initials avatar.
+const TRAINERS = [
+  {name:"Madam Lydia Akunor", program:"Household Chemicals Production"},
+  {name:"Madam Beatrice", program:"Hair Dressing"},
+  {name:"Madam Vida Okyere", program:"Cosmetology"},
+  {name:"Sir Francis Narh", program:"Electricals"},
+  {name:"Madam Faustina Ofori", program:"Floral Decor"},
+  {name:"Madam Vida Senior", program:"Fashion Design"},
+  {name:"Madam Abigail", program:"Beading"},
+  {name:"Sir Emmanuel", program:"French Language"},
+  {name:"Madam Nana Yaa", program:"Korean Language"},
+  {name:"Madam Asantewaa", program:"Pastries & Baking"},
+  {name:"Sir Phil", program:"Graphic Design"},
+  {name:"Sir Godslove", program:"Barbering"},
+  {name:"Sir Alex", program:"Accounting"}
+];
 function renderTrainersAndGallery(){
-  const roles = ["Lead Trainer","Program Coordinator","Senior Instructor","Workshop Lead","Client Care Lead","Studio Manager"];
-  // Drop photo files into an "images" folder next to this HTML file, named trainer-1.jpg, trainer-2.jpg, ...
-  document.getElementById('trainerGrid').innerHTML = roles.map((r,i)=>`
+  document.getElementById('trainerGrid').innerHTML = TRAINERS.map((t,i)=>{
+    const clean = t.name.replace(/^(Madam|Sir|Mr|Mrs|Miss|Dr)\.?\s+/i,'');
+    const initials = clean.split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    return `
     <div class="trainer-card">
-      <div class="trainer-avatar">${String.fromCharCode(65+i)}<img src="images/trainer-${i+1}.jpg" alt="" onerror="this.remove()"></div>
-      <h5>Add Name</h5><span>${r}</span>
-    </div>`).join('');
+      <div class="trainer-avatar">${initials}<img src="images/trainer-${i+1}.jpg" alt="" onerror="this.remove()"></div>
+      <h5>${escapeHtml(t.name)}</h5><span>${escapeHtml(t.program)} Instructor</span>
+    </div>`;
+  }).join('');
 
   // Drop photo files into an "images" folder next to this HTML file, named gallery-1.jpg, gallery-2.jpg, ...
   document.getElementById('galleryGrid').innerHTML = PROGRAMS.slice(0,8).map((p,i)=>`
@@ -1765,7 +2049,9 @@ function populateCourseSelect(el, includeBlank){
     PROGRAMS.map(p=>{
       const taken = seatsTaken(p.id);
       const full = taken >= getCapacity(p.id);
-      return `<option value="${p.id}" ${full?'disabled':''}>${p.name}${full?' — Full':''}</option>`;
+      // Full programs stay selectable (not disabled) so a visitor can still
+      // choose one and be offered the waitlist when they submit.
+      return `<option value="${p.id}">${p.name}${full?' — Full (waitlist)':''}</option>`;
     }).join('');
 }
 
@@ -1851,6 +2137,25 @@ function nextRegNumber(courseId, list){
   return prefix + String(idx).padStart(3,'0') + '/' + month + '/' + year;
 }
 
+/* ---------------------------- FACILITATOR SMS NOTIFICATION ----------------------------
+   Fires a Cloud Function that texts the newly registered student the name and contact
+   number of the facilitator assigned to their program. Runs in the background — it must
+   never block or fail the registration itself, so errors are only logged, not surfaced.
+   ------------------------------------------------------------------------ */
+async function notifyFacilitatorSms(student){
+  if(!functionsRef) return;
+  try{
+    await authReady;
+    const send = functionsRef.httpsCallable('sendFacilitatorWelcomeSms');
+    const res = await send({ regNumber: student.regNumber });
+    if(res.data && res.data.sent){
+      toast("Facilitator contact sent to the student's phone.", 'success');
+    }
+  }catch(e){
+    console.error('Facilitator SMS notification failed.', e);
+  }
+}
+
 document.getElementById('regForm').addEventListener('submit', async function(e){
   e.preventDefault();
   if(!validateRegForm()){
@@ -1861,9 +2166,17 @@ document.getElementById('regForm').addEventListener('submit', async function(e){
   submitBtn.disabled = true; submitBtn.textContent = 'Submitting…';
 
   const courseId = fieldEl('f_course').value;
+  const ghanaCardNorm = normalizeGhanaCard(fieldEl('f_ghanaCard').value);
+  const mobileVal = fieldEl('f_mobile').value.trim();
   let capacityFull = false;
+  let duplicateFound = false;
   let student = null;
   const result = await mutateStudents((list) => {
+    // Block a second registration from the same person (same Ghana Card or
+    // mobile number) for the intake currently taking registrations.
+    const dup = list.find(s => s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate &&
+      (normalizeGhanaCard(s.ghanaCard) === ghanaCardNorm || s.mobile === mobileVal));
+    if(dup){ duplicateFound = true; return false; }
     // Re-check capacity against the latest server data, so two people
     // registering for the last seat at the same moment can't both get in.
     const taken = list.filter(s => s.course === courseId && s.status !== 'Cancelled').length;
@@ -1880,7 +2193,7 @@ document.getElementById('regForm').addEventListener('submit', async function(e){
       photo: uploadedPhotoDataUrl || null,
       gpsAddress: fieldEl('f_gps').value.trim(),
       address: fieldEl('f_address').value.trim(),
-      mobile: fieldEl('f_mobile').value.trim(),
+      mobile: mobileVal,
       whatsapp: fieldEl('f_whatsapp').value.trim(),
       email: fieldEl('f_email').value.trim(),
       emName: fieldEl('f_emName').value.trim(),
@@ -1889,13 +2202,24 @@ document.getElementById('regForm').addEventListener('submit', async function(e){
       course: courseId,
       status: 'Registered',
       feePaid: 0,
+      payments: [],
       intakeStart: CURRENT_INTAKE.startDate
     };
     list.push(student);
   });
 
   if(!result){
-    toast(capacityFull ? 'Sorry, this program just filled up. Please choose another program.' : 'Could not save — storage may be unavailable.', 'error');
+    if(duplicateFound){
+      toast('Our records show this Ghana Card or mobile number is already registered for the current intake.', 'error');
+      submitBtn.disabled = false; submitBtn.textContent = 'Submit Registration';
+      return;
+    }
+    if(capacityFull){
+      await joinWaitlist(courseId);
+      submitBtn.disabled = false; submitBtn.textContent = 'Submit Registration';
+      return;
+    }
+    toast('Could not save — storage may be unavailable.', 'error');
     submitBtn.disabled = false; submitBtn.textContent = 'Submit Registration';
     return;
   }
@@ -1904,15 +2228,34 @@ document.getElementById('regForm').addEventListener('submit', async function(e){
   document.getElementById('slipRegNumber').textContent = student.regNumber;
   document.getElementById('slipName').textContent = student.fullName;
   document.getElementById('slipCourse').textContent = programById(student.course).name;
-  renderQR('slipQR', studentQRText(student));
+
 
   document.getElementById('regForm').style.display = 'none';
   document.getElementById('regConfirm').style.display = 'block';
   window.scrollTo({top:0, behavior:'auto'});
   toast('Registration saved — ' + student.regNumber, 'success');
+  notifyFacilitatorSms(student);
 
   submitBtn.disabled = false; submitBtn.textContent = 'Submit Registration';
 });
+
+// Called when the chosen program is full at submit time — saves the visitor's
+// details (already filled in the form) onto that program's waitlist instead.
+async function joinWaitlist(courseId){
+  const entry = {
+    id: uid(),
+    fullName: fieldEl('f_fullName').value.trim(),
+    mobile: fieldEl('f_mobile').value.trim(),
+    whatsapp: fieldEl('f_whatsapp').value.trim(),
+    email: fieldEl('f_email').value.trim(),
+    course: courseId,
+    date: new Date().toISOString()
+  };
+  const result = await mutateWaitlist((list) => { list.push(entry); });
+  if(!result){ toast('This program is full and we could not add you to the waitlist — please try again.', 'error'); return; }
+  toast("This program is full — you've been added to the waitlist. We'll contact you if a seat opens.", 'success');
+  resetRegForm();
+}
 
 function resetRegForm(){
   document.getElementById('regForm').reset();
@@ -1978,7 +2321,8 @@ function printSlip(studentId){
           <tr><td style="color:#888;padding:6px 0;">Program</td><td style="text-align:right;font-weight:600;">${escapeHtml(course ? course.name : '—')}</td></tr>
           <tr><td style="color:#888;padding:6px 0;">Training Days</td><td style="text-align:right;font-weight:600;">Sat &amp; Sun</td></tr>
           <tr><td style="color:#888;padding:6px 0;">Training Time</td><td style="text-align:right;font-weight:600;">1–3 PM / 9 AM–2 PM</td></tr>
-          <tr><td style="color:#888;padding:6px 0;">Start Date</td><td style="text-align:right;font-weight:600;">${niceIntakeDateShort(student.intakeStart || CURRENT_INTAKE.startDate)}</td></tr>
+          <tr><td style="color:#888;padding:6px 0;">Orientation</td><td style="text-align:right;font-weight:600;">${niceIntakeDateShort(student.intakeStart || CURRENT_INTAKE.startDate)}</td></tr>
+          <tr><td style="color:#888;padding:6px 0;">Classes Begin</td><td style="text-align:right;font-weight:600;">${niceIntakeDateShort(classesStartFor(student.intakeStart || CURRENT_INTAKE.startDate))}</td></tr>
         </table>
         <div style="border-top:2px dashed #ddd;margin:14px 0;"></div>
         <div id="printSlipQR"></div>
@@ -2002,21 +2346,21 @@ function studentAttendanceSummary(student){
   return { sessionsHeld: heldDates.length, present, absent, pct };
 }
 
-// Deliberately requires both reg. number AND mobile number (not just the reg. number,
-// which is sequential/guessable) and only surfaces non-sensitive summary fields —
+// Deliberately requires both full name AND mobile number (not just the name,
+// which is easy to guess/share) and only surfaces non-sensitive summary fields —
 // no Ghana Card, DOB, address or emergency contact — to limit exposure of this public lookup.
 function handleLookupStudent(){
-  const reg = document.getElementById('lookup_reg').value.trim();
+  const name = document.getElementById('lookup_name').value.trim();
   const mobile = document.getElementById('lookup_mobile').value.trim();
   const resultBox = document.getElementById('lookupResult');
   const emptyBox = document.getElementById('lookupEmpty');
-  if(!reg || !mobile){ toast('Enter your registration number and mobile number.', 'error'); return; }
+  if(!name || !mobile){ toast('Enter your full name and mobile number.', 'error'); return; }
   const digits = mobile.replace(/\D/g,'');
-  const student = STUDENTS.find(s => s.regNumber.toLowerCase() === reg.toLowerCase() && (s.mobile||'').replace(/\D/g,'') === digits);
+  const student = STUDENTS.find(s => (s.fullName||'').trim().toLowerCase() === name.toLowerCase() && (s.mobile||'').replace(/\D/g,'') === digits);
   if(!student){
     resultBox.style.display = 'none';
     emptyBox.style.display = 'block';
-    emptyBox.textContent = 'No registration found matching that registration number and mobile number. Please check and try again.';
+    emptyBox.textContent = 'No registration found matching that name and mobile number. Please check and try again.';
     return;
   }
   emptyBox.style.display = 'none';
@@ -2094,26 +2438,50 @@ async function handleAdminLogin(){
   const username = document.getElementById('login_username').value.trim();
   const pin = document.getElementById('login_pin').value.trim();
   if(!ADMIN_ACCOUNTS.length){ toast('No admin account found.', 'error'); return; }
+  const existing = ADMIN_ACCOUNTS.find(a=>a.username === username);
+  const lockedMins = accountLockMinutesLeft(existing);
+  if(lockedMins){ toast(`Too many wrong PIN attempts. Try again in ${lockedMins} minute(s).`, 'error'); return; }
   const pinHash = await sha256(pin);
-  const match = ADMIN_ACCOUNTS.find(a=>a.username === username && a.pinHash === pinHash);
+  const match = existing && existing.pinHash === pinHash ? existing : null;
   if(match){
+    if(match.failedAttempts || match.lockedUntil){
+      await mutateAdmins((list) => {
+        const a = list.find(x=>x.username === username);
+        if(a){ a.failedAttempts = 0; a.lockedUntil = null; }
+      });
+    }
     isAdminLoggedIn = true;
     currentAdminUsername = match.username;
     await saveAdminSession(match.username);
     document.getElementById('login_pin').value = '';
     toast('Welcome back.', 'success');
     renderAdminGate();
+    resetIdleTimer();
   } else {
+    if(existing){
+      let lockedNow = false;
+      await mutateAdmins((list) => {
+        const a = list.find(x=>x.username === username);
+        if(!a) return false;
+        a.failedAttempts = (a.failedAttempts || 0) + 1;
+        if(a.failedAttempts >= LOGIN_LOCKOUT_THRESHOLD){
+          a.lockedUntil = new Date(Date.now() + LOGIN_LOCKOUT_MINUTES*60000).toISOString();
+          lockedNow = true;
+        }
+      });
+      if(lockedNow){ toast(`Too many wrong PIN attempts. Locked for ${LOGIN_LOCKOUT_MINUTES} minutes.`, 'error'); return; }
+    }
     toast('Incorrect username or PIN.', 'error');
   }
 }
 
-async function handleAdminLogout(){
+async function handleAdminLogout(message){
   isAdminLoggedIn = false;
   currentAdminUsername = null;
   await saveAdminSession(null);
-  toast('Logged out.');
+  toast(message || 'Logged out.');
   renderAdminGate();
+  resetIdleTimer();
 }
 
 function openResetModal(){ document.getElementById('resetModalOverlay').classList.add('open'); }
@@ -2159,6 +2527,7 @@ function switchAdminTab(tab){
   if(tab === 'attendance') renderAttendanceTrackerTab();
   if(tab === 'facilitators') renderFacilitatorsTab();
   if(tab === 'messages') renderMessagesTab();
+  if(tab === 'broadcast') renderBroadcastTab();
 }
 
 function renderAdminDashboard(){
@@ -2182,17 +2551,25 @@ function renderAdminDashboard(){
 function renderIntakeCard(){
   const host = document.getElementById('intakeCard');
   if(!host) return;
-  const start = niceIntakeDateLong(CURRENT_INTAKE.startDate);
-  const end = niceIntakeDateLong(formatDateISO(currentIntakeEndDate()));
   const isOwner = isCurrentAdminOwner();
+  const rows = [
+    ['Orientation', niceIntakeDateLong(CURRENT_INTAKE.startDate)],
+    ['Classes Begin', CURRENT_INTAKE.classesStartDate ? niceIntakeDateLong(CURRENT_INTAKE.classesStartDate) : null],
+    ['Break Starts', CURRENT_INTAKE.breakStartDate ? niceIntakeDateLong(CURRENT_INTAKE.breakStartDate) : null],
+    ['Classes Resume', CURRENT_INTAKE.resumeDate ? niceIntakeDateLong(CURRENT_INTAKE.resumeDate) : null],
+    ['Graduation', niceIntakeDateLong(formatDateISO(currentIntakeEndDate()))],
+    ['Thanksgiving', CURRENT_INTAKE.thanksgivingDate ? niceIntakeDateLong(CURRENT_INTAKE.thanksgivingDate) : null]
+  ].filter(r=>r[1]);
+  const rowsHtml = rows.map(r=>`<p class="sub-note" style="margin:4px 0;">${r[0]}: <b>${r[1]}</b></p>`).join('');
   const historyHtml = INTAKE_HISTORY.length
     ? `<p class="sub-note" style="margin:10px 0 0;">Past intakes: ${INTAKE_HISTORY.slice().reverse().map(h=>escapeHtml(h.label || niceIntakeDateLong(h.startDate))).join(', ')}</p>`
     : '';
   host.innerHTML = `
     <div class="admin-user-form" style="max-width:none;">
       <h3>Current Intake</h3>
-      <p class="sub-note">${escapeHtml(CURRENT_INTAKE.label || '')} — starts <b>${start}</b>, runs through <b>${end}</b> (3 months).</p>
-      ${isOwner ? `<button class="btn btn-outline btn-sm" onclick="openStartIntakeModal()">Start Next Intake</button>` : ''}
+      <p class="sub-note">${escapeHtml(CURRENT_INTAKE.label || '')}</p>
+      ${rowsHtml}
+      ${isOwner ? `<button class="btn btn-outline btn-sm" onclick="openStartIntakeModal()" style="margin-top:8px;">Start Next Intake</button>` : ''}
       ${historyHtml}
     </div>`;
 }
@@ -2234,12 +2611,54 @@ function renderOverviewTab(){
       return `<tr><td>${escapeHtml(p.name)}</td><td>${taken} / ${cap}</td><td>GHS ${collected.toLocaleString()}</td><td>GHS ${expected.toLocaleString()}</td></tr>`;
     }).join('');
   }
+  renderIntakeTrends();
+}
+
+// Groups registrations & fees collected by intake, so admins can see the
+// trend across cohorts rather than just the current one.
+function intakeTrendData(){
+  const intakes = INTAKE_HISTORY.concat([CURRENT_INTAKE]);
+  return intakes.map(it=>{
+    const studentsIn = STUDENTS.filter(s=>s.status !== 'Cancelled' && studentIntakeStart(s) === it.startDate);
+    const revenue = studentsIn.reduce((sum,s)=> sum + Math.max(0, s.feePaid || 0), 0);
+    return { label: it.label || niceIntakeDateLong(it.startDate), count: studentsIn.length, revenue };
+  });
+}
+
+function renderIntakeTrends(){
+  const host = document.getElementById('intakeTrendChart');
+  if(!host) return;
+  const data = intakeTrendData();
+  if(data.length < 2){
+    host.innerHTML = '<p class="sub-note">Trends will appear here once a second intake has started.</p>';
+    return;
+  }
+  const maxCount = Math.max(1, ...data.map(d=>d.count));
+  const maxRevenue = Math.max(1, ...data.map(d=>d.revenue));
+  host.innerHTML = `
+    <div class="trend-chart">
+      ${data.map(d=>`
+        <div class="trend-col">
+          <div class="trend-bars">
+            <div class="trend-bar count" style="height:${Math.max(3,Math.round(d.count/maxCount*100))}%;" title="${d.count} registered"></div>
+            <div class="trend-bar revenue" style="height:${Math.max(3,Math.round(d.revenue/maxRevenue*100))}%;" title="GHS ${d.revenue.toLocaleString()} collected"></div>
+          </div>
+          <span class="trend-label">${escapeHtml(d.label)}</span>
+        </div>`).join('')}
+    </div>
+    <div class="trend-legend"><span><i class="count"></i>Registered</span><span><i class="revenue"></i>Fees Collected</span></div>`;
 }
 
 function openStartIntakeModal(){
   if(!isCurrentAdminOwner()){ toast('Only the main admin can start a new intake.', 'error'); return; }
-  document.getElementById('newIntakeStartDate').value = formatDateISO(currentIntakeEndDate());
+  const suggestedStart = formatDateISO(currentIntakeEndDate());
+  document.getElementById('newIntakeStartDate').value = suggestedStart;
   document.getElementById('newIntakeLabel').value = '';
+  document.getElementById('newIntakeClassesStart').value = addDaysISO(suggestedStart, 1);
+  document.getElementById('newIntakeBreakStart').value = '';
+  document.getElementById('newIntakeResume').value = '';
+  document.getElementById('newIntakeEnd').value = formatDateISO(intakeEndDateFor(parseISODateUTC(suggestedStart)));
+  document.getElementById('newIntakeThanksgiving').value = '';
   document.getElementById('startIntakeOverlay').classList.add('open');
 }
 function closeStartIntakeModal(){ document.getElementById('startIntakeOverlay').classList.remove('open'); }
@@ -2248,8 +2667,18 @@ async function confirmStartIntake(){
   const dateVal = document.getElementById('newIntakeStartDate').value;
   const label = document.getElementById('newIntakeLabel').value.trim();
   if(!dateVal){ toast('Pick a start date for the new intake.', 'error'); return; }
+  const breakStartVal = document.getElementById('newIntakeBreakStart').value;
+  const resumeVal = document.getElementById('newIntakeResume').value;
+  const thanksgivingVal = document.getElementById('newIntakeThanksgiving').value;
+  const extra = {
+    classesStartDate: document.getElementById('newIntakeClassesStart').value || addDaysISO(dateVal, 1),
+    endDate: document.getElementById('newIntakeEnd').value || formatDateISO(intakeEndDateFor(parseISODateUTC(dateVal)))
+  };
+  if(breakStartVal) extra.breakStartDate = breakStartVal;
+  if(resumeVal) extra.resumeDate = resumeVal;
+  if(thanksgivingVal) extra.thanksgivingDate = thanksgivingVal;
   if(!confirm('Start a new intake beginning ' + niceIntakeDateLong(dateVal) + '? This affects registration, capacity and attendance for all users.')) return;
-  await startNextIntake(dateVal, label);
+  await startNextIntake(dateVal, label, extra);
   closeStartIntakeModal();
   applyIntakeTextsToDOM();
   updateCountdowns();
@@ -2316,6 +2745,74 @@ async function deleteMessage(id){
   renderMessagesTab();
 }
 
+function renderBroadcastTab(){
+  const host = document.getElementById('broadcastList');
+  if(!host) return;
+  if(!BROADCASTS.length){ host.innerHTML = '<div class="empty-state">No announcements posted yet.</div>'; return; }
+  const sorted = BROADCASTS.slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
+  host.innerHTML = sorted.map(b=>`
+    <div class="admin-user-row" style="align-items:flex-start;">
+      <div class="who" style="max-width:70%;">
+        <b>${escapeHtml(b.title || 'Announcement')}</b>
+        <span>Posted ${new Date(b.date).toLocaleString()}</span>
+        <p style="margin:8px 0 0;color:var(--ink);font-size:.88rem;white-space:pre-wrap;">${escapeHtml(b.message)}</p>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteBroadcast('${b.id}')" style="flex-shrink:0;">Delete</button>
+    </div>`).join('');
+}
+
+async function handlePostBroadcast(){
+  const titleEl = document.getElementById('broadcastTitle');
+  const msgEl = document.getElementById('broadcastMessage');
+  const title = titleEl.value.trim();
+  const message = msgEl.value.trim();
+  if(!message){ toast('Write a message before posting.', 'error'); return; }
+  const result = await mutateBroadcasts((list) => {
+    list.push({ id: uid(), title, message, date: new Date().toISOString() });
+  });
+  if(!result){ toast('Could not post the announcement.', 'error'); return; }
+  titleEl.value = ''; msgEl.value = '';
+  toast('Announcement posted to the website.', 'success');
+  renderBroadcastTab();
+  renderSiteAnnouncements();
+}
+
+async function deleteBroadcast(id){
+  if(!confirm('Delete this announcement? It will disappear from the website immediately.')) return;
+  const result = await mutateBroadcasts((list) => {
+    const idx = list.findIndex(x=>x.id === id);
+    if(idx === -1) return false;
+    list.splice(idx, 1);
+  });
+  if(!result){ toast('Could not delete announcement.', 'error'); return; }
+  toast('Announcement deleted.', 'success');
+  renderBroadcastTab();
+  renderSiteAnnouncements();
+}
+
+// Every visitor sees posted announcements until they dismiss them (tracked per-browser).
+function renderSiteAnnouncements(){
+  const host = document.getElementById('siteAnnouncements');
+  if(!host) return;
+  let dismissed = [];
+  try{ dismissed = JSON.parse(localStorage.getItem('sdta_dismissed_broadcasts') || '[]'); }catch(e){ dismissed = []; }
+  const visible = BROADCASTS.filter(b=>!dismissed.includes(b.id)).slice().sort((a,b)=> new Date(b.date) - new Date(a.date));
+  host.innerHTML = visible.map(b=>`
+    <div class="announce-bar">
+      <svg class="icon" viewBox="0 0 24 24"><path d="M12 3a4 4 0 0 0-4 4v3l-2 4h12l-2-4V7a4 4 0 0 0-4-4z"/><path d="M10 18a2 2 0 0 0 4 0"/></svg>
+      <span>${b.title ? `<b>${escapeHtml(b.title)}:</b> ` : ''}${escapeHtml(b.message)}</span>
+      <button class="announce-close" onclick="dismissAnnouncement('${b.id}')" aria-label="Dismiss announcement"><svg class="icon" viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg></button>
+    </div>`).join('');
+}
+
+function dismissAnnouncement(id){
+  let dismissed = [];
+  try{ dismissed = JSON.parse(localStorage.getItem('sdta_dismissed_broadcasts') || '[]'); }catch(e){ dismissed = []; }
+  if(!dismissed.includes(id)) dismissed.push(id);
+  try{ localStorage.setItem('sdta_dismissed_broadcasts', JSON.stringify(dismissed)); }catch(e){}
+  renderSiteAnnouncements();
+}
+
 function renderCapacityTab(){
   const host = document.getElementById('capacityList');
   if(!host) return;
@@ -2323,20 +2820,63 @@ function renderCapacityTab(){
     const taken = seatsTaken(p.id);
     const capacity = getCapacity(p.id);
     const fee = getFee(p.id);
+    const waiting = WAITLIST.filter(w=>w.course === p.id);
+    const waitlistHtml = waiting.length ? `
+      <div class="waitlist-block">
+        <b>${waiting.length} on waitlist</b>
+        ${waiting.map(w=>`<div class="slip-row"><span>${escapeHtml(w.fullName)} — ${escapeHtml(w.mobile)}</span><span><button class="btn btn-outline btn-sm" onclick="promoteFromWaitlist('${w.id}')">Promote</button> <button class="btn btn-outline btn-sm" onclick="removeFromWaitlist('${w.id}')">Remove</button></span></div>`).join('')}
+      </div>` : '';
     return `
-    <div class="admin-user-row">
-      <div class="who">
-        <b>${escapeHtml(p.name)}</b>
-        <span>${taken} registered</span>
+    <div class="admin-user-row" style="flex-direction:column;align-items:stretch;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div class="who">
+          <b>${escapeHtml(p.name)}</b>
+          <span>${taken} registered${waiting.length ? ' · ' + waiting.length + ' waitlisted' : ''}</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <label style="font-size:.72rem;color:var(--ink-faint);">Capacity<br>
+          <input type="number" min="0" step="1" class="cap-input" id="cap_${p.id}" value="${capacity}" style="width:100px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;"></label>
+          <label style="font-size:.72rem;color:var(--ink-faint);">Fee (GHS)<br>
+          <input type="number" min="0" step="0.01" class="fee-input" id="fee_${p.id}" value="${fee}" style="width:110px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;"></label>
+        </div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;">
-        <label style="font-size:.72rem;color:var(--ink-faint);">Capacity<br>
-        <input type="number" min="0" step="1" class="cap-input" id="cap_${p.id}" value="${capacity}" style="width:100px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;"></label>
-        <label style="font-size:.72rem;color:var(--ink-faint);">Fee (GHS)<br>
-        <input type="number" min="0" step="0.01" class="fee-input" id="fee_${p.id}" value="${fee}" style="width:110px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;"></label>
-      </div>
+      ${waitlistHtml}
     </div>`;
   }).join('');
+}
+
+// Pre-fills the walk-in modal from a waitlist entry — the waitlist only
+// collects name/mobile/email/course, so the admin completes the rest (DOB,
+// Ghana Card, address, emergency contact) before the record is created.
+// The waitlist entry itself is only removed once that walk-in save succeeds.
+function promoteFromWaitlist(id){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can manage the waitlist.', 'error'); return; }
+  const entry = WAITLIST.find(w=>w.id===id);
+  if(!entry) return;
+  if(seatsTaken(entry.course) >= getCapacity(entry.course)){ toast('No open seats yet for this program.', 'error'); return; }
+  pendingWaitlistPromoteId = id;
+  openAddStudentModal();
+  fieldEl('w_fullName').value = entry.fullName;
+  fieldEl('w_mobile').value = entry.mobile;
+  fieldEl('w_whatsapp').value = entry.whatsapp || entry.mobile;
+  fieldEl('w_email').value = entry.email || '';
+  fieldEl('w_course').value = entry.course;
+  toast('Complete the remaining details to finish registering ' + entry.fullName + '.');
+}
+
+async function removeFromWaitlist(id){
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can manage the waitlist.', 'error'); return; }
+  const entry = WAITLIST.find(w=>w.id===id);
+  if(!entry) return;
+  if(!confirm(`Remove ${entry.fullName} from the waitlist?`)) return;
+  const result = await mutateWaitlist((list) => {
+    const idx = list.findIndex(w=>w.id===id);
+    if(idx === -1) return false;
+    list.splice(idx, 1);
+  });
+  if(!result){ toast('Could not remove — already gone.', 'error'); return; }
+  renderCapacityTab();
+  toast('Removed from waitlist.');
 }
 
 async function handleSaveCapacities(){
@@ -2535,27 +3075,51 @@ async function handleFacilitatorLogin(){
   const username = document.getElementById('fac_login_username').value.trim();
   const pin = document.getElementById('fac_login_pin').value.trim();
   if(!FACILITATOR_ACCOUNTS.length){ toast('No facilitator account found.', 'error'); return; }
+  const existing = FACILITATOR_ACCOUNTS.find(f=>f.username === username);
+  const lockedMins = accountLockMinutesLeft(existing);
+  if(lockedMins){ toast(`Too many wrong PIN attempts. Try again in ${lockedMins} minute(s).`, 'error'); return; }
   const pinHash = await sha256(pin);
-  const match = FACILITATOR_ACCOUNTS.find(f=>f.username === username && f.pinHash === pinHash);
+  const match = existing && existing.pinHash === pinHash ? existing : null;
   if(match){
+    if(match.failedAttempts || match.lockedUntil){
+      await mutateFacilitators((list) => {
+        const f = list.find(x=>x.username === username);
+        if(f){ f.failedAttempts = 0; f.lockedUntil = null; }
+      });
+    }
     isFacilitatorLoggedIn = true;
     currentFacilitatorUsername = match.username;
     await saveFacilitatorSession(match.username);
     document.getElementById('fac_login_pin').value = '';
     toast('Welcome back.', 'success');
     renderFacilitatorGate();
+    resetIdleTimer();
   } else {
+    if(existing){
+      let lockedNow = false;
+      await mutateFacilitators((list) => {
+        const f = list.find(x=>x.username === username);
+        if(!f) return false;
+        f.failedAttempts = (f.failedAttempts || 0) + 1;
+        if(f.failedAttempts >= LOGIN_LOCKOUT_THRESHOLD){
+          f.lockedUntil = new Date(Date.now() + LOGIN_LOCKOUT_MINUTES*60000).toISOString();
+          lockedNow = true;
+        }
+      });
+      if(lockedNow){ toast(`Too many wrong PIN attempts. Locked for ${LOGIN_LOCKOUT_MINUTES} minutes.`, 'error'); return; }
+    }
     toast('Incorrect username or PIN.', 'error');
   }
 }
 
-async function handleFacilitatorLogout(){
+async function handleFacilitatorLogout(message){
   isFacilitatorLoggedIn = false;
   currentFacilitatorUsername = null;
   await saveFacilitatorSession(null);
   exitPreviewMode();
-  toast('Logged out.');
+  toast(message || 'Logged out.');
   renderFacilitatorGate();
+  resetIdleTimer();
 }
 
 /* ---------------------------- FACILITATOR: PREVIEW MODE ----------------------------
@@ -2758,7 +3322,7 @@ function renderFacilitatorsTab(){
     <div class="admin-user-row">
       <div class="who">
         <b>${escapeHtml(f.name || f.username)}</b>
-        <span>@${escapeHtml(f.username)} — ${escapeHtml(courseNames)}</span>
+        <span>@${escapeHtml(f.username)}${f.phone ? ' — ' + escapeHtml(f.phone) : ''} — ${escapeHtml(courseNames)}</span>
       </div>
       <button class="btn btn-outline btn-sm" onclick="openFacResetPin('${f.id}')">Reset PIN</button>
       <button class="btn btn-outline btn-sm" onclick="handleDeleteFacilitator('${f.id}')">Remove</button>
@@ -2770,10 +3334,12 @@ async function handleAddFacilitator(){
   if(!isCurrentAdminOwner()){ toast('Only the main admin can add facilitators.', 'error'); return; }
   const name = document.getElementById('newfac_name').value.trim();
   const username = document.getElementById('newfac_username').value.trim();
+  const phone = document.getElementById('newfac_phone').value.trim();
   const pin = document.getElementById('newfac_pin').value.trim();
   const pin2 = document.getElementById('newfac_pin2').value.trim();
   const courses = Array.from(document.querySelectorAll('.newfac-course-cb:checked')).map(cb=>cb.value);
   if(!username || !pin){ toast('Username and PIN are required.', 'error'); return; }
+  if(!/^0\d{9}$/.test(phone)){ toast('Enter a valid 10-digit contact number for the facilitator.', 'error'); return; }
   if(!/^\d{4,8}$/.test(pin)){ toast('PIN must be 4–8 digits.', 'error'); return; }
   if(pin !== pin2){ toast('PINs do not match.', 'error'); return; }
   if(!courses.length){ toast('Assign at least one program.', 'error'); return; }
@@ -2781,11 +3347,12 @@ async function handleAddFacilitator(){
   let duplicate = false;
   const result = await mutateFacilitators((list) => {
     if(list.some(f=>f.username.toLowerCase() === username.toLowerCase())){ duplicate = true; return false; }
-    list.push({ id: uid(), name: name || username, username, pinHash, courses });
+    list.push({ id: uid(), name: name || username, username, phone, pinHash, courses });
   });
   if(!result){ toast(duplicate ? 'That username is already taken.' : 'Could not add facilitator.', 'error'); return; }
   document.getElementById('newfac_name').value = '';
   document.getElementById('newfac_username').value = '';
+  document.getElementById('newfac_phone').value = '';
   document.getElementById('newfac_pin').value = '';
   document.getElementById('newfac_pin2').value = '';
   document.querySelectorAll('.newfac-course-cb').forEach(cb=>cb.checked = false);
@@ -2846,9 +3413,9 @@ function computeAttendanceStats(courseId){
   const todayISO = formatDateISO(new Date());
   const heldDates = getSessionDates().filter(d=>d <= todayISO);
   const sessionsHeld = heldDates.length;
-  const roster = STUDENTS.filter(s=>s.course === courseId && s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate);
+  const roster = STUDENTS.filter(s=>(!courseId || s.course === courseId) && s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate);
   return roster.slice().sort((a,b)=>a.fullName.localeCompare(b.fullName)).map(s=>{
-    const records = ATTENDANCE.filter(r=>r.course === courseId && r.studentId === s.id);
+    const records = ATTENDANCE.filter(r=>r.course === s.course && r.studentId === s.id);
     const present = records.filter(r=>r.status === 'Present').length;
     const absent = records.filter(r=>r.status === 'Absent').length;
     const pct = sessionsHeld ? Math.round((present / sessionsHeld) * 100) : 0;
@@ -2866,9 +3433,11 @@ function computeAttendanceStats(courseId){
 
 function renderAttendanceTrackerTab(){
   const filterSelect = document.getElementById('attCourseFilter');
+  const hadOptions = filterSelect.options.length > 0;
   const prevValue = filterSelect.value;
   populateCourseSelect(filterSelect, false);
-  filterSelect.value = (prevValue && programById(prevValue)) ? prevValue : PROGRAMS[0].id;
+  filterSelect.insertAdjacentHTML('afterbegin', '<option value="">All Programs</option>');
+  filterSelect.value = (hadOptions && (prevValue === '' || programById(prevValue))) ? prevValue : PROGRAMS[0].id;
   const courseId = filterSelect.value;
   const rows = computeAttendanceStats(courseId);
   const sessionsHeld = getSessionDates().filter(d=>d <= formatDateISO(new Date())).length;
@@ -2887,25 +3456,27 @@ function renderAttendanceTrackerTab(){
   }
   const body = document.getElementById('attendanceTableBody');
   if(!sessionsHeld){
-    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">Classes haven't started yet — the first weekend session is Sat ${niceIntakeDateShort(CURRENT_INTAKE.startDate)}.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">Classes haven't started yet — the first weekend session is Sat ${niceIntakeDateShort(CURRENT_INTAKE.startDate)}.</div></td></tr>`;
     return;
   }
   if(rows.length === 0){
-    body.innerHTML = `<tr><td colspan="8"><div class="empty-state">No students registered for this program yet.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">${courseId ? 'No students registered for this program yet.' : 'No students registered yet.'}</div></td></tr>`;
     return;
   }
   body.innerHTML = rows.map(r=>`
     <tr>
       <td class="reg">${r.student.regNumber}</td>
       <td>${escapeHtml(r.student.fullName)}</td>
+      <td>${escapeHtml(programById(r.student.course) ? programById(r.student.course).name : '—')}</td>
       <td>${r.sessionsHeld}</td>
       <td>${r.present}</td>
       <td>${r.absent}</td>
       <td class="att-pct">${r.pct}%</td>
       <td>${r.atRisk ? `<span class="status-pill Cancelled" title="${r.streak} consecutive absences">\u26a0 At Risk</span>` : ''}</td>
-      <td><button class="btn btn-outline btn-sm" onclick="openAttendanceDetailModal('${r.student.id}','${courseId}')">View</button></td>
+      <td><button class="btn btn-outline btn-sm" onclick="openAttendanceDetailModal('${r.student.id}','${r.student.course}')">View</button></td>
     </tr>`).join('');
 }
+
 
 function openAttendanceDetailModal(studentId, courseId){
   const s = STUDENTS.find(x=>x.id === studentId);
@@ -2940,16 +3511,18 @@ function closeAttendanceDetailModal(){ document.getElementById('attendanceDetail
 
 function exportAttendanceCSV(){
   const courseId = document.getElementById('attCourseFilter').value;
-  const course = programById(courseId);
   const rows = computeAttendanceStats(courseId);
   if(rows.length === 0){ toast('No attendance data to export.', 'error'); return; }
   const headers = ['Registration Number','Full Name','Program','Sessions Held','Present','Absent','Attendance %','At Risk'];
-  const csvLines = [headers.join(',')].concat(rows.map(r=>[
-    r.student.regNumber,
-    `"${(r.student.fullName||'').replace(/"/g,'""')}"`,
-    `"${(course ? course.name : '').replace(/"/g,'""')}"`,
-    r.sessionsHeld, r.present, r.absent, r.pct, r.atRisk ? 'Yes' : 'No'
-  ].join(',')));
+  const csvLines = [headers.join(',')].concat(rows.map(r=>{
+    const rCourse = programById(r.student.course);
+    return [
+      r.student.regNumber,
+      `"${(r.student.fullName||'').replace(/"/g,'""')}"`,
+      `"${(rCourse ? rCourse.name : '').replace(/"/g,'""')}"`,
+      r.sessionsHeld, r.present, r.absent, r.pct, r.atRisk ? 'Yes' : 'No'
+    ].join(',');
+  }));
   const blob = new Blob([csvLines.join('\n')], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -3000,6 +3573,7 @@ function renderStudentsTable(){
         <td><span class="status-pill ${pay.label.replace(/\s+/g,'')}" title="${escapeHtml(payTitle)}">${pay.label}</span></td>
         <td><div class="row-actions">
           <button class="icon-btn" title="View / Print Slip" onclick="openViewSlipModal('${s.id}')"><svg class="icon" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18h12v3H6v-3zM4 9h16v7H4z"/></svg></button>
+          <button class="icon-btn" title="Send Text Message" onclick="openMessageStudentModal('${s.id}')"><svg class="icon" viewBox="0 0 24 24"><path d="M4 5h16v10H9l-4 4v-4H4z"/><path d="M8 9h8M8 12h5"/></svg></button>
           <button class="icon-btn" title="Edit" onclick="openEditModal('${s.id}')"><svg class="icon" viewBox="0 0 24 24"><path d="M4 20l1-4 11-11 3 3-11 11-4 1z"/></svg></button>
           ${canDeleteStudents ? `<button class="icon-btn danger" title="Delete" onclick="deleteStudent('${s.id}')"><svg class="icon" viewBox="0 0 24 24"><path d="M5 7h14M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2m-9 0 1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg></button>` : ''}
         </div></td>
@@ -3044,6 +3618,9 @@ function openEditModal(id){
   fieldEl('e_course').value = s.course;
   fieldEl('e_status').value = s.status;
   fieldEl('e_feePaid').value = s.feePaid || 0;
+  fieldEl('e_paymentAmount').value = '';
+  fieldEl('e_paymentNote').value = '';
+  renderPaymentHistory(s);
   document.getElementById('editModalOverlay').classList.add('open');
 }
 function closeEditModal(){ document.getElementById('editModalOverlay').classList.remove('open'); editingStudentId = null; }
@@ -3065,8 +3642,7 @@ async function saveEditModal(){
     emRel: fieldEl('e_emRel').value.trim(),
     emPhone: fieldEl('e_emPhone').value.trim(),
     course: fieldEl('e_course').value,
-    status: fieldEl('e_status').value,
-    feePaid: Math.max(0, parseFloat(fieldEl('e_feePaid').value) || 0)
+    status: fieldEl('e_status').value
   };
   const result = await mutateStudents((list) => {
     const s = list.find(x=>x.id===editId);
@@ -3079,22 +3655,64 @@ async function saveEditModal(){
   toast('Student record updated.', 'success');
 }
 
+// Fee Paid is no longer edited directly — it's the running total of the
+// itemized payments below, so the payment log stays the single source of truth.
+async function handleAddPayment(){
+  if(!editingStudentId) return;
+  const amt = parseFloat(fieldEl('e_paymentAmount').value);
+  if(!amt || amt <= 0){ toast('Enter a valid payment amount.', 'error'); return; }
+  const note = fieldEl('e_paymentNote').value.trim();
+  const editId = editingStudentId;
+  const result = await mutateStudents((list) => {
+    const s = list.find(x=>x.id===editId);
+    if(!s) return false;
+    if(!Array.isArray(s.payments)) s.payments = [];
+    s.payments.push({ amount: amt, date: new Date().toISOString(), note });
+    s.feePaid = Math.max(0, s.payments.reduce((sum,p)=>sum+(p.amount||0), 0));
+  });
+  if(!result){ toast('Could not record payment — this record may have been deleted.', 'error'); return; }
+  const s = STUDENTS.find(x=>x.id===editId);
+  fieldEl('e_paymentAmount').value = '';
+  fieldEl('e_paymentNote').value = '';
+  fieldEl('e_feePaid').value = s ? (s.feePaid || 0) : 0;
+  if(s) renderPaymentHistory(s);
+  renderAdminDashboard();
+  toast('Payment recorded.', 'success');
+}
+
+function renderPaymentHistory(s){
+  const host = document.getElementById('e_paymentHistory');
+  if(!host) return;
+  const payments = Array.isArray(s.payments) ? s.payments.slice().sort((a,b)=> new Date(b.date) - new Date(a.date)) : [];
+  if(!payments.length){
+    host.innerHTML = `<p class="sub-note">No itemized payments recorded yet.${s.feePaid > 0 ? ` (GHS ${s.feePaid.toLocaleString()} on file from before this log existed.)` : ''}</p>`;
+    return;
+  }
+  host.innerHTML = payments.map(p=>`<div class="slip-row"><span>${new Date(p.date).toLocaleDateString()}${p.note ? ' — ' + escapeHtml(p.note) : ''}</span><span>GHS ${(p.amount||0).toLocaleString()}</span></div>`).join('');
+}
+
 function openAddStudentModal(){
   ['w_fullName','w_dob','w_gender','w_religion','w_ghanaCard','w_gps','w_address','w_mobile','w_whatsapp','w_email','w_emName','w_emRel','w_emPhone'].forEach(id=>{ fieldEl(id).value = ''; });
   populateCourseSelect(fieldEl('w_course'), true);
   fieldEl('w_feePaid').value = 0;
   document.getElementById('addStudentOverlay').classList.add('open');
 }
-function closeAddStudentModal(){ document.getElementById('addStudentOverlay').classList.remove('open'); }
+function closeAddStudentModal(){ document.getElementById('addStudentOverlay').classList.remove('open'); pendingWaitlistPromoteId = null; }
 
 async function handleAddWalkInStudent(){
   const req = ['w_fullName','w_dob','w_gender','w_ghanaCard','w_address','w_mobile','w_whatsapp','w_emName','w_emRel','w_emPhone','w_course'];
   const missing = req.some(id => !fieldEl(id).value.trim());
   if(missing){ toast('Please fill in all required fields.', 'error'); return; }
   const courseId = fieldEl('w_course').value;
+  const ghanaCardNorm = normalizeGhanaCard(fieldEl('w_ghanaCard').value);
+  const mobileVal = fieldEl('w_mobile').value.trim();
   let capacityFull = false;
+  let duplicateFound = false;
   let student = null;
   const result = await mutateStudents((list) => {
+    const dup = list.find(s => s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate &&
+      (normalizeGhanaCard(s.ghanaCard) === ghanaCardNorm || s.mobile === mobileVal));
+    if(dup){ duplicateFound = true; return false; }
     const taken = list.filter(s => s.course === courseId && s.status !== 'Cancelled').length;
     if(taken >= getCapacity(courseId)){ capacityFull = true; return false; }
     student = {
@@ -3109,7 +3727,7 @@ async function handleAddWalkInStudent(){
       photo: null,
       gpsAddress: fieldEl('w_gps').value.trim(),
       address: fieldEl('w_address').value.trim(),
-      mobile: fieldEl('w_mobile').value.trim(),
+      mobile: mobileVal,
       whatsapp: fieldEl('w_whatsapp').value.trim(),
       email: fieldEl('w_email').value.trim(),
       emName: fieldEl('w_emName').value.trim(),
@@ -3117,18 +3735,35 @@ async function handleAddWalkInStudent(){
       emPhone: fieldEl('w_emPhone').value.trim(),
       course: courseId,
       status: 'Registered',
-      feePaid: Math.max(0, parseFloat(fieldEl('w_feePaid').value) || 0),
+      feePaid: 0,
+      payments: [],
       intakeStart: CURRENT_INTAKE.startDate
     };
+    const feePaidVal = Math.max(0, parseFloat(fieldEl('w_feePaid').value) || 0);
+    if(feePaidVal > 0){
+      student.payments.push({ amount: feePaidVal, date: new Date().toISOString(), note: 'Initial payment at registration' });
+      student.feePaid = feePaidVal;
+    }
     list.push(student);
   });
   if(!result){
+    if(duplicateFound){ toast('This Ghana Card or mobile number is already registered for the current intake.', 'error'); return; }
     toast(capacityFull ? 'Sorry, this program is full.' : 'Could not save — storage may be unavailable.', 'error');
     return;
+  }
+  if(pendingWaitlistPromoteId){
+    const promotedId = pendingWaitlistPromoteId;
+    pendingWaitlistPromoteId = null;
+    await mutateWaitlist((list) => {
+      const idx = list.findIndex(w=>w.id===promotedId);
+      if(idx === -1) return false;
+      list.splice(idx, 1);
+    });
   }
   closeAddStudentModal();
   renderAdminDashboard();
   toast('Walk-in student added — ' + student.regNumber, 'success');
+  notifyFacilitatorSms(student);
 }
 
 async function deleteStudent(id){
@@ -3144,6 +3779,50 @@ async function deleteStudent(id){
   if(!result){ toast('Could not delete — the record may already be gone.', 'error'); return; }
   renderAdminDashboard();
   toast('Registration deleted.');
+}
+
+/* ---------------------------- ADMIN: MESSAGE STUDENT ----------------------------
+   Sends a free-text SMS to one student via the sendCustomSms Cloud Function. The
+   admin's PIN is re-entered and verified server-side on every send, since the
+   app's admin login is otherwise only a client-side check — see the comment on
+   sendCustomSms in functions/index.js. */
+function openMessageStudentModal(id){
+  const s = STUDENTS.find(x=>x.id===id);
+  if(!s) return;
+  if(!s.mobile){ toast('This student has no mobile number on file.', 'error'); return; }
+  messageStudentId = id;
+  document.getElementById('ms_studentName').textContent = s.fullName + ' — ' + s.regNumber + ' (' + s.mobile + ')';
+  document.getElementById('ms_message').value = '';
+  document.getElementById('ms_pin').value = '';
+  document.getElementById('messageStudentOverlay').classList.add('open');
+}
+function closeMessageStudentModal(){ document.getElementById('messageStudentOverlay').classList.remove('open'); messageStudentId = null; }
+
+async function confirmSendStudentMessage(){
+  const s = STUDENTS.find(x=>x.id===messageStudentId);
+  if(!s) return;
+  const message = document.getElementById('ms_message').value.trim();
+  const pin = document.getElementById('ms_pin').value.trim();
+  if(!message){ toast('Write a message first.', 'error'); return; }
+  if(!pin){ toast('Enter your admin PIN to confirm.', 'error'); return; }
+  if(!functionsRef){ toast('Messaging is not set up for this deployment.', 'error'); return; }
+  const btn = document.getElementById('msSendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try{
+    await authReady;
+    const pinHash = await sha256(pin);
+    const send = functionsRef.httpsCallable('sendCustomSms');
+    const res = await send({ regNumber: s.regNumber, message, adminUsername: currentAdminUsername, adminPinHash: pinHash });
+    if(res.data && res.data.sent){
+      toast('Text sent to ' + s.fullName + '.', 'success');
+      closeMessageStudentModal();
+    } else {
+      toast('Could not send — this student has no valid phone number on file.', 'error');
+    }
+  }catch(e){
+    toast((e && e.code === 'permission-denied') ? 'Incorrect PIN.' : 'Could not send the text message.', 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Send Text';
 }
 
 /* ---------------------------- ADMIN: EXPORTS ---------------------------- */
@@ -3254,11 +3933,14 @@ async function init(){
   await loadAllData();
   renderProgramGrids();
   renderTrainersAndGallery();
+  renderTestimonials();
   populateCourseSelect(document.getElementById('f_course'), true);
   applyIntakeTextsToDOM();
+  renderSiteAnnouncements();
   updateCountdowns();
   setInterval(updateCountdowns, 1000);
   renderAdminGate();
+  resetIdleTimer();
 }
 init();
 </script>

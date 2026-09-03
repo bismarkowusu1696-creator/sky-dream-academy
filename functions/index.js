@@ -2,6 +2,8 @@
  * Cloud Functions for SkyDream Skills Training Academy.
  *
  * sendFacilitatorWelcomeSms: called by the client right after a student registers.
+ * Always sends the student a thank-you/registration-confirmation text, and appends
+ * the assigned facilitator's name/contact when one already exists for their course.
  * The student's registration number is the only input trusted from the browser —
  * the student's phone number and the facilitator's name/contact are both looked up
  * here in Firestore, so a malicious caller can't use this function to send arbitrary
@@ -24,6 +26,24 @@ const STORAGE_COLLECTION = 'sdta_storage';
 const STUDENTS_KEY = 'sdta_students';
 const FACILITATORS_KEY = 'sdta_facilitators';
 const ADMINS_KEY = 'sdta_admins';
+
+// Mirrors the `id -> name` pairs from the PROGRAMS array in skydream-academy.html,
+// so the thank-you SMS can name the program without the client sending free text.
+const COURSE_NAMES = {
+  'household-chemicals': 'Household Chemicals Production',
+  'hair-dressing': 'Hair Dressing',
+  'cosmetology': 'Cosmetology',
+  'electricals': 'Electricals',
+  'floral-decor': 'Floral Decor',
+  'fashion-design': 'Fashion Design',
+  'beading': 'Beading',
+  'french': 'French Language',
+  'korean': 'Korean Language',
+  'pastries': 'Pastries & Baking',
+  'graphic-design': 'Graphic Design',
+  'barbering': 'Barbering',
+  'accounting': 'Accounting'
+};
 
 // Ghana local numbers look like 0XXXXXXXXX; Twilio requires E.164 (+233XXXXXXXXX).
 function toE164Ghana(local){
@@ -58,18 +78,19 @@ exports.sendFacilitatorWelcomeSms = onCall(
       return { sent: false, reason: 'already-sent' };
     }
 
-    const facilitators = facilitatorsSnap.exists ? JSON.parse(facilitatorsSnap.data().value || '[]') : [];
-    const facilitator = facilitators.find(f => Array.isArray(f.courses) && f.courses.includes(student.course) && f.phone);
-    if(!facilitator){
-      return { sent: false, reason: 'no-facilitator' };
-    }
-
     const to = toE164Ghana(student.mobile);
     if(!to){
       return { sent: false, reason: 'no-student-number' };
     }
 
-    const message = `Hi ${student.fullName}, welcome to SkyDream Skills Training Academy! Your facilitator is ${facilitator.name} \u2014 contact: ${facilitator.phone}.`;
+    const facilitators = facilitatorsSnap.exists ? JSON.parse(facilitatorsSnap.data().value || '[]') : [];
+    const facilitator = facilitators.find(f => Array.isArray(f.courses) && f.courses.includes(student.course) && f.phone);
+    const courseName = COURSE_NAMES[student.course] || student.course;
+
+    let message = `Thank you for registering with SkyDream Skills Training Academy, ${student.fullName}! Your registration number for ${courseName} is ${student.regNumber}.`;
+    if(facilitator){
+      message += ` Your facilitator is ${facilitator.name} \u2014 contact: ${facilitator.phone}.`;
+    }
 
     try{
       const client = twilio(TWILIO_ACCOUNT_SID.value(), TWILIO_AUTH_TOKEN.value());
@@ -90,7 +111,7 @@ exports.sendFacilitatorWelcomeSms = onCall(
       }
     });
 
-    return { sent: true, facilitatorName: facilitator.name };
+    return { sent: true, facilitatorName: facilitator ? facilitator.name : null };
   }
 );
 

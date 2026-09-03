@@ -743,6 +743,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
         <div class="slip-row"><span>Status</span><span id="lookupStatus">—</span></div>
         <div class="slip-row"><span>Payment</span><span id="lookupPayment">—</span></div>
         <div class="slip-row"><span>Attendance</span><span id="lookupAttendance">—</span></div>
+        <div id="lookupAttendanceDetail" style="margin-top:8px;"></div>
       </div>
     </div>
   </div>
@@ -2120,7 +2121,7 @@ function validateRegForm(){
   return ok;
 }
 
-function nextRegNumber(courseId, list){
+function nextRegNumber(courseId, list, intakeStartISO){
   list = list || STUDENTS;
   const code = COURSE_CODES[courseId] || courseId.slice(0,2).toUpperCase();
   const prefix = 'SD' + code;
@@ -2131,28 +2132,34 @@ function nextRegNumber(courseId, list){
   }).filter(n=>n!==null));
   let idx = 1;
   while(used.has(idx)) idx++;
-  const intakeDate = currentIntakeDate();
+  // Defaults to the live intake (new registrations); pass intakeStartISO to preserve
+  // a specific student's own intake when regenerating a number for an existing record.
+  const intakeDate = intakeStartISO ? parseISODateUTC(intakeStartISO) : currentIntakeDate();
   const month = String(intakeDate.getUTCMonth()+1).padStart(2,'0');
   const year = intakeDate.getUTCFullYear();
   return prefix + String(idx).padStart(3,'0') + '/' + month + '/' + year;
 }
 
-/* ---------------------------- FACILITATOR SMS NOTIFICATION ----------------------------
-   Fires a Cloud Function that texts the newly registered student the name and contact
-   number of the facilitator assigned to their program. Runs in the background — it must
-   never block or fail the registration itself, so errors are only logged, not surfaced.
+/* ---------------------------- REGISTRATION THANK-YOU SMS ----------------------------
+   Fires a Cloud Function that always texts a newly registered student a thank-you/
+   confirmation message, plus their facilitator's name and contact number when one is
+   already assigned to their program. Runs in the background — it must never block or
+   fail the registration itself, so errors are only logged, not surfaced.
    ------------------------------------------------------------------------ */
-async function notifyFacilitatorSms(student){
+async function notifyRegistrationSms(student){
   if(!functionsRef) return;
   try{
     await authReady;
     const send = functionsRef.httpsCallable('sendFacilitatorWelcomeSms');
     const res = await send({ regNumber: student.regNumber });
     if(res.data && res.data.sent){
-      toast("Facilitator contact sent to the student's phone.", 'success');
+      const msg = res.data.facilitatorName
+        ? `Thank-you text sent to the student's phone (facilitator: ${res.data.facilitatorName}).`
+        : "Thank-you text sent to the student's phone.";
+      toast(msg, 'success');
     }
   }catch(e){
-    console.error('Facilitator SMS notification failed.', e);
+    console.error('Registration SMS notification failed.', e);
   }
 }
 
@@ -2234,7 +2241,7 @@ document.getElementById('regForm').addEventListener('submit', async function(e){
   document.getElementById('regConfirm').style.display = 'block';
   window.scrollTo({top:0, behavior:'auto'});
   toast('Registration saved — ' + student.regNumber, 'success');
-  notifyFacilitatorSms(student);
+  notifyRegistrationSms(student);
 
   submitBtn.disabled = false; submitBtn.textContent = 'Submit Registration';
 });
@@ -2343,7 +2350,20 @@ function studentAttendanceSummary(student){
   const present = records.filter(r=>r.status === 'Present').length;
   const absent = records.filter(r=>r.status === 'Absent').length;
   const pct = heldDates.length ? Math.round((present / heldDates.length) * 100) : 0;
-  return { sessionsHeld: heldDates.length, present, absent, pct };
+  return { sessionsHeld: heldDates.length, present, absent, pct, heldDates, records };
+}
+
+// Public per-session chip strip for the Check Status page — deliberately omits
+// facilitator notes (those may contain internal remarks), unlike the admin modal.
+function renderLookupAttendanceChips(att){
+  if(!att.sessionsHeld) return '';
+  const chips = att.heldDates.map(d=>{
+    const rec = att.records.find(r=>r.date === d);
+    const cls = rec ? (rec.status === 'Present' ? 'present' : 'absent') : 'unmarked';
+    const label = rec ? (rec.status === 'Present' ? 'P' : 'A') : '–';
+    return `<span class="att-chip ${cls}" title="${escapeHtml(niceSessionLabel(d))}">${label}</span>`;
+  }).join('');
+  return chips + '<p class="hint" style="display:block;margin-top:6px;">P = Present, A = Absent, – = Not yet marked</p>';
 }
 
 // Deliberately requires both full name AND mobile number (not just the name,
@@ -2377,6 +2397,7 @@ function handleLookupStudent(){
   document.getElementById('lookupAttendance').textContent = att.sessionsHeld
     ? `${att.present} present / ${att.absent} absent of ${att.sessionsHeld} session(s) held (${att.pct}%)`
     : 'No sessions held yet for your intake.';
+  document.getElementById('lookupAttendanceDetail').innerHTML = renderLookupAttendanceChips(att);
 }
 
 /* ---------------------------- ADMIN: AUTH ---------------------------- */
@@ -3195,7 +3216,7 @@ function renderFacilitatorRoster(){
     return;
   }
   if(!date){
-    body.innerHTML = `<tr><td colspan="4"><div class="empty-state">No session dates yet — weekend classes begin Sat ${niceIntakeDateShort(CURRENT_INTAKE.startDate)}.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="4"><div class="empty-state">No session dates yet — weekend classes begin Sat ${niceIntakeDateShort(classesStartFor(CURRENT_INTAKE.startDate))}.</div></td></tr>`;
     summary.innerHTML = ''; countLabel.textContent = '';
     return;
   }
@@ -3456,7 +3477,7 @@ function renderAttendanceTrackerTab(){
   }
   const body = document.getElementById('attendanceTableBody');
   if(!sessionsHeld){
-    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">Classes haven't started yet — the first weekend session is Sat ${niceIntakeDateShort(CURRENT_INTAKE.startDate)}.</div></td></tr>`;
+    body.innerHTML = `<tr><td colspan="9"><div class="empty-state">Classes haven't started yet — the first weekend session is Sat ${niceIntakeDateShort(classesStartFor(CURRENT_INTAKE.startDate))}.</div></td></tr>`;
     return;
   }
   if(rows.length === 0){
@@ -3627,6 +3648,7 @@ function closeEditModal(){ document.getElementById('editModalOverlay').classList
 
 async function saveEditModal(){
   const editId = editingStudentId;
+  const newCourse = fieldEl('e_course').value;
   const updates = {
     fullName: fieldEl('e_fullName').value.trim(),
     dob: fieldEl('e_dob').value,
@@ -3641,18 +3663,24 @@ async function saveEditModal(){
     emName: fieldEl('e_emName').value.trim(),
     emRel: fieldEl('e_emRel').value.trim(),
     emPhone: fieldEl('e_emPhone').value.trim(),
-    course: fieldEl('e_course').value,
+    course: newCourse,
     status: fieldEl('e_status').value
   };
   const result = await mutateStudents((list) => {
     const s = list.find(x=>x.id===editId);
     if(!s) return false;
+    // The course's letter code is baked into the reg number (e.g. SDGD.../SDKL...),
+    // so it must be regenerated whenever the program changes, not left stale.
+    // Keeps the student's own intake date (not "today") in the regenerated number.
+    if(s.course !== newCourse){
+      updates.regNumber = nextRegNumber(newCourse, list, studentIntakeStart(s));
+    }
     Object.assign(s, updates);
   });
   if(!result){ toast('Could not save — this record may have been deleted by another admin.', 'error'); return; }
   closeEditModal();
   renderAdminDashboard();
-  toast('Student record updated.', 'success');
+  toast(updates.regNumber ? `Student record updated — new registration number ${updates.regNumber}.` : 'Student record updated.', 'success');
 }
 
 // Fee Paid is no longer edited directly — it's the running total of the
@@ -3763,7 +3791,7 @@ async function handleAddWalkInStudent(){
   closeAddStudentModal();
   renderAdminDashboard();
   toast('Walk-in student added — ' + student.regNumber, 'success');
-  notifyFacilitatorSms(student);
+  notifyRegistrationSms(student);
 }
 
 async function deleteStudent(id){

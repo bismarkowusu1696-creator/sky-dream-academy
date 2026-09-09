@@ -1307,7 +1307,11 @@ try{
     if(firebase.appCheck){ firebase.appCheck().activate(RECAPTCHA_V3_SITE_KEY, true); }
     firestoreDb = firebase.firestore();
     functionsRef = firebase.functions();
-    authReady = firebase.auth().signInAnonymously().catch(e=>{ console.error('Anonymous sign-in failed.', e); });
+    // Race against a timeout so a stalled App Check/token exchange can't block the whole app for minutes.
+    authReady = Promise.race([
+      firebase.auth().signInAnonymously().catch(e=>{ console.error('Anonymous sign-in failed.', e); }),
+      new Promise(resolve=>setTimeout(resolve, 6000))
+    ]);
   }
 }catch(e){ console.error('Firebase init failed, falling back to local-only storage.', e); firestoreDb = null; }
 

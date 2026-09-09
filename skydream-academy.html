@@ -1539,6 +1539,20 @@ const INTAKE_CALENDAR_BACKFILL = {
 
 /* ---------------------------- UTILITIES ---------------------------- */
 function uid(){ return 'stu_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function wait(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+// Retries an aborted/failed transact()-based mutation with jittered backoff, so a burst
+// of people submitting at the same moment resolves via retry instead of a user-facing
+// error. shouldStop(attemptResult) opts out early once a real (non-transient) outcome —
+// e.g. duplicate found, course full — has been decided, since retrying won't change that.
+async function mutateWithRetry(runAttempt, shouldStop, maxAttempts){
+  for(let attempt = 1; attempt <= maxAttempts; attempt++){
+    const outcome = await runAttempt();
+    if(outcome || shouldStop()) return outcome;
+    if(attempt < maxAttempts) await wait(250 * attempt + Math.random() * 250);
+  }
+  return null;
+}
 
 async function sha256(text){
   const enc = new TextEncoder().encode(text);
@@ -2197,42 +2211,48 @@ document.getElementById('regForm').addEventListener('submit', async function(e){
   let capacityFull = false;
   let duplicateFound = false;
   let student = null;
-  const result = await mutateStudents((list) => {
-    // Block a second registration from the same person (same Ghana Card or
-    // mobile number) for the intake currently taking registrations.
-    const dup = list.find(s => s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate &&
-      (normalizeGhanaCard(s.ghanaCard) === ghanaCardNorm || s.mobile === mobileVal));
-    if(dup){ duplicateFound = true; return false; }
-    // Re-check capacity against the latest server data, so two people
-    // registering for the last seat at the same moment can't both get in.
-    const taken = list.filter(s => s.course === courseId && s.status !== 'Cancelled').length;
-    if(taken >= getCapacity(courseId)){ capacityFull = true; return false; }
-    student = {
-      id: uid(),
-      regNumber: nextRegNumber(courseId, list),
-      regDate: new Date().toISOString(),
-      fullName: fieldEl('f_fullName').value.trim(),
-      dob: fieldEl('f_dob').value,
-      gender: fieldEl('f_gender').value,
-      religion: fieldEl('f_religion').value,
-      ghanaCard: fieldEl('f_ghanaCard').value.trim(),
-      photo: uploadedPhotoDataUrl || null,
-      gpsAddress: fieldEl('f_gps').value.trim(),
-      address: fieldEl('f_address').value.trim(),
-      mobile: mobileVal,
-      whatsapp: fieldEl('f_whatsapp').value.trim(),
-      email: fieldEl('f_email').value.trim(),
-      emName: fieldEl('f_emName').value.trim(),
-      emRel: fieldEl('f_emRel').value.trim(),
-      emPhone: fieldEl('f_emPhone').value.trim(),
-      course: courseId,
-      status: 'Registered',
-      feePaid: 0,
-      payments: [],
-      intakeStart: CURRENT_INTAKE.startDate
-    };
-    list.push(student);
-  });
+  // Up to 5 attempts with jittered backoff: if many people submit in the same instant,
+  // Firestore transaction contention on the shared student list resolves via retry here
+  // instead of surfacing a spurious "could not save" error to a legitimate registrant.
+  const result = await mutateWithRetry(async () => {
+    duplicateFound = false; capacityFull = false; student = null;
+    return await mutateStudents((list) => {
+      // Block a second registration from the same person (same Ghana Card or
+      // mobile number) for the intake currently taking registrations.
+      const dup = list.find(s => s.status !== 'Cancelled' && studentIntakeStart(s) === CURRENT_INTAKE.startDate &&
+        (normalizeGhanaCard(s.ghanaCard) === ghanaCardNorm || s.mobile === mobileVal));
+      if(dup){ duplicateFound = true; return false; }
+      // Re-check capacity against the latest server data, so two people
+      // registering for the last seat at the same moment can't both get in.
+      const taken = list.filter(s => s.course === courseId && s.status !== 'Cancelled').length;
+      if(taken >= getCapacity(courseId)){ capacityFull = true; return false; }
+      student = {
+        id: uid(),
+        regNumber: nextRegNumber(courseId, list),
+        regDate: new Date().toISOString(),
+        fullName: fieldEl('f_fullName').value.trim(),
+        dob: fieldEl('f_dob').value,
+        gender: fieldEl('f_gender').value,
+        religion: fieldEl('f_religion').value,
+        ghanaCard: fieldEl('f_ghanaCard').value.trim(),
+        photo: uploadedPhotoDataUrl || null,
+        gpsAddress: fieldEl('f_gps').value.trim(),
+        address: fieldEl('f_address').value.trim(),
+        mobile: mobileVal,
+        whatsapp: fieldEl('f_whatsapp').value.trim(),
+        email: fieldEl('f_email').value.trim(),
+        emName: fieldEl('f_emName').value.trim(),
+        emRel: fieldEl('f_emRel').value.trim(),
+        emPhone: fieldEl('f_emPhone').value.trim(),
+        course: courseId,
+        status: 'Registered',
+        feePaid: 0,
+        payments: [],
+        intakeStart: CURRENT_INTAKE.startDate
+      };
+      list.push(student);
+    });
+  }, () => duplicateFound || capacityFull, 5);
 
   if(!result){
     if(duplicateFound){
@@ -2277,7 +2297,7 @@ async function joinWaitlist(courseId){
     course: courseId,
     date: new Date().toISOString()
   };
-  const result = await mutateWaitlist((list) => { list.push(entry); });
+  const result = await mutateWithRetry(() => mutateWaitlist((list) => { list.push(entry); }), () => false, 5);
   if(!result){ toast('This program is full and we could not add you to the waitlist — please try again.', 'error'); return; }
   toast("This program is full — you've been added to the waitlist. We'll contact you if a seat opens.", 'success');
   resetRegForm();

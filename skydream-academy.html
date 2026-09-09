@@ -453,7 +453,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <div class="why-grid">
         <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><h4>Weekend Classes</h4><p>Train Saturdays and Sundays without leaving your job or school.</p></div>
         <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z"/></svg><h4>Job-Ready Skills</h4><p>Every program is hands-on, built around real tools and real client work.</p></div>
-        <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><h4>Trusted & Affordable</h4><p>Clear program fees and a straightforward registration process.</p></div>
+        <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg><h4>Trusted & Affordable</h4><p>Just a one-time GHS 50 registration fee — no course fees, ever.</p></div>
         <div class="why-card"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.5-2 2-3 3-3s2.5 1 3 3"/><path d="M14 10h4M14 13h4"/></svg><h4>Instant Registration</h4><p>Get a verified registration number and printable badge the moment you register.</p></div>
       </div>
     </div>
@@ -534,7 +534,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <div class="faq-list">
         <div class="faq-item"><h4>How do I register?</h4><p>Use the Register page to fill in your details online — you'll get a registration number and a printable slip immediately. You can also register in person at the training centre.</p></div>
         <div class="faq-item"><h4>What do I need to register?</h4><p>Your Ghana Card number, a valid mobile and WhatsApp number, a residential address, and an emergency contact. A passport photo is optional.</p></div>
-        <div class="faq-item"><h4>How much are the fees, and how do I pay?</h4><p>Fees vary by program — see the Programs page or ask at registration. You can pay in full or in installments; the office keeps a running record of what you've paid and what's outstanding.</p></div>
+        <div class="faq-item"><h4>How much are the fees, and how do I pay?</h4><p>We only charge a one-time registration fee of GHS 50 — there are no course fees on top of that. You can pay in full or in installments; the office keeps a running record of what you've paid and what's outstanding.</p></div>
         <div class="faq-item"><h4>What if my program is full?</h4><p>You can still select it when registering — you'll be added to a waitlist and contacted as soon as a seat opens up.</p></div>
         <div class="faq-item"><h4>What days and times are classes held?</h4><p>Every Saturday (1:00 PM – 3:00 PM) and Sunday (9:00 AM – 2:00 PM). See the Schedule page for the current intake's exact term dates.</p></div>
         <div class="faq-item"><h4>How do I check my registration or payment status?</h4><p>Go to Check Status and enter your full name and mobile number to see your program, payment and attendance status.</p></div>
@@ -549,7 +549,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 <section class="view-section" id="view-programs">
   <div class="section">
     <div class="container">
-      <div class="section-head"><span class="eyebrow">Programs</span><h2>13 programs to choose from</h2><p>Every program includes a description, duration, skills you'll learn and career paths it opens up. Tap a card to see full details, or register straight away.</p></div>
+      <div class="section-head"><span class="eyebrow">Programs</span><h2>13 programs to choose from</h2><p>Every program includes a description, duration, skills you'll learn and career paths it opens up. Tap a card to see full details, or register straight away. Registration is a flat GHS 50 per student — there are no course fees.</p></div>
       <div class="programs-grid" id="fullProgramsGrid"></div>
     </div>
   </div>
@@ -594,10 +594,11 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 <section class="view-section" id="view-register">
   <div class="section">
     <div class="container">
-      <div class="section-head" style="margin:0 auto 32px;text-align:center;max-width:600px;"><span class="eyebrow">Online Registration</span><h2>Reserve your seat for the <span id="regIntakeHeadingDate">3 Oct 2026</span> intake</h2><p>Fields marked <span class="req">*</span> are required. Registration takes about 3 minutes.</p></div>
+      <div class="section-head" style="margin:0 auto 32px;text-align:center;max-width:600px;"><span class="eyebrow">Online Registration</span><h2>Reserve your seat for the <span id="regIntakeHeadingDate">3 Oct 2026</span> intake</h2><p>Fields marked <span class="req">*</span> are required. Registration takes about 3 minutes. A one-time GHS 50 registration fee applies — there are no course fees.</p></div>
 
       <!-- FORM VIEW -->
       <form id="regForm" class="form-card" novalidate>
+        <div class="visually-hidden" aria-hidden="true"><label>Leave this field blank<input type="text" id="f_extra" name="extra_details" tabindex="-1" autocomplete="off"></label></div>
         <div class="form-step">
           <div class="form-step-head"><span class="form-step-num">1</span><h4>Personal Information</h4></div>
           <div class="form-grid">
@@ -714,6 +715,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
         </div>
         <div>
           <form id="contactForm" class="form-card" style="padding:24px;">
+            <div class="visually-hidden" aria-hidden="true"><label>Leave this field blank<input type="text" id="c_extra" name="extra_details" tabindex="-1" autocomplete="off"></label></div>
             <div class="field full" style="margin-bottom:14px;"><label>Name <span class="req">*</span></label><input type="text" id="c_name" required></div>
             <div class="field full" style="margin-bottom:14px;"><label>Email <span class="req">*</span></label><input type="email" id="c_email" required></div>
             <div class="field full" style="margin-bottom:14px;"><label>Message <span class="req">*</span></label><textarea id="c_message" rows="4" required></textarea></div>
@@ -796,7 +798,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
           <button class="admin-tab-btn" id="tabBtn-registrations" onclick="switchAdminTab('registrations')">Registrations</button>
           <button class="admin-tab-btn" id="tabBtn-attendance" onclick="switchAdminTab('attendance')">Attendance Tracker</button>
           <button class="admin-tab-btn" id="tabBtn-facilitators" onclick="switchAdminTab('facilitators')">Facilitators</button>
-          <button class="admin-tab-btn" id="tabBtn-capacity" onclick="switchAdminTab('capacity')">Capacity & Fees</button>
+          <button class="admin-tab-btn" id="tabBtn-capacity" onclick="switchAdminTab('capacity')">Capacity</button>
           <button class="admin-tab-btn" id="tabBtn-messages" onclick="switchAdminTab('messages')">Messages<span class="msg-badge" id="msgBadge" style="display:none;"></span></button>
           <button class="admin-tab-btn" id="tabBtn-broadcast" onclick="switchAdminTab('broadcast')">Announcements</button>
           <button class="admin-tab-btn" id="tabBtn-users" onclick="switchAdminTab('users')">Admin Users</button>
@@ -904,7 +906,8 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 
         <div class="admin-tab-panel" id="adminTab-capacity">
           <div class="admin-user-form">
-            <h3>Program Capacity & Fees</h3>
+            <h3>Program Capacity</h3>
+            <p class="sub-note">Every student pays the same one-time GHS 50 registration fee — there are no per-course fees, so only seat capacity is configurable here.</p>
             <div id="capacityList"></div>
             <button class="btn btn-primary btn-sm" onclick="handleSaveCapacities()" style="margin-top:14px;">Save Changes</button>
           </div>
@@ -1103,7 +1106,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <div class="field full">
         <label>Fee Paid (GHS)</label>
         <input type="number" min="0" step="0.01" id="e_feePaid" readonly style="background:var(--sky-tint);cursor:not-allowed;">
-        <span class="hint">Total is calculated from the payments below — use "Add Payment" to record a new one instead of editing this number.</span>
+        <span class="hint">Registration fee is a flat GHS 50 — there are no course fees. This total is calculated from the payments below; use "Add Payment" to record a new one instead of editing this number.</span>
         <div class="field-row" style="margin-top:10px;">
           <div class="field"><label>Add Payment (GHS)</label><input type="number" min="0" step="0.01" id="e_paymentAmount" placeholder="0.00"></div>
           <div class="field"><label>Note (optional)</label><input type="text" id="e_paymentNote" placeholder="e.g. Cash, Mobile Money"></div>
@@ -1140,7 +1143,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <div class="field"><label>Emergency Relationship <span class="req">*</span></label><input type="text" id="w_emRel" placeholder="e.g. Mother, Uncle"></div>
       <div class="field"><label>Emergency Phone <span class="req">*</span></label><input type="tel" id="w_emPhone" placeholder="024XXXXXXX"></div>
       <div class="field"><label>Program <span class="req">*</span></label><select id="w_course"></select></div>
-      <div class="field"><label>Fee Paid (GHS)</label><input type="number" min="0" step="0.01" id="w_feePaid" value="0"></div>
+      <div class="field"><label>Fee Paid (GHS)</label><input type="number" min="0" step="0.01" id="w_feePaid" value="0"><span class="hint">Flat GHS 50 registration fee — no course fees.</span></div>
     </div>
     <div class="form-foot">
       <button class="btn btn-outline" onclick="closeAddStudentModal()">Cancel</button>
@@ -1256,6 +1259,7 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <script>
 /* ======================================================================
    SKYDREAM SKILLS TRAINING ACADEMY — APP SCRIPT
@@ -1279,8 +1283,11 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "394576038705",
   appId: "1:394576038705:web:2d055fb58a02c4b7cafe10"
 };
+// Public reCAPTCHA v3 site key; its paired secret key lives only in Firebase Console > App Check, never in source.
+const RECAPTCHA_V3_SITE_KEY = '6LdVfaktAAAAAFDzKPeauX0PSLzE6H7cRd6BZUsp';
 const STORAGE_COLLECTION = 'sdta_storage';
-// Keys that must stay on this device only (who is logged in here), never shared via Firestore.
+// Keys that must stay on this device only (who is logged in here), never shared via
+// Firestore — firestore.rules also rejects these two keys outright as defense in depth.
 const DEVICE_ONLY_KEYS = new Set(['sdta_admin_session', 'sdta_facilitator_session']);
 
 let firestoreDb = null;
@@ -1293,6 +1300,11 @@ let authReady = Promise.resolve();
 try{
   if(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== 'YOUR_API_KEY' && window.firebase){
     firebase.initializeApp(FIREBASE_CONFIG);
+    // Debug token only activates on localhost, and even then still needs registering in Firebase Console — never a prod bypass.
+    if(location.hostname === 'localhost' || location.hostname === '127.0.0.1'){
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+    if(firebase.appCheck){ firebase.appCheck().activate(RECAPTCHA_V3_SITE_KEY, true); }
     firestoreDb = firebase.firestore();
     functionsRef = firebase.functions();
     authReady = firebase.auth().signInAnonymously().catch(e=>{ console.error('Anonymous sign-in failed.', e); });
@@ -1372,12 +1384,12 @@ function getCapacity(courseId){
   return (typeof v === 'number' && v > 0) ? v : DEFAULT_CAPACITY;
 }
 
-let PROGRAM_FEES = {};
+// Flat, organisation-wide registration fee — there are no separate per-course fees.
+const REGISTRATION_FEE = 50;
 function getFee(courseId){
-  const v = PROGRAM_FEES[courseId];
-  return (typeof v === 'number' && v > 0) ? v : 0;
+  return REGISTRATION_FEE;
 }
-// Fee status derived at render time from the course's current fee, so a fee
+// Fee status derived at render time from the current registration fee, so a fee
 // change is reflected for everyone rather than being frozen at registration time.
 function paymentStatus(student){
   const fee = getFee(student.course);
@@ -1631,10 +1643,6 @@ async function loadAllData(){
     PROGRAM_CAPACITIES = cap && cap.value ? JSON.parse(cap.value) : {};
   }catch(e){ PROGRAM_CAPACITIES = {}; }
   try{
-    const fees = await window.storage.get('sdta_fees', true);
-    PROGRAM_FEES = fees && fees.value ? JSON.parse(fees.value) : {};
-  }catch(e){ PROGRAM_FEES = {}; }
-  try{
     const f = await window.storage.get('sdta_facilitators', true);
     FACILITATOR_ACCOUNTS = f && f.value ? JSON.parse(f.value) : [];
   }catch(e){ FACILITATOR_ACCOUNTS = []; }
@@ -1696,20 +1704,6 @@ async function saveCapacities(changedIds){
   });
   if(res.aborted){ toast('Could not save program capacities.', 'error'); return; }
   PROGRAM_CAPACITIES = JSON.parse(res.value);
-}
-
-async function saveFees(changedIds){
-  const ids = changedIds || PROGRAMS.map(p=>p.id);
-  const res = await window.storage.transact('sdta_fees', (raw) => {
-    const merged = raw ? JSON.parse(raw) : {};
-    ids.forEach(id=>{
-      if(Object.prototype.hasOwnProperty.call(PROGRAM_FEES, id)) merged[id] = PROGRAM_FEES[id];
-      else delete merged[id];
-    });
-    return JSON.stringify(merged);
-  });
-  if(res.aborted){ toast('Could not save program fees.', 'error'); return; }
-  PROGRAM_FEES = JSON.parse(res.value);
 }
 
 async function saveAdminSession(username){
@@ -1831,7 +1825,10 @@ async function deleteAllAdmins(){
 }
 
 /* ---------------------------- NAVIGATION ---------------------------- */
+const VALID_VIEWS = ['home','about','programs','schedule','register','contact','lookup','admin','facilitator'];
+
 function showView(view){
+  if(!VALID_VIEWS.includes(view)) view = 'home';
   document.querySelectorAll('.view-section').forEach(s=>s.classList.remove('active'));
   const target = document.getElementById('view-' + view);
   if(target) target.classList.add('active');
@@ -1840,11 +1837,19 @@ function showView(view){
   window.scrollTo({top:0, behavior:'auto'});
   if(view === 'admin') renderAdminGate();
   if(view === 'facilitator') renderFacilitatorGate();
+  if(window.location.hash !== '#' + view) history.replaceState(null, '', '#' + view);
 }
 
 function toggleMobileNav(){
   document.getElementById('navLinks').classList.toggle('open');
 }
+
+/* Deep-link support: e.g. skydream-academy.html#register opens straight to that view */
+function applyViewFromHash(){
+  const hash = window.location.hash.replace('#','').trim();
+  if(VALID_VIEWS.includes(hash)) showView(hash);
+}
+window.addEventListener('hashchange', applyViewFromHash);
 
 /* ---------------------------- RENDER: PROGRAM CARDS ---------------------------- */
 function programCardHTML(p, compact){
@@ -2163,8 +2168,18 @@ async function notifyRegistrationSms(student){
   }
 }
 
+// Anti-spam: f_extra is a hidden field real visitors never fill in, and genuine
+// visitors take longer than this to fill the form — bots that submit instantly
+// or blindly fill every input get silently rejected instead of creating a registration.
+const REG_FORM_MIN_FILL_MS = 1500;
+let regFormShownAt = Date.now();
+
 document.getElementById('regForm').addEventListener('submit', async function(e){
   e.preventDefault();
+  if(fieldEl('f_extra').value.trim() || (Date.now() - regFormShownAt) < REG_FORM_MIN_FILL_MS){
+    toast('Please try again.', 'error');
+    return;
+  }
   if(!validateRegForm()){
     toast('Please fix the highlighted fields.', 'error');
     return;
@@ -2265,6 +2280,7 @@ async function joinWaitlist(courseId){
 }
 
 function resetRegForm(){
+  regFormShownAt = Date.now();
   document.getElementById('regForm').reset();
   document.getElementById('photoPreview').innerHTML = '<svg class="icon" viewBox="0 0 24 24" style="width:24px;height:24px;"><circle cx="12" cy="8" r="3.5"/><path d="M4 20c1.5-4 5-6 8-6s6.5 2 8 6"/></svg>';
   uploadedPhotoDataUrl = null;
@@ -2840,7 +2856,6 @@ function renderCapacityTab(){
   host.innerHTML = PROGRAMS.map(p=>{
     const taken = seatsTaken(p.id);
     const capacity = getCapacity(p.id);
-    const fee = getFee(p.id);
     const waiting = WAITLIST.filter(w=>w.course === p.id);
     const waitlistHtml = waiting.length ? `
       <div class="waitlist-block">
@@ -2857,8 +2872,6 @@ function renderCapacityTab(){
         <div style="display:flex;gap:10px;align-items:center;">
           <label style="font-size:.72rem;color:var(--ink-faint);">Capacity<br>
           <input type="number" min="0" step="1" class="cap-input" id="cap_${p.id}" value="${capacity}" style="width:100px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;"></label>
-          <label style="font-size:.72rem;color:var(--ink-faint);">Fee (GHS)<br>
-          <input type="number" min="0" step="0.01" class="fee-input" id="fee_${p.id}" value="${fee}" style="width:110px;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.85rem;font-family:inherit;"></label>
         </div>
       </div>
       ${waitlistHtml}
@@ -2901,7 +2914,7 @@ async function removeFromWaitlist(id){
 }
 
 async function handleSaveCapacities(){
-  if(!isCurrentAdminOwner()){ toast('Only the main admin can change program capacity or fees.', 'error'); return; }
+  if(!isCurrentAdminOwner()){ toast('Only the main admin can change program capacity.', 'error'); return; }
   const changedIds = [];
   PROGRAMS.forEach(p=>{
     const input = document.getElementById('cap_' + p.id);
@@ -2912,17 +2925,7 @@ async function handleSaveCapacities(){
     changedIds.push(p.id);
   });
   await saveCapacities(changedIds);
-  const feeChangedIds = [];
-  PROGRAMS.forEach(p=>{
-    const input = document.getElementById('fee_' + p.id);
-    if(!input) return;
-    const val = parseFloat(input.value);
-    if(val > 0) PROGRAM_FEES[p.id] = val;
-    else delete PROGRAM_FEES[p.id];
-    feeChangedIds.push(p.id);
-  });
-  await saveFees(feeChangedIds);
-  toast('Program capacity and fees updated.', 'success');
+  toast('Program capacity updated.', 'success');
   renderCapacityTab();
 }
 
@@ -3934,15 +3937,26 @@ function exportPDF(){
 }
 
 /* ---------------------------- CONTACT FORM ---------------------------- */
+// Same honeypot + minimum-fill-time anti-spam pattern used on the registration form.
+const CONTACT_FORM_MIN_FILL_MS = 1500;
+const contactFormShownAt = Date.now();
+
 document.getElementById('contactForm').addEventListener('submit', async function(e){
   e.preventDefault();
+  if(document.getElementById('c_extra').value.trim() || (Date.now() - contactFormShownAt) < CONTACT_FORM_MIN_FILL_MS){
+    toast('Please try again.', 'error');
+    return;
+  }
   const name = document.getElementById('c_name').value.trim();
   const email = document.getElementById('c_email').value.trim();
   const message = document.getElementById('c_message').value.trim();
   if(!name || !email || !message){ toast('Please fill in all fields.', 'error'); return; }
+  const submitBtn = e.target.querySelector('button[type=submit]');
+  submitBtn.disabled = true;
   const result = await mutateContactMessages((list) => {
     list.push({ id: uid(), name, email, message, date: new Date().toISOString(), read: false });
   });
+  submitBtn.disabled = false;
   if(!result){ toast('Could not send your message \u2014 please try again.', 'error'); return; }
   toast('Message received — thank you!', 'success');
   e.target.reset();
@@ -3969,6 +3983,7 @@ async function init(){
   setInterval(updateCountdowns, 1000);
   renderAdminGate();
   resetIdleTimer();
+  applyViewFromHash();
 }
 init();
 </script>

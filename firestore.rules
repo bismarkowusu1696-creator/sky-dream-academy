@@ -18,17 +18,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /sdta_storage/{docId} {
-      allow read: if request.auth != null;
+      // Explicit allow-list of every key window.storage.* actually uses (see
+      // skydream-academy.html), instead of a loose "sdta_*" prefix match — this stops
+      // an authenticated-but-malicious client from creating arbitrary junk documents.
+      // sdta_admin_session / sdta_facilitator_session are deliberately left out: the
+      // app always keeps those in localStorage (see DEVICE_ONLY_KEYS) and they must
+      // never sync through Firestore.
+      function isKnownKey(id) {
+        return id in [
+          'sdta_students', 'sdta_admins', 'sdta_admin', 'sdta_capacities',
+          'sdta_facilitators', 'sdta_attendance', 'sdta_intake', 'sdta_intake_history',
+          'sdta_contact_messages', 'sdta_broadcasts', 'sdta_waitlist'
+        ];
+      }
+
+      allow read: if request.auth != null && isKnownKey(docId);
 
       allow create, update: if request.auth != null
-        && docId.matches('sdta_.*')
+        && isKnownKey(docId)
         && request.resource.data.keys().hasOnly(['value'])
         && request.resource.data.value is string
         && request.resource.data.value.size() < 900000;
 
       // `request.resource` isn't available on delete, so this can only check
-      // auth + the doc-id pattern.
-      allow delete: if request.auth != null && docId.matches('sdta_.*');
+      // auth + the key allow-list.
+      allow delete: if request.auth != null && isKnownKey(docId);
     }
 
     // Deny everything else by default.

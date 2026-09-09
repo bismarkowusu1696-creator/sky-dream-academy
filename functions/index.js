@@ -54,7 +54,7 @@ function toE164Ghana(local){
 }
 
 exports.sendFacilitatorWelcomeSms = onCall(
-  { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER] },
+  { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER], enforceAppCheck: true },
   async (request) => {
     if(!request.auth){
       throw new HttpsError('unauthenticated', 'Sign-in is required.');
@@ -125,7 +125,7 @@ exports.sendFacilitatorWelcomeSms = onCall(
  * function directly and send arbitrary texts.
  */
 exports.sendCustomSms = onCall(
-  { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER] },
+  { secrets: [TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER], enforceAppCheck: true },
   async (request) => {
     if(!request.auth){
       throw new HttpsError('unauthenticated', 'Sign-in is required.');

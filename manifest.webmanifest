@@ -1,0 +1,41 @@
+{
+  "name": "SkyDream Skills Training Academy",
+  "short_name": "SkyDream",
+  "description": "Weekend vocational, language and digital skills training in Accra.",
+  "id": "./",
+  "start_url": "./skydream-academy.html#home",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFFFFF",
+  "theme_color": "#1F3A93",
+  "orientation": "any",
+  "categories": ["education", "productivity"],
+  "icons": [
+    {
+      "src": "./app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Register",
+      "short_name": "Register",
+      "url": "./skydream-academy.html#register",
+      "icons": [{"src":"./app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+    },
+    {
+      "name": "Check Status",
+      "short_name": "Status",
+      "url": "./skydream-academy.html#lookup",
+      "icons": [{"src":"./app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+    },
+    {
+      "name": "Programs",
+      "short_name": "Programs",
+      "url": "./skydream-academy.html#programs",
+      "icons": [{"src":"./app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+    }
+  ]
+}

@@ -1,11 +1,11 @@
-const CACHE_NAME = 'skydream-pwa-v4';
+const CACHE_NAME = 'skydream-pwa-v5';
 const APP_SHELL = [
   './',
   './index.html',
   './skydream-academy.html',
   './manifest.webmanifest',
-  './app-icon.svg',
-  './apple-touch-icon.png',
+  './skydream-app-icon-v2.svg',
+  './apple-touch-icon-v2.png',
   './pwa.js',
   './logo.png',
   './offline.html'

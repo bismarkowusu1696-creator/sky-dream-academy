@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SkyDream app icon">
+  <rect width="512" height="512" rx="112" fill="#1F3A93"/>
+  <circle cx="402" cy="108" r="56" fill="#F4B400"/>
+  <path d="M118 302c0-54 44-98 98-98 17 0 33 4 47 12 19-43 62-73 112-73 67 0 121 54 121 121 0 5 0 10-1 15 31 12 53 42 53 77 0 46-37 83-83 83H145c-58 0-105-47-105-105 0-55 42-100 96-105-12 20-18 45-18 73z" fill="#FFFFFF" opacity=".97"/>
+  <path d="M170 332l44-24 42 24 43-24 44 24-44 24-43-24-42 24-44-24z" fill="#2F80ED"/>
+  <path d="M214 354v42l42 24 43-24v-42l-43 24-42-24z" fill="#F4B400"/>
+  <text x="256" y="158" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="92" font-weight="700" fill="#FFFFFF">SD</text>
+</svg>

@@ -29,19 +29,19 @@
       "name": "Register",
       "short_name": "Register",
       "url": "./skydream-academy.html#register",
-      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"any","type":"image/svg+xml"}]
+      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]
     },
     {
       "name": "Check Status",
       "short_name": "Status",
       "url": "./skydream-academy.html#lookup",
-      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"any","type":"image/svg+xml"}]
+      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]
     },
     {
       "name": "Programs",
       "short_name": "Programs",
       "url": "./skydream-academy.html#programs",
-      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"any","type":"image/svg+xml"}]
+      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]
     }
   ]
 }

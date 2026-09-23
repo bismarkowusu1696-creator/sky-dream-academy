@@ -383,6 +383,100 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
 .toast.success{background:var(--success);}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
 
+
+/* ============================= MOBILE RESPONSIVE HARDENING ============================= */
+html,body{width:100%;max-width:100%;overflow-x:hidden;}
+body{position:relative;}
+.container,.nav-inner,.hero-grid,.hero-copy,.hero-ticket,.form-card,.slip,.contact-grid,.footer-grid,.admin-shell,.admin-toolbar,.admin-user-form,.modal-box{min-width:0;}
+img,svg,iframe,video,canvas{max-width:100%;}
+.mobile-nav-only{display:none;}
+
+@media (max-width:900px){
+  .nav-inner{padding:10px 16px;gap:8px;}
+  .brand{min-width:0;flex-shrink:1;}
+  .nav-cta{gap:6px;margin-left:auto;min-width:0;}
+  .nav-admin-link{display:none;}
+  .nav-cta .btn .long{display:none;}
+  .nav-cta .btn .short{display:inline !important;}
+  .mobile-nav-only{display:list-item;}
+  .nav-links{top:59px;max-height:calc(100dvh - 59px);overflow-y:auto;overflow-x:hidden;}
+  .hero-ticket{max-width:100%;}
+}
+
+@media (max-width:600px){
+  .container{padding-left:16px;padding-right:16px;}
+  .section{padding:52px 0;}
+  .hero{padding:44px 0 30px;}
+  .hero-grid{gap:32px;max-width:100%;}
+  .hero-copy h1{font-size:clamp(1.9rem,10vw,2.55rem);overflow-wrap:anywhere;}
+  .hero-actions{align-items:stretch;}
+  .hero-actions .btn{flex:1 1 150px;}
+  .hero-ticket{display:flex;width:100%;flex-direction:column;align-items:stretch;gap:12px;overflow:hidden;}
+  .hero-ticket::after{display:none;}
+  .count-row{width:100%;flex-wrap:wrap;justify-content:flex-start;}
+  .count-cell{min-width:54px;}
+  .programs-grid,.testimonials-grid,.trainer-grid,.gallery-grid,.stat-grid{grid-template-columns:minmax(0,1fr);}
+  .why-grid{grid-template-columns:minmax(0,1fr);}
+  .schedule-wrap,.about-grid,.contact-grid{grid-template-columns:minmax(0,1fr);}
+  .timetable-row{flex-wrap:wrap;align-items:flex-start;gap:8px 14px;padding:16px;}
+  .timetable-row .time{overflow-wrap:anywhere;}
+  .ticket-stub{padding:22px 18px;}
+  .ticket-countdown{gap:7px;}
+  .ticket-countdown .cd-cell{min-width:0;padding:9px 2px;}
+  .form-card{width:100%;max-width:100%;padding:18px;}
+  .form-step-head{align-items:flex-start;}
+  .form-foot{flex-wrap:wrap;}
+  .form-foot .btn{flex:1 1 150px;}
+  .photo-upload{align-items:flex-start;flex-wrap:wrap;}
+  .slip-wrap{width:100%;max-width:100%;}
+  .slip-head{padding:18px;align-items:flex-start;}
+  .slip-body{padding:18px;}
+  .slip-reg{font-size:1.08rem;overflow-wrap:anywhere;}
+  .slip-row{gap:12px;align-items:flex-start;}
+  .slip-row span{min-width:0;overflow-wrap:anywhere;}
+  .slip-row span:first-child{flex:0 1 42%;}
+  .slip-row span:last-child{flex:1 1 58%;}
+  .slip-qr-row{flex-direction:column;align-items:flex-start;}
+  .slip-actions{align-items:stretch;}
+  .slip-actions .btn{width:100%;}
+  .contact-info-list li{min-width:0;}
+  .contact-info-list li>div{min-width:0;overflow-wrap:anywhere;word-break:break-word;}
+  .footer-grid{grid-template-columns:minmax(0,1fr);gap:24px;}
+  .footer-links li,.footer-links button,.footer-links a,footer p{overflow-wrap:anywhere;word-break:break-word;}
+  .footer-bottom{flex-direction:column;align-items:flex-start;}
+  .admin-auth-wrap{width:100%;max-width:100%;margin:32px auto;padding:22px 18px;}
+  .admin-top{align-items:flex-start;}
+  .admin-top>div{max-width:100%;flex-wrap:wrap;}
+  .admin-toolbar{padding:12px;}
+  .admin-toolbar>*{max-width:100%;}
+  .search-box{min-width:0;width:100%;flex-basis:100%;}
+  .admin-toolbar select{width:100%;max-width:100%;}
+  .export-btns{width:100%;}
+  .export-btns .btn{flex:1 1 140px;}
+  .admin-user-form{width:100%;max-width:100%;padding:16px;}
+  .admin-user-row{padding:12px;}
+  .att-summary-row .stat-card{min-width:0;flex:1 1 120px;}
+  .table-wrap{width:100%;max-width:100%;-webkit-overflow-scrolling:touch;}
+  .modal-overlay{padding:20px 10px;}
+  .modal-box{width:100%;max-width:100%;padding:22px 16px;}
+  #toastHost{left:12px;right:12px;bottom:12px;}
+  .toast{width:100%;max-width:100%;min-width:0;}
+  .announce-bar{padding:10px 16px;}
+}
+
+@media (max-width:420px){
+  .nav-inner{padding-left:12px;padding-right:12px;}
+  .brand{font-size:1rem;}
+  .brand-mark{width:32px;height:32px;}
+  .nav-cta>.btn-primary{display:none;}
+  .nav-toggle{padding:6px;}
+  .section{padding:44px 0;}
+  .btn{padding:11px 18px;}
+  .programs-grid,.testimonials-grid{grid-template-columns:minmax(0,1fr);}
+  .prog-card,.why-card,.about-block{padding:18px 16px;}
+}
+
+
 /* ============================= PRINT ============================= */
 #printArea{display:none;}
 @media print{
@@ -412,6 +506,9 @@ table.students td.reg{font-family:var(--font-mono);color:var(--sky-deep);}
       <li><button data-view="lookup" onclick="showView('lookup')">Check Status</button></li>
       <li><button data-view="about" onclick="showView('about')">About Us</button></li>
       <li><button data-view="contact" onclick="showView('contact')">Contact</button></li>
+      <li class="mobile-nav-only"><button onclick="showView('register')">Register Now</button></li>
+      <li class="mobile-nav-only"><button onclick="showView('facilitator')">Facilitator</button></li>
+      <li class="mobile-nav-only"><button onclick="showView('admin')">Admin</button></li>
     </ul>
     <div class="nav-cta">
       <button class="nav-admin-link" onclick="showView('facilitator')">Facilitator</button>

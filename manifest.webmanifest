@@ -12,10 +12,10 @@
   "categories": ["education", "productivity"],
   "icons": [
     {
-      "src": "./app-icon.svg",
+      "src": "./skydream-app-icon-v2.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "shortcuts": [
@@ -23,19 +23,19 @@
       "name": "Register",
       "short_name": "Register",
       "url": "./skydream-academy.html#register",
-      "icons": [{"src":"./app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+      "icons": [{"src":"./skydream-app-icon-v2.svg","sizes":"any","type":"image/svg+xml"}]
     },
     {
       "name": "Check Status",
       "short_name": "Status",
       "url": "./skydream-academy.html#lookup",
-      "icons": [{"src":"./app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+      "icons": [{"src":"./skydream-app-icon-v2.svg","sizes":"any","type":"image/svg+xml"}]
     },
     {
       "name": "Programs",
       "short_name": "Programs",
       "url": "./skydream-academy.html#programs",
-      "icons": [{"src":"./app-icon.svg","sizes":"any","type":"image/svg+xml"}]
+      "icons": [{"src":"./skydream-app-icon-v2.svg","sizes":"any","type":"image/svg+xml"}]
     }
   ]
 }

@@ -1,51 +1,13 @@
 rules_version = '2';
 
-// Security rules for the SkyDream Skills Training Academy app.
+// SkyDream production security rules.
 //
-// All app data lives in ONE collection ("sdta_storage"), with one document
-// per storage key (see STORAGE_COLLECTION in skydream-academy.html and
-// functions/index.js) shaped as { value: "<JSON string>" }. Every key the
-// app uses is prefixed "sdta_".
-//
-// The app signs every visitor in anonymously (firebase.auth().signInAnonymously())
-// before any read/write, purely to keep the raw database from being scraped by
-// unauthenticated tools. It does NOT distinguish an admin from a public visitor
-// at the database layer — anyone running the same client code can also sign in
-// anonymously. Real admin/facilitator login is a separate, client-side PIN check
-// (see ADMIN_ACCOUNTS / FACILITATOR_ACCOUNTS), and the one Cloud Function that
-// accepts free-text input from an admin (sendCustomSms) re-verifies the admin's
-// PIN server-side before doing anything — see functions/index.js.
+// All sensitive academy data is accessed through Firebase Cloud Functions using
+// the Admin SDK. The browser never receives direct Firestore read/write access,
+// even after an admin or facilitator signs in. This prevents a visitor from
+// bypassing the UI and reading/writing the shared storage documents directly.
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /sdta_storage/{docId} {
-      // Explicit allow-list of every key window.storage.* actually uses (see
-      // skydream-academy.html), instead of a loose "sdta_*" prefix match — this stops
-      // an authenticated-but-malicious client from creating arbitrary junk documents.
-      // sdta_admin_session / sdta_facilitator_session are deliberately left out: the
-      // app always keeps those in localStorage (see DEVICE_ONLY_KEYS) and they must
-      // never sync through Firestore.
-      function isKnownKey(id) {
-        return id in [
-          'sdta_students', 'sdta_admins', 'sdta_admin', 'sdta_capacities',
-          'sdta_facilitators', 'sdta_attendance', 'sdta_intake', 'sdta_intake_history',
-          'sdta_contact_messages', 'sdta_broadcasts', 'sdta_waitlist'
-        ];
-      }
-
-      allow read: if request.auth != null && isKnownKey(docId);
-
-      allow create, update: if request.auth != null
-        && isKnownKey(docId)
-        && request.resource.data.keys().hasOnly(['value'])
-        && request.resource.data.value is string
-        && request.resource.data.value.size() < 900000;
-
-      // `request.resource` isn't available on delete, so this can only check
-      // auth + the key allow-list.
-      allow delete: if request.auth != null && isKnownKey(docId);
-    }
-
-    // Deny everything else by default.
     match /{document=**} {
       allow read, write: if false;
     }

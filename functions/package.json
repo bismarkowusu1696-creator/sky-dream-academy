@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "description": "Cloud Functions for SkyDream Skills Training Academy",
-  "main": "index.js",
+  "main": "secure-index.js",
   "engines": {
     "node": "20"
   },

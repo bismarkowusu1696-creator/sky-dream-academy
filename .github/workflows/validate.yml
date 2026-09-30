@@ -1,0 +1,53 @@
+name: Validate SkyDream site
+
+on:
+  push:
+    branches: [security-seo-hardening]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Check JavaScript syntax
+        run: |
+          node --check functions/index.js
+          node --check assets/firebase.js
+          node --check assets/public.js
+          node --check assets/admin.js
+          node --check assets/facilitator.js
+          node --check pwa.js
+          node --check service-worker.js
+      - name: Check HTML for duplicate IDs
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          class IdParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.ids = []
+              def handle_starttag(self, tag, attrs):
+                  d = dict(attrs)
+                  if d.get('id'):
+                      self.ids.append(d['id'])
+
+          failed = False
+          for path in Path('.').glob('*.html'):
+              parser = IdParser()
+              parser.feed(path.read_text(encoding='utf-8'))
+              duplicates = sorted({x for x in parser.ids if parser.ids.count(x) > 1})
+              if duplicates:
+                  failed = True
+                  print(f'{path}: duplicate IDs: {duplicates}')
+          raise SystemExit(1 if failed else 0)
+          PY

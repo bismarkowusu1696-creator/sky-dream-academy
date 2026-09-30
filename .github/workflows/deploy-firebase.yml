@@ -1,0 +1,55 @@
+name: Deploy Firebase backend
+
+on:
+  push:
+    branches: [security-seo-hardening]
+    paths:
+      - 'functions/**'
+      - 'firestore.rules'
+      - 'firebase.json'
+      - '.github/workflows/deploy-firebase.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Firebase CLI and function dependencies
+        run: |
+          npm install -g firebase-tools
+          npm install --prefix functions
+
+      - name: Prepare Firebase authentication
+        shell: bash
+        run: |
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/firebase-service-account.json"
+            echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+            echo "FIREBASE_AUTH_MODE=service-account" >> "$GITHUB_ENV"
+          elif [ -n "$FIREBASE_TOKEN" ]; then
+            echo "FIREBASE_AUTH_MODE=token" >> "$GITHUB_ENV"
+          else
+            echo "::error::No Firebase credential is configured. Add either FIREBASE_SERVICE_ACCOUNT (preferred) or FIREBASE_TOKEN as a GitHub Actions repository secret."
+            exit 1
+          fi
+
+      - name: Deploy secure functions and Firestore rules
+        shell: bash
+        run: |
+          if [ "$FIREBASE_AUTH_MODE" = "service-account" ]; then
+            firebase deploy --project skydream-academy --only functions,firestore:rules --non-interactive
+          else
+            firebase deploy --project skydream-academy --only functions,firestore:rules --non-interactive --token "$FIREBASE_TOKEN"
+          fi

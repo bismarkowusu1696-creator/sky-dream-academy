@@ -18,12 +18,19 @@
         intake.endDate,
         intake.thanksgivingDate
       ];
-      document.querySelectorAll('.schedule-row time').forEach((el, i) => {
+      document.querySelectorAll('.schedule-row').forEach((row, i) => {
+        const el = row.querySelector('time');
         const value = dates[i];
+        const optional = row.hasAttribute('data-optional-date');
+        if (!el) return;
         if (value) {
+          row.hidden = false;
           el.dateTime = value;
           el.textContent = formatDate(value);
+        } else if (optional) {
+          row.hidden = true;
         } else {
+          row.hidden = false;
           el.removeAttribute('datetime');
           el.textContent = 'To be announced';
         }

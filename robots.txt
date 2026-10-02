@@ -1,6 +1,4 @@
 User-agent: *
 Allow: /
-Disallow: /admin.html
-Disallow: /facilitator.html
 
 Sitemap: https://skydream.academy/sitemap.xml

@@ -2,7 +2,7 @@ name: Validate SkyDream site
 
 on:
   push:
-    branches: [security-seo-hardening]
+    branches: [main, security-seo-hardening]
   pull_request:
     branches: [main]
 
@@ -16,15 +16,20 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
       - name: Check JavaScript syntax
         run: |
           node --check functions/index.js
           node --check functions/secure-index.js
+          node --check functions/no-sms-index.js
+          node --check functions/no-secret-loader.js
+          node --check functions/guarded-loader.js
           node --check assets/firebase.js
           node --check assets/public.js
           node --check assets/admin.js
+          node --check assets/admin-intake.js
           node --check assets/facilitator.js
+          node --check assets/schedule-live.js
           node --check pwa.js
           node --check service-worker.js
       - name: Check HTML for duplicate IDs

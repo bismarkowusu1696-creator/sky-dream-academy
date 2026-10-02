@@ -78,6 +78,7 @@
   function applyCatalog(){
     if(!catalog) return;
     const intake = catalog.intake || {};
+    document.querySelectorAll('[data-intake-label]').forEach(el => el.textContent = intake.label || 'Current intake');
     document.querySelectorAll('[data-intake-orientation]').forEach(el => el.textContent = formatDate(intake.startDate));
     document.querySelectorAll('[data-intake-classes]').forEach(el => el.textContent = formatDate(intake.classesStartDate));
     document.querySelectorAll('[data-intake-end]').forEach(el => el.textContent = formatDate(intake.endDate));

@@ -94,6 +94,22 @@ function wrapBound(callable, kind) {
   });
 }
 
+function wrapNextIntake(callable) {
+  return realOnCall({ enforceAppCheck: true }, async request => {
+    await assertBoundMembership(request, 'admin');
+    const nextStart = String(request.data && request.data.startDate || '').trim();
+    const intakeSnap = await db.collection('sdta_storage').doc('sdta_intake').get();
+    const current = intakeSnap.exists ? parseJson(intakeSnap.data().value, {}) : {};
+    if (current.startDate && nextStart && nextStart <= current.startDate) {
+      throw new https.HttpsError('invalid-argument', 'The next intake must start after the current intake.');
+    }
+    if (!callable || typeof callable.run !== 'function') {
+      throw new https.HttpsError('internal', 'Server handler is unavailable.');
+    }
+    return callable.run(request);
+  });
+}
+
 [
   'getAdminSnapshot',
   'adminUpdateStudent',
@@ -105,11 +121,12 @@ function wrapBound(callable, kind) {
   'adminCreateAdmin',
   'adminDeleteAdmin',
   'adminChangePassword',
-  'adminStartNextIntake',
   'sendCustomSms'
 ].forEach(name => {
   app[name] = wrapBound(app[name], 'admin');
 });
+
+app.adminStartNextIntake = wrapNextIntake(app.adminStartNextIntake);
 
 ['getFacilitatorDashboard', 'markFacilitatorAttendance'].forEach(name => {
   app[name] = wrapBound(app[name], 'facilitator');

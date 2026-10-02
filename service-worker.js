@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v9';
+const CACHE_NAME = 'skydream-pwa-v10';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -12,6 +12,7 @@ const PUBLIC_SHELL = [
   '/terms.html',
   '/assets/site.css',
   '/assets/public.js',
+  '/assets/schedule-live.js',
   '/pwa.js',
   '/manifest.webmanifest',
   '/skydream-app-icon-v3.png',
@@ -19,6 +20,13 @@ const PUBLIC_SHELL = [
   '/logo.png',
   '/offline.html'
 ];
+
+const FRESH_PUBLIC_ASSETS = new Set([
+  '/assets/site.css',
+  '/assets/public.js',
+  '/assets/schedule-live.js',
+  '/pwa.js'
+]);
 
 self.addEventListener('install', event => {
   event.waitUntil(
@@ -43,7 +51,6 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
 
   // Never serve authentication/security scripts from an old PWA cache.
-  // Staff pages depend on the latest App Check and authentication logic.
   if ([
     '/assets/firebase.js',
     '/assets/admin.js',
@@ -57,6 +64,22 @@ self.addEventListener('fetch', event => {
   // Never cache staff dashboards. Their HTML does not contain records, but
   // keeping protected surfaces out of offline caches is safer and clearer.
   if (url.pathname === '/admin.html' || url.pathname === '/facilitator.html') return;
+
+  // For files that change frequently, prefer the network and update the cache.
+  // This prevents installed PWAs from staying on an old JS/CSS version after a deploy.
+  if (FRESH_PUBLIC_ASSETS.has(url.pathname)) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response && response.ok) {
+            caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
 
   if (request.mode === 'navigate') {
     event.respondWith(

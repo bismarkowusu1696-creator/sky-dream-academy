@@ -2,7 +2,7 @@ name: Deploy Firebase backend
 
 on:
   push:
-    branches: [security-seo-hardening]
+    branches: [main]
     paths:
       - 'functions/**'
       - 'firestore.rules'
@@ -24,7 +24,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       - name: Install Firebase CLI and function dependencies
         run: |

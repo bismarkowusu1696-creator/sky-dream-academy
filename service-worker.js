@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v7';
+const CACHE_NAME = 'skydream-pwa-v8';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -11,7 +11,6 @@ const PUBLIC_SHELL = [
   '/privacy.html',
   '/terms.html',
   '/assets/site.css',
-  '/assets/firebase.js',
   '/assets/public.js',
   '/manifest.webmanifest',
   '/skydream-app-icon-v3.png',
@@ -41,6 +40,18 @@ self.addEventListener('fetch', event => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Never serve authentication/security scripts from an old PWA cache.
+  // Staff pages depend on the latest App Check and authentication logic.
+  if ([
+    '/assets/firebase.js',
+    '/assets/admin.js',
+    '/assets/admin-intake.js',
+    '/assets/facilitator.js'
+  ].includes(url.pathname)) {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
 
   // Never cache staff dashboards. Their HTML does not contain records, but
   // keeping protected surfaces out of offline caches is safer and clearer.

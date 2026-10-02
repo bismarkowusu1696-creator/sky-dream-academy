@@ -19,9 +19,13 @@
         intake.thanksgivingDate
       ];
       document.querySelectorAll('.schedule-row time').forEach((el, i) => {
-        if (dates[i]) {
-          el.dateTime = dates[i];
-          el.textContent = formatDate(dates[i]);
+        const value = dates[i];
+        if (value) {
+          el.dateTime = value;
+          el.textContent = formatDate(value);
+        } else {
+          el.removeAttribute('datetime');
+          el.textContent = 'To be announced';
         }
       });
       const title = document.getElementById('scheduleTitle');

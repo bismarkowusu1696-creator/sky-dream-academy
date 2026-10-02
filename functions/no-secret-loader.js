@@ -50,11 +50,26 @@ try {
 
 const app = require('./no-sms-index');
 const admin = require('firebase-admin');
+const crypto = require('crypto');
 const db = admin.firestore();
+
+const originalAdminLogin = app.adminLogin;
+const originalFacilitatorLogin = app.facilitatorLogin;
 
 const parseJson = (raw, fallback) => {
   try { return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; }
 };
+
+function passwordIsStrong(value) {
+  const p = String(value || '');
+  return p.length >= 12 && /[a-z]/.test(p) && /[A-Z]/.test(p) && /\d/.test(p);
+}
+
+function makePasswordRecord(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(password, salt, 64).toString('hex');
+  return { passwordHash: hash, passwordSalt: salt, passwordVersion: 1 };
+}
 
 async function assertBoundMembership(request, kind) {
   const auth = request.auth;
@@ -94,6 +109,80 @@ function wrapBound(callable, kind) {
   });
 }
 
+// Legacy PIN migration uses the exact same login verifier that just accepted
+// the PIN. This avoids a second, conflicting legacy-PIN verification path.
+function wrapLegacyUpgrade(loginCallable, kind) {
+  return realOnCall({ enforceAppCheck: true }, async request => {
+    const data = request.data || {};
+    const username = String(data.username || '').trim().slice(0, 80);
+    const currentPin = String(data.currentPin || '');
+    const newPassword = String(data.newPassword || '');
+    const isAdmin = kind === 'admin';
+
+    if (!username || !passwordIsStrong(newPassword)) {
+      throw new https.HttpsError('invalid-argument', 'Use at least 12 characters with uppercase, lowercase and a number.');
+    }
+    if (!loginCallable || typeof loginCallable.run !== 'function') {
+      throw new https.HttpsError('internal', 'Login verifier is unavailable.');
+    }
+
+    const verified = await loginCallable.run({
+      ...request,
+      data: { username, password: currentPin }
+    });
+
+    if (!verified || !verified.account) {
+      throw new https.HttpsError('permission-denied', 'Current PIN verification failed.');
+    }
+
+    // If another request already completed the migration, the normal login
+    // handler can return a final token; let the user continue safely.
+    if (!verified.upgradeRequired) {
+      if (verified.token) return { token: verified.token, account: verified.account };
+      throw new https.HttpsError('failed-precondition', 'This account has already been upgraded. Sign in with the new password.');
+    }
+
+    const key = isAdmin ? 'sdta_admins' : 'sdta_facilitators';
+    const ref = db.collection('sdta_storage').doc(key);
+    let account = null;
+
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const list = snap.exists ? parseJson(snap.data().value, []) : [];
+      account = list.find(item => item.id === verified.account.id &&
+        String(item.username || '').toLowerCase() === username.toLowerCase());
+
+      if (!account) {
+        throw new https.HttpsError('permission-denied', 'This account is no longer active.');
+      }
+      if (account.passwordHash) {
+        throw new https.HttpsError('failed-precondition', 'This account has already been upgraded. Sign in with the new password.');
+      }
+      if (!account.pinHash) {
+        throw new https.HttpsError('permission-denied', 'Current PIN verification failed.');
+      }
+
+      Object.assign(account, makePasswordRecord(newPassword));
+      delete account.pinHash;
+      account.failedLogins = 0;
+      delete account.lockedUntil;
+      tx.set(ref, { value: JSON.stringify(list) });
+    });
+
+    const uid = (isAdmin ? 'admin-' : 'fac-') + account.id;
+    const claims = isAdmin
+      ? { role: 'admin', adminRole: account.role || 'staff', username: account.username }
+      : { role: 'facilitator', username: account.username };
+    const token = await admin.auth().createCustomToken(uid, claims);
+
+    const safeAccount = isAdmin
+      ? { id: account.id, name: account.name, username: account.username, role: account.role || 'staff' }
+      : { id: account.id, name: account.name, username: account.username, phone: account.phone || '', courses: Array.isArray(account.courses) ? account.courses : [] };
+
+    return { token, account: safeAccount };
+  });
+}
+
 function wrapNextIntake(callable) {
   return realOnCall({ enforceAppCheck: true }, async request => {
     await assertBoundMembership(request, 'admin');
@@ -126,6 +215,8 @@ function wrapNextIntake(callable) {
   app[name] = wrapBound(app[name], 'admin');
 });
 
+app.upgradeAdminPassword = wrapLegacyUpgrade(originalAdminLogin, 'admin');
+app.upgradeFacilitatorPassword = wrapLegacyUpgrade(originalFacilitatorLogin, 'facilitator');
 app.adminStartNextIntake = wrapNextIntake(app.adminStartNextIntake);
 
 ['getFacilitatorDashboard', 'markFacilitatorAttendance'].forEach(name => {

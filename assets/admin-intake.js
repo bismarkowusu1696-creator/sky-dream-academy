@@ -1,5 +1,5 @@
 (() => {
-  const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[s]));
   const input = (id, label, type='date', value='', required=true) => `<div class="field"><label for="${id}">${esc(label)}</label><input id="${id}" type="${type}" value="${esc(value)}" ${type==='date' ? '' : 'maxlength="100"'} ${required ? 'required' : ''}></div>`;
 
   async function installIntakePanel(user) {
@@ -8,18 +8,20 @@
     const token = await user.getIdTokenResult();
     if (token.claims.role !== 'admin' || token.claims.adminRole !== 'owner') return;
 
-    let snapshot;
-    try { snapshot = await SkyDreamFirebase.call('getAdminSnapshot'); }
+    try { await SkyDreamFirebase.call('getAdminSnapshot'); }
     catch (_) { return; }
+
     const card = document.createElement('div');
     card.id = 'intakeManagementCard';
     card.className = 'card';
     card.style.marginTop = '20px';
     card.innerHTML = `<h3>Start the next intake</h3>
       <p class="hint">This archives the current intake, starts fresh capacity counting for the new cohort, clears the old waitlist, and keeps all existing student/payment/attendance history.</p>
-      <p class="hint">Only the orientation date, classes start date and training/graduation date are required. Break/resume must either both be filled or both be left blank.</p>
+      <p class="hint">Orientation, classes start and training/graduation dates are required. Registration closing defaults to the orientation date if left blank. Break/resume must either both be filled or both be left blank.</p>
       <form id="nextIntakeForm"><div class="form-grid">
         ${input('nextIntakeLabel','Intake label (optional)','text','',false)}
+        ${input('nextRegistrationOpen','Registration opens (optional)','date','',false)}
+        ${input('nextRegistrationClose','Registration closes (optional)','date','',false)}
         ${input('nextIntakeStart','Orientation / intake start')}
         ${input('nextClassesStart','Classes start')}
         ${input('nextBreakStart','Break starts (optional)','date','',false)}
@@ -34,6 +36,8 @@
       e.preventDefault();
       const payload = {
         label: document.getElementById('nextIntakeLabel').value.trim(),
+        registrationOpenDate: document.getElementById('nextRegistrationOpen').value,
+        registrationCloseDate: document.getElementById('nextRegistrationClose').value,
         startDate: document.getElementById('nextIntakeStart').value,
         classesStartDate: document.getElementById('nextClassesStart').value,
         breakStartDate: document.getElementById('nextBreakStart').value,
@@ -44,6 +48,15 @@
 
       if (payload.classesStartDate < payload.startDate || payload.endDate < payload.classesStartDate) {
         alert('Please check the dates. Classes must start on or after orientation, and the training end date must be after classes begin.');
+        return;
+      }
+      const effectiveRegistrationClose = payload.registrationCloseDate || payload.startDate;
+      if (payload.registrationOpenDate && payload.registrationOpenDate > effectiveRegistrationClose) {
+        alert('Registration cannot open after it closes.');
+        return;
+      }
+      if (effectiveRegistrationClose > payload.classesStartDate) {
+        alert('Registration must close on or before the first class date.');
         return;
       }
       if (!!payload.breakStartDate !== !!payload.resumeDate) {

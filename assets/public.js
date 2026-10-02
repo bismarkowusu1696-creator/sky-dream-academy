@@ -26,12 +26,23 @@
     host.classList.remove('hidden');
   }
   function hideMessage(host){ if(host) host.classList.add('hidden'); }
+  function todayIso(){
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0,10);
+  }
 
   function initNav(){
     const toggle = $('navToggle');
     const links = $('navLinks');
     if(toggle && links) toggle.addEventListener('click', () => links.classList.toggle('open'));
     if(links) links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => links.classList.remove('open')));
+  }
+
+  function initDob(){
+    const dob = $('dob');
+    if(!dob) return;
+    dob.max = todayIso();
   }
 
   function renderPrograms(){
@@ -106,8 +117,14 @@
       hideMessage(message);
       const submit = form.querySelector('button[type=submit]');
       if(!window.SkyDreamFirebase){ showMessage(message,'The registration service is unavailable. Please try again later.','error'); return; }
+      const dobValue = $('dob').value;
+      if(dobValue && dobValue > todayIso()){
+        showMessage(message,'Date of birth cannot be in the future.','error');
+        $('dob').focus();
+        return;
+      }
       const payload = {
-        fullName:$('fullName').value.trim(), dob:$('dob').value, gender:$('gender').value,
+        fullName:$('fullName').value.trim(), dob:dobValue, gender:$('gender').value,
         ghanaCard:$('ghanaCard').value.trim(), gpsAddress:$('gpsAddress').value.trim(), address:$('address').value.trim(),
         mobile:$('mobile').value.trim(), whatsapp:$('whatsapp').value.trim(), email:$('email').value.trim(),
         emName:$('emName').value.trim(), emRel:$('emRel').value.trim(), emPhone:$('emPhone').value.trim(),
@@ -120,6 +137,7 @@
           showMessage(message,`This program is currently full. You have been added to the ${result.courseName} waitlist and the academy will contact you if a place opens.`,'info');
         }else{
           form.reset();
+          initDob();
           showMessage(message,`Registration successful. Your registration number is ${result.regNumber}. Keep this number safe — you will need it to check your status.`,'success');
           const resultHost = $('registrationSuccess');
           if(resultHost){
@@ -184,6 +202,7 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     initNav();
+    initDob();
     renderPrograms();
     populateCourseSelect();
     initRegistration();

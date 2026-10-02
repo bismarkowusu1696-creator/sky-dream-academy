@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin.html
 Disallow: /facilitator.html
 
-Sitemap: https://www.skydream.academy/sitemap.xml
+Sitemap: https://skydream.academy/sitemap.xml

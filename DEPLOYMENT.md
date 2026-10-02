@@ -1,17 +1,17 @@
 # SkyDream secure deployment
 
-This branch changes both the public website and the Firebase security architecture. Deploy the backend first, then publish/merge the front end.
+The redesigned SkyDream site is published from `main` and uses Firebase callable functions for protected data access.
 
-## 1. Review Firebase prerequisites
+## 1. Firebase prerequisites
 
 The Firebase project is `skydream-academy` (see `.firebaserc`). Confirm that:
 
 - Firebase Authentication is enabled.
-- Anonymous Authentication may remain enabled for older deployments, but the redesigned site does not rely on anonymous users for database access.
-- Firebase App Check for the web app is configured for `www.skydream.academy` and `skydream.academy`.
-- The existing Twilio secrets remain configured: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`.
+- Firebase App Check / Fraud Defense is configured for the production web app and allows `skydream.academy`.
+- Firestore direct browser access remains denied by `firestore.rules`.
+- SMS/Twilio is currently disabled. Registration and the rest of the website do not depend on an SMS provider.
 
-## 2. Deploy the secure Firebase backend first
+## 2. Deploy Firebase backend changes
 
 From the repository root on a computer authenticated to Firebase CLI:
 
@@ -22,14 +22,14 @@ firebase use skydream-academy
 cd functions
 npm install
 cd ..
-firebase deploy --only functions,firestore:rules
+firebase deploy --only functions,firestore:rules --project skydream-academy
 ```
 
-This deploys the Cloud Functions and the Firestore rule that denies all direct browser database access.
+This deploys Cloud Functions and the restrictive Firestore rules. Do not manually delete the existing `sdta_storage` documents; they contain student, administrator, facilitator, attendance, payment, waitlist and intake records.
 
-## 3. Smoke-test the backend before publishing the new front end
+## 3. Important callable functions
 
-Verify in Firebase Console that the new callable functions are deployed, especially:
+Verify in Firebase Console that these functions are present when backend changes are deployed:
 
 - `publicCatalog`
 - `registerStudent`
@@ -42,41 +42,37 @@ Verify in Firebase Console that the new callable functions are deployed, especia
 - `upgradeFacilitatorPassword`
 - `getFacilitatorDashboard`
 - `markFacilitatorAttendance`
+- `adminStartNextIntake`
 
-Do not manually delete the existing `sdta_storage` documents. The secure backend intentionally keeps the current JSON storage format so existing students, administrators, facilitators, attendance, payments, waitlist and intake records remain compatible.
+## 4. Front-end publishing
 
-## 4. Merge/publish the website branch
+Netlify is connected to the `main` branch, so public-site changes pushed to `main` should publish automatically.
 
-After the backend is live, merge `security-seo-hardening` into `main`. If Netlify is connected to `main`, it should publish the redesigned public pages automatically.
+The `_redirects` file redirects the old Netlify hostnames and legacy routes to the canonical site at `https://skydream.academy/`.
 
-The `_redirects` file redirects the old Netlify hostname and the legacy `/skydream-academy` page to the canonical site.
+## 5. Administrator and facilitator accounts
 
-## 5. First administrator/facilitator login
-
-Existing accounts that still use a 4–8 digit PIN can enter that PIN once. After successful server verification, the site requires an upgrade to a password with at least 12 characters including uppercase, lowercase and a number. The legacy PIN hash is then removed from the account record.
-
-New administrator and facilitator accounts are created with strong passwords only.
+Existing accounts that still use a legacy PIN can enter it once and then upgrade to a password with at least 12 characters including uppercase, lowercase and a number. New accounts use strong passwords.
 
 ## 6. Search indexing
 
-After the front end is published:
+After public changes are published:
 
-1. Open Google Search Console for `skydream.academy` / `www.skydream.academy`.
-2. Submit `https://www.skydream.academy/sitemap.xml`.
-3. Request indexing for the homepage and `programs.html`.
-4. Confirm the old `skydream.netlify.app` URLs redirect to the custom domain.
+1. Open Google Search Console for `skydream.academy`.
+2. Submit `https://skydream.academy/sitemap.xml`.
+3. Request indexing for `https://skydream.academy/` and `https://skydream.academy/programs.html`.
+4. Confirm the old Netlify URLs redirect to the custom domain.
 5. Google can take days or weeks to replace old domain history and old search results.
 
 ## 7. Post-deployment checks
 
-Test these flows on both desktop and a phone:
+Test on both desktop and phone:
 
 - Home, Programs, Schedule, About and Contact pages.
-- New registration and waitlist behavior.
+- Registration and waitlist behavior.
 - Student status lookup using registration number + matching mobile number.
-- Administrator legacy-PIN upgrade and login.
-- Administrator student edit/payment/SMS actions.
-- Facilitator legacy-PIN upgrade and assigned-program attendance.
-- PWA install/update and removal of old cached site version.
+- Administrator login, student editing, payments and deletion permissions.
+- Facilitator login and assigned-program attendance.
+- PWA install/update and removal of old cached versions.
 
-If a Firebase backend deployment fails, do not publish/merge the new front end until the backend error is resolved.
+SMS actions should remain hidden until an SMS provider is deliberately configured.

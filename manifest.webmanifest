@@ -1,47 +1,22 @@
 {
   "name": "SkyDream Skills Training Academy",
   "short_name": "SkyDream",
-  "description": "Weekend vocational, language and digital skills training in Accra.",
-  "id": "./",
-  "start_url": "./skydream-academy.html#home",
-  "scope": "./",
+  "description": "Practical vocational, language and digital skills training in Accra, Ghana.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#FFFFFF",
   "theme_color": "#1F3A93",
   "orientation": "any",
   "categories": ["education", "productivity"],
   "icons": [
-    {
-      "src": "./skydream-app-icon-v3.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "./skydream-app-icon-v3.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    }
+    {"src":"/skydream-app-icon-v3.png","sizes":"192x192","type":"image/png","purpose":"any"},
+    {"src":"/skydream-app-icon-v3.svg","sizes":"any","type":"image/svg+xml","purpose":"any"}
   ],
   "shortcuts": [
-    {
-      "name": "Register",
-      "short_name": "Register",
-      "url": "./skydream-academy.html#register",
-      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]
-    },
-    {
-      "name": "Check Status",
-      "short_name": "Status",
-      "url": "./skydream-academy.html#lookup",
-      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]
-    },
-    {
-      "name": "Programs",
-      "short_name": "Programs",
-      "url": "./skydream-academy.html#programs",
-      "icons": [{"src":"./skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]
-    }
+    {"name":"Register","short_name":"Register","url":"/register.html","icons":[{"src":"/skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]},
+    {"name":"Check Status","short_name":"Status","url":"/check-status.html","icons":[{"src":"/skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]},
+    {"name":"Programs","short_name":"Programs","url":"/programs.html","icons":[{"src":"/skydream-app-icon-v3.png","sizes":"192x192","type":"image/png"}]}
   ]
 }

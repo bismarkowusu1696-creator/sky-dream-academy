@@ -1,6 +1,6 @@
 (() => {
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
-  const input = (id, label, type='date', value='') => `<div class="field"><label for="${id}">${esc(label)}</label><input id="${id}" type="${type}" value="${esc(value)}" ${type==='date' ? '' : 'maxlength="100"'} required></div>`;
+  const input = (id, label, type='date', value='', required=true) => `<div class="field"><label for="${id}">${esc(label)}</label><input id="${id}" type="${type}" value="${esc(value)}" ${type==='date' ? '' : 'maxlength="100"'} ${required ? 'required' : ''}></div>`;
 
   async function installIntakePanel(user) {
     const overview = document.getElementById('overview');
@@ -11,21 +11,21 @@
     let snapshot;
     try { snapshot = await SkyDreamFirebase.call('getAdminSnapshot'); }
     catch (_) { return; }
-    const current = snapshot.intake || {};
     const card = document.createElement('div');
     card.id = 'intakeManagementCard';
     card.className = 'card';
     card.style.marginTop = '20px';
     card.innerHTML = `<h3>Start the next intake</h3>
       <p class="hint">This archives the current intake, starts fresh capacity counting for the new cohort, clears the old waitlist, and keeps all existing student/payment/attendance history.</p>
+      <p class="hint">Only the orientation date, classes start date and training/graduation date are required. Break/resume must either both be filled or both be left blank.</p>
       <form id="nextIntakeForm"><div class="form-grid">
-        ${input('nextIntakeLabel','Intake label','text','')}
+        ${input('nextIntakeLabel','Intake label (optional)','text','',false)}
         ${input('nextIntakeStart','Orientation / intake start')}
         ${input('nextClassesStart','Classes start')}
-        ${input('nextBreakStart','Break starts')}
-        ${input('nextResume','Classes resume')}
+        ${input('nextBreakStart','Break starts (optional)','date','',false)}
+        ${input('nextResume','Classes resume (optional)','date','',false)}
         ${input('nextEnd','Training / graduation date')}
-        ${input('nextThanksgiving','Thanksgiving / closing date')}
+        ${input('nextThanksgiving','Thanksgiving / closing date (optional)','date','',false)}
         <div class="field full"><button class="btn btn-primary" type="submit">Start Next Intake</button></div>
       </div></form>`;
     overview.appendChild(card);
@@ -41,6 +41,24 @@
         endDate: document.getElementById('nextEnd').value,
         thanksgivingDate: document.getElementById('nextThanksgiving').value
       };
+
+      if (payload.classesStartDate < payload.startDate || payload.endDate < payload.classesStartDate) {
+        alert('Please check the dates. Classes must start on or after orientation, and the training end date must be after classes begin.');
+        return;
+      }
+      if (!!payload.breakStartDate !== !!payload.resumeDate) {
+        alert('Enter both the break start and resume dates, or leave both blank.');
+        return;
+      }
+      if (payload.breakStartDate && (payload.breakStartDate < payload.classesStartDate || payload.resumeDate <= payload.breakStartDate || payload.resumeDate > payload.endDate)) {
+        alert('Please check the break dates. The break must be during the training period and the resume date must be after the break starts.');
+        return;
+      }
+      if (payload.thanksgivingDate && payload.thanksgivingDate < payload.endDate) {
+        alert('The Thanksgiving / closing date cannot be before the training end date.');
+        return;
+      }
+
       if (!confirm(`Start ${payload.label || payload.startDate} as the new active intake? Existing students will remain in their current cohort.`)) return;
       const button = e.target.querySelector('button[type=submit]');
       button.disabled = true;

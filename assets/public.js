@@ -45,19 +45,46 @@
     dob.max = todayIso();
   }
 
+  function formatDate(iso){
+    if(!iso) return 'To be announced';
+    const d = new Date(iso + 'T00:00:00');
+    return d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  }
+
+  function registrationState(){
+    if(!catalog || !catalog.intake) return { open:true, known:false, message:'' };
+    const intake = catalog.intake || {};
+    const today = todayIso();
+    const openDate = intake.registrationOpenDate || '';
+    const closeDate = intake.registrationCloseDate || intake.startDate || intake.classesStartDate || '';
+    if(openDate && today < openDate){
+      return { open:false, known:true, message:`Online registration opens on ${formatDate(openDate)}.` };
+    }
+    if(closeDate && today > closeDate){
+      return { open:false, known:true, message:`Online registration for this intake closed on ${formatDate(closeDate)}. Please contact the academy if you need assistance.` };
+    }
+    return { open:true, known:true, message:closeDate ? `Online registration is open through ${formatDate(closeDate)}.` : '' };
+  }
+
   function renderPrograms(){
     const host = $('programGrid');
     if(!host) return;
     const availability = catalog ? Object.fromEntries(catalog.programs.map(p => [p.id,p])) : {};
+    const registration = registrationState();
     host.innerHTML = PROGRAMS.map(([id,name,desc]) => {
       const live = availability[id];
-      const availabilityText = live ? (live.full ? 'Waitlist currently open' : `${live.available} place${live.available===1?'':'s'} currently available`) : 'Registration open';
+      const availabilityText = !registration.open
+        ? registration.message
+        : (live ? (live.full ? 'Waitlist currently open' : `${live.available} place${live.available===1?'':'s'} currently available`) : 'Registration open');
+      const action = registration.open
+        ? `<a class="btn btn-outline" href="register.html?course=${encodeURIComponent(id)}">Register for this program</a>`
+        : '<span class="btn btn-outline" aria-disabled="true">Registration unavailable</span>';
       return `<article class="card program-card">
         <div class="meta"><span>3 months</span><span>GHS 50 registration</span></div>
         <h3>${escapeHtml(name)}</h3>
         <p>${escapeHtml(desc)}</p>
-        <div class="availability ${live && live.full ? 'full':''}">${escapeHtml(availabilityText)}</div>
-        <a class="btn btn-outline" href="register.html?course=${encodeURIComponent(id)}">Register for this program</a>
+        <div class="availability ${(!registration.open || (live && live.full)) ? 'full':''}">${escapeHtml(availabilityText)}</div>
+        ${action}
       </article>`;
     }).join('');
   }
@@ -75,6 +102,27 @@
     if(requested && names[requested]) select.value = requested;
   }
 
+  function applyRegistrationWindow(){
+    const form = $('registrationForm');
+    if(!form || !catalog) return;
+    const submit = form.querySelector('button[type=submit]');
+    const message = $('registrationMessage');
+    const state = registrationState();
+    if(!state.open){
+      if(submit){
+        submit.disabled = true;
+        submit.dataset.windowClosed = '1';
+        submit.textContent = 'Registration Closed';
+      }
+      showMessage(message,state.message,'info');
+    }else if(submit && submit.dataset.windowClosed === '1'){
+      submit.disabled = false;
+      delete submit.dataset.windowClosed;
+      submit.textContent = 'Submit Registration';
+      hideMessage(message);
+    }
+  }
+
   function applyCatalog(){
     if(!catalog) return;
     const intake = catalog.intake || {};
@@ -89,16 +137,15 @@
     }
     renderPrograms();
     populateCourseSelect();
+    applyRegistrationWindow();
   }
 
-  function formatDate(iso){
-    if(!iso) return 'To be announced';
-    const d = new Date(iso + 'T00:00:00');
-    return d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  function pageNeedsCatalog(){
+    return !!document.querySelector('#programGrid, #course, #siteNotices, [data-intake-label], [data-intake-orientation], [data-intake-classes], [data-intake-end], [data-registration-fee]');
   }
 
   async function loadCatalog(){
-    if(!window.SkyDreamFirebase) return;
+    if(!window.SkyDreamFirebase || !pageNeedsCatalog()) return;
     try{
       catalog = await SkyDreamFirebase.call('publicCatalog');
       applyCatalog();
@@ -118,6 +165,8 @@
       hideMessage(message);
       const submit = form.querySelector('button[type=submit]');
       if(!window.SkyDreamFirebase){ showMessage(message,'The registration service is unavailable. Please try again later.','error'); return; }
+      const windowState = registrationState();
+      if(catalog && !windowState.open){ showMessage(message,windowState.message,'info'); return; }
       const dobValue = $('dob').value;
       if(dobValue && dobValue > todayIso()){
         showMessage(message,'Date of birth cannot be in the future.','error');
@@ -150,7 +199,10 @@
       }catch(err){
         showMessage(message,SkyDreamFirebase.friendlyError(err),'error');
       }finally{
-        submit.disabled = false; submit.textContent = 'Submit Registration';
+        if(submit.dataset.windowClosed !== '1'){
+          submit.disabled = false;
+          submit.textContent = 'Submit Registration';
+        }
       }
     });
   }

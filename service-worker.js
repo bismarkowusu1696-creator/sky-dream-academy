@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v8';
+const CACHE_NAME = 'skydream-pwa-v9';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -12,6 +12,7 @@ const PUBLIC_SHELL = [
   '/terms.html',
   '/assets/site.css',
   '/assets/public.js',
+  '/pwa.js',
   '/manifest.webmanifest',
   '/skydream-app-icon-v3.png',
   '/skydream-app-icon-v3.svg',

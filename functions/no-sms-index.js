@@ -62,6 +62,7 @@ const normalizePhone = value => {
 };
 const normalizeGhanaCard = value => String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const currentIntakeOr = value => value && value.startDate ? value : DEFAULT_INTAKE;
+const todayIso = () => new Date().toISOString().slice(0, 10);
 
 function nextRegNumber(courseId, list, intakeStartISO) {
   const code = COURSE_CODES[courseId] || String(courseId || '').slice(0, 2).toUpperCase();
@@ -98,6 +99,12 @@ const registerStudent = onCall({ enforceAppCheck: true }, async request => {
 
   if (!fullName || !dob || !address || !mobile || !whatsapp || !emName || !emRel || !emPhone || !COURSE_NAMES[course] || !consent) {
     throw new HttpsError('invalid-argument', 'Please complete all required registration fields and accept the privacy notice.');
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || Number.isNaN(new Date(dob + 'T00:00:00Z').getTime())) {
+    throw new HttpsError('invalid-argument', 'Please enter a valid date of birth.');
+  }
+  if (dob > todayIso()) {
+    throw new HttpsError('invalid-argument', 'Date of birth cannot be in the future.');
   }
   if (!/^0\d{9}$/.test(mobile) || !/^0\d{9}$/.test(whatsapp) || !/^0\d{9}$/.test(emPhone)) {
     throw new HttpsError('invalid-argument', 'Please enter valid 10-digit Ghana phone numbers.');

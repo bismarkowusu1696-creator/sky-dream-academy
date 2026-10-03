@@ -52,6 +52,9 @@
   }
 
   function registrationState(){
+    if(catalog && catalog.registrationEnabled === false){
+      return { open:false, known:true, message:'Online registration is currently paused. Please contact the academy for assistance.' };
+    }
     if(!catalog || !catalog.intake) return { open:true, known:false, message:'' };
     const intake = catalog.intake || {};
     const today = todayIso();
@@ -70,8 +73,9 @@
     const host = $('programGrid');
     if(!host) return;
     const availability = catalog ? Object.fromEntries(catalog.programs.map(p => [p.id,p])) : {};
+    const programs = catalog ? PROGRAMS.filter(([id]) => availability[id]) : PROGRAMS;
     const registration = registrationState();
-    host.innerHTML = PROGRAMS.map(([id,name,desc]) => {
+    host.innerHTML = programs.map(([id,name,desc]) => {
       const live = availability[id];
       const availabilityText = !registration.open
         ? registration.message
@@ -80,7 +84,7 @@
         ? `<a class="btn btn-outline" href="register.html?course=${encodeURIComponent(id)}">Register for this program</a>`
         : '<span class="btn btn-outline" aria-disabled="true">Registration unavailable</span>';
       return `<article class="card program-card">
-        <div class="meta"><span>3 months</span><span>GHS 50 registration</span></div>
+        <div class="meta"><span>3 months</span><span data-registration-fee>GHS ${catalog ? catalog.registrationFee : 50} registration</span></div>
         <h3>${escapeHtml(name)}</h3>
         <p>${escapeHtml(desc)}</p>
         <div class="availability ${(!registration.open || (live && live.full)) ? 'full':''}">${escapeHtml(availabilityText)}</div>
@@ -93,13 +97,14 @@
     const select = $('course');
     if(!select) return;
     const availability = catalog ? Object.fromEntries(catalog.programs.map(p => [p.id,p])) : {};
-    select.innerHTML = '<option value="">Select a program</option>' + PROGRAMS.map(([id,name]) => {
+    const programs = catalog ? PROGRAMS.filter(([id]) => availability[id]) : PROGRAMS;
+    select.innerHTML = '<option value="">Select a program</option>' + programs.map(([id,name]) => {
       const live = availability[id];
       return `<option value="${id}">${escapeHtml(name)}${live && live.full ? ' — Full (waitlist)' : ''}</option>`;
     }).join('');
     const params = new URLSearchParams(location.search);
     const requested = params.get('course');
-    if(requested && names[requested]) select.value = requested;
+    if(requested && programs.some(([id]) => id === requested)) select.value = requested;
   }
 
   function applyRegistrationWindow(){
@@ -112,7 +117,7 @@
       if(submit){
         submit.disabled = true;
         submit.dataset.windowClosed = '1';
-        submit.textContent = 'Registration Closed';
+        submit.textContent = catalog.registrationEnabled === false ? 'Registration Paused' : 'Registration Closed';
       }
       showMessage(message,state.message,'info');
     }else if(submit && submit.dataset.windowClosed === '1'){
@@ -132,8 +137,10 @@
     document.querySelectorAll('[data-intake-end]').forEach(el => el.textContent = formatDate(intake.endDate));
     document.querySelectorAll('[data-registration-fee]').forEach(el => el.textContent = `GHS ${catalog.registrationFee}`);
     const noticeHost = $('siteNotices');
-    if(noticeHost && Array.isArray(catalog.notices) && catalog.notices.length){
-      noticeHost.innerHTML = catalog.notices.map(n => `<div class="notice notice-info">${escapeHtml(n.message)}</div>`).join('');
+    if(noticeHost){
+      noticeHost.innerHTML = Array.isArray(catalog.notices) && catalog.notices.length
+        ? catalog.notices.map(n => `<div class="notice notice-info">${escapeHtml(n.message)}</div>`).join('')
+        : '';
     }
     renderPrograms();
     populateCourseSelect();

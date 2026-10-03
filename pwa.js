@@ -7,6 +7,7 @@
     window.navigator.standalone === true;
 
   const isIOS = () => /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+  const isMobile = () => /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
 
   function hideInstallButton() {
     if (installButton) installButton.hidden = true;
@@ -14,6 +15,20 @@
 
   function showInstallButton() {
     if (installButton && !isStandalone()) installButton.hidden = false;
+  }
+
+  function fallbackInstallHelp() {
+    if (isIOS()) {
+      window.alert('To install SkyDream on iPhone or iPad: open this website in Safari, tap the Share button, then choose “Add to Home Screen”.');
+      return;
+    }
+
+    if (isMobile()) {
+      window.alert('If the install window does not open yet, stay on the site briefly, then tap the browser menu (⋮) and choose “Install app” or “Add to Home screen”.');
+      return;
+    }
+
+    window.alert('If the install window does not open yet, use your browser menu and choose “Install SkyDream” or “Install app”. Chrome may also show an install icon at the right side of the address bar.');
   }
 
   function createInstallButton() {
@@ -61,14 +76,15 @@
         return;
       }
 
-      if (isIOS() && !isStandalone()) {
-        window.alert('To install SkyDream on iPhone or iPad: tap the Share button in Safari, then choose “Add to Home Screen”.');
-      }
+      fallbackInstallHelp();
     });
 
     document.body.appendChild(installButton);
 
-    if (isIOS() && !isStandalone()) showInstallButton();
+    // Keep an install entry visible in normal browser mode. When Chromium has
+    // finished its installability checks, the same button opens the native
+    // install prompt. Before that, it gives clear manual-install instructions.
+    if (!isStandalone()) showInstallButton();
   }
 
   window.addEventListener('beforeinstallprompt', event => {

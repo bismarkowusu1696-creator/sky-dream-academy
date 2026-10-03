@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v16';
+const CACHE_NAME = 'skydream-pwa-v17';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -68,6 +68,7 @@ self.addEventListener('fetch', event => {
   if ([
     '/assets/firebase.js',
     '/assets/admin.js',
+    '/assets/admin-pin.js',
     '/assets/admin-intake.js',
     '/assets/facilitator.js'
   ].includes(url.pathname)) {

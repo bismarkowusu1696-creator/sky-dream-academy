@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v20';
+const CACHE_NAME = 'skydream-pwa-v21';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -64,7 +64,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Never serve authentication/security/admin scripts or admin styling from an old PWA cache.
+  // Never serve authentication/security/admin/student scripts or admin styling from an old PWA cache.
   if ([
     '/assets/firebase.js',
     '/assets/admin.js',
@@ -74,15 +74,17 @@ self.addEventListener('fetch', event => {
     '/assets/admin-extra-actions.js',
     '/assets/admin-enterprise-login.js',
     '/assets/admin-enterprise.js',
+    '/assets/admin-academic.js',
     '/assets/admin-suite.css',
-    '/assets/facilitator.js'
+    '/assets/facilitator.js',
+    '/assets/student-portal.js'
   ].includes(url.pathname)) {
     event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }
 
-  // Never cache staff-only entry points or dashboards.
-  if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator'].includes(url.pathname)) return;
+  // Never cache authenticated entry points or dashboards.
+  if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator', '/student-portal.html', '/student-portal'].includes(url.pathname)) return;
 
   // Serve frequently used public assets instantly, then refresh them in the background.
   if (FRESH_PUBLIC_ASSETS.has(url.pathname)) {

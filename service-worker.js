@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v11';
+const CACHE_NAME = 'skydream-pwa-v12';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -16,6 +16,8 @@ const PUBLIC_SHELL = [
   '/pwa.js',
   '/manifest.webmanifest',
   '/logo.png',
+  '/skydream-app-icon-v3.png',
+  '/skydream-app-icon-v3.svg',
   '/offline.html'
 ];
 
@@ -23,7 +25,8 @@ const FRESH_PUBLIC_ASSETS = new Set([
   '/assets/site.css',
   '/assets/public.js',
   '/assets/schedule-live.js',
-  '/pwa.js'
+  '/pwa.js',
+  '/manifest.webmanifest'
 ]);
 
 self.addEventListener('install', event => {

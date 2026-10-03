@@ -8,6 +8,8 @@
     appId: '1:394576038705:web:2d055fb58a02c4b7cafe10'
   };
   const RECAPTCHA_ENTERPRISE_SITE_KEY = '6Lf0DNstAAAAAHJkirEV0aJtks5u-wAd_JEjnjOb';
+  const PUBLIC_CATALOG_CACHE_KEY = 'skydream-public-catalog-v1';
+  const PUBLIC_CATALOG_CACHE_MS = 2 * 60 * 1000;
 
   if (!window.firebase) {
     console.error('Firebase SDK did not load.');
@@ -54,13 +56,38 @@
     }
   }
 
+  function readCachedCatalog() {
+    try {
+      const raw = sessionStorage.getItem(PUBLIC_CATALOG_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || !parsed.data || !parsed.savedAt || Date.now() - parsed.savedAt > PUBLIC_CATALOG_CACHE_MS) return null;
+      return parsed.data;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function storeCachedCatalog(data) {
+    try {
+      sessionStorage.setItem(PUBLIC_CATALOG_CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data }));
+    } catch (_) {}
+  }
+
   async function call(name, data = {}) {
-    // Wait for a valid App Check token before every callable request. This
-    // avoids a race on fast-loading staff login pages where the first request
-    // could otherwise leave the browser before App Check finished attesting.
+    // Public catalogue data changes relatively slowly. Reuse it briefly while
+    // a visitor moves between pages so navigation does not repeatedly wait on
+    // App Check + a Cloud Function round trip.
+    if (name === 'publicCatalog') {
+      const cached = readCachedCatalog();
+      if (cached) return cached;
+    }
+
+    // Wait for a valid App Check token before every real callable request.
     await ensureAppCheckToken();
     const callable = functions.httpsCallable(name);
     const result = await callable(data);
+    if (name === 'publicCatalog' && result && result.data) storeCachedCatalog(result.data);
     return result.data;
   }
 

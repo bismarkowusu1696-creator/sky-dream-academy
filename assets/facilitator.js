@@ -1,20 +1,31 @@
 (() => {
-  let data=null,account=null,pendingLegacy=null;
+  let data=null,account=null;
   const $=id=>document.getElementById(id);
-  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[s]));
   const errorText=e=>window.SkyDreamFirebase?SkyDreamFirebase.friendlyError(e):(e.message||'Something went wrong.');
   function msg(text,type='info'){const el=$('facMessage');el.textContent=text;el.className=`notice notice-${type}`;el.classList.remove('hidden');}
   function clear(){ $('facMessage').classList.add('hidden'); }
 
   async function signInToken(token){ await SkyDreamFirebase.auth.signInWithCustomToken(token); await load(); }
-  async function login(e){e.preventDefault();clear();const username=$('facUsername').value.trim(),password=$('facLoginPassword').value;const b=e.target.querySelector('button');b.disabled=true;try{const r=await SkyDreamFirebase.call('facilitatorLogin',{username,password});account=r.account;if(r.upgradeRequired){pendingLegacy={username,pin:password};$('facLoginPanel').classList.add('hidden');$('facUpgradePanel').classList.remove('hidden');$('facUpgradeName').textContent=account.name||account.username;}else await signInToken(r.token);}catch(err){msg(errorText(err),'error');}finally{b.disabled=false;}}
-  async function upgrade(e){e.preventDefault();clear();const a=$('facUpgradePassword').value,b=$('facUpgradePassword2').value;if(a!==b){msg('The new passwords do not match.','error');return;}const btn=e.target.querySelector('button');btn.disabled=true;try{const r=await SkyDreamFirebase.call('upgradeFacilitatorPassword',{username:pendingLegacy.username,currentPin:pendingLegacy.pin,newPassword:a});pendingLegacy=null;account=r.account;await signInToken(r.token);}catch(err){msg(errorText(err),'error');}finally{btn.disabled=false;}}
+  async function login(e){
+    e.preventDefault();clear();
+    const username=$('facUsername').value.trim(),pin=$('facLoginPassword').value.trim();
+    if(!/^\d{4}$/.test(pin)){msg('Enter exactly 4 digits for your PIN.','error');return;}
+    const b=e.target.querySelector('button');b.disabled=true;
+    try{
+      const r=await SkyDreamFirebase.call('facilitatorLogin',{username,pin});
+      account=r.account;
+      if(!r.token)throw new Error('Sign-in could not be completed. Ask the administrator to reset your PIN.');
+      await signInToken(r.token);
+    }catch(err){msg(errorText(err),'error');}
+    finally{b.disabled=false;}
+  }
   async function load(){try{data=await SkyDreamFirebase.call('getFacilitatorDashboard');account=data.account;$('facLoginShell').classList.add('hidden');$('facDashboard').classList.remove('hidden');$('facIdentity').textContent=`${account.name} · @${account.username}`;populateCourses();setDefaultDate();render();}catch(err){await SkyDreamFirebase.auth.signOut();$('facDashboard').classList.add('hidden');$('facLoginShell').classList.remove('hidden');msg(errorText(err),'error');}}
   function populateCourses(){const sel=$('facCourse');sel.innerHTML=Object.entries(data.courses).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')||'<option value="">No program assigned</option>';}
   function todayIso(){return new Date().toISOString().slice(0,10);}
   function allowedAttendanceDate(date,intake){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date||''))return false;
-    const first=intake&& (intake.classesStartDate||intake.startDate);
+    const first=intake&&(intake.classesStartDate||intake.startDate);
     const last=intake&&intake.endDate;
     if(!first||!last||date<first||date>last||date>todayIso())return false;
     if(intake.breakStartDate&&intake.resumeDate&&date>=intake.breakStartDate&&date<intake.resumeDate)return false;
@@ -41,6 +52,6 @@
   function render(){const course=$('facCourse').value,date=$('facDate').value;const roster=data.students.filter(s=>s.course===course);let present=0,absent=0;const rows=roster.sort((a,b)=>a.fullName.localeCompare(b.fullName)).map(s=>{const rec=markFor(s.id);if(rec&&rec.status==='Present')present++;if(rec&&rec.status==='Absent')absent++;return `<tr><td>${esc(s.regNumber)}</td><td><strong>${esc(s.fullName)}</strong></td><td><div class="attendance-toggle"><button data-mark="Present" data-student="${esc(s.id)}" class="${rec&&rec.status==='Present'?'active-present':''}">Present</button><button data-mark="Absent" data-student="${esc(s.id)}" class="${rec&&rec.status==='Absent'?'active-absent':''}">Absent</button></div></td><td><input class="fac-note" data-note-for="${esc(s.id)}" value="${esc(rec&&rec.note||'')}" placeholder="Optional note"><button class="btn btn-outline btn-small" data-save-note="${esc(s.id)}">Save note</button></td></tr>`;}).join('');$('facRoster').innerHTML=rows||'<tr><td colspan="4">No students are registered for this program in the current intake.</td></tr>';$('facSummary').innerHTML=`<div class="stat"><b>${roster.length}</b><span>Roster</span></div><div class="stat"><b>${present}</b><span>Present</span></div><div class="stat"><b>${absent}</b><span>Absent</span></div><div class="stat"><b>${Math.max(0,roster.length-present-absent)}</b><span>Not marked</span></div>`;$('facDateLabel').textContent=date?new Date(date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'No completed class day yet';}
   async function saveMark(studentId,status,noteOverride){const course=$('facCourse').value,date=$('facDate').value;if(!course||!date){alert('Choose a program and a completed Saturday or Sunday class date.');return;}if(!allowedAttendanceDate(date,data.intake||{})){alert('Attendance can only be marked for a completed Saturday or Sunday class date in the active intake.');return;}const current=markFor(studentId);const noteInput=document.querySelector(`[data-note-for="${CSS.escape(studentId)}"]`);const note=noteOverride!==undefined?noteOverride:(noteInput?noteInput.value:'');const next=current&&current.status===status&&noteOverride===undefined?'':status;try{await SkyDreamFirebase.call('markFacilitatorAttendance',{course,date,studentId,status:next,note});data=await SkyDreamFirebase.call('getFacilitatorDashboard');render();}catch(err){alert(errorText(err));}}
   async function saveNote(studentId){const rec=markFor(studentId);if(!rec||!rec.status){alert('Mark the student Present or Absent before saving a note.');return;}const input=document.querySelector(`[data-note-for="${CSS.escape(studentId)}"]`);await saveMark(studentId,rec.status,input?input.value:'');}
-  function bind(){ $('facLoginForm').addEventListener('submit',login);$('facUpgradeForm').addEventListener('submit',upgrade);$('facCourse').addEventListener('change',render);$('facDate').addEventListener('change',render);$('facLogout').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.mark)saveMark(b.dataset.student,b.dataset.mark);if(b.dataset.saveNote)saveNote(b.dataset.saveNote);}); }
+  function bind(){$('facLoginForm').addEventListener('submit',login);$('facCourse').addEventListener('change',render);$('facDate').addEventListener('change',render);$('facLogout').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.mark)saveMark(b.dataset.student,b.dataset.mark);if(b.dataset.saveNote)saveNote(b.dataset.saveNote);});}
   document.addEventListener('DOMContentLoaded',()=>{bind();SkyDreamFirebase.auth.onAuthStateChanged(async user=>{if(!user)return;try{const t=await user.getIdTokenResult();if(t.claims.role==='facilitator')await load();else await SkyDreamFirebase.auth.signOut();}catch(_){await SkyDreamFirebase.auth.signOut();}});});
 })();

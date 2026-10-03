@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v15';
+const CACHE_NAME = 'skydream-pwa-v16';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -75,8 +75,8 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Never cache staff dashboards.
-  if (url.pathname === '/admin.html' || url.pathname === '/facilitator.html') return;
+  // Never cache staff-only entry points or dashboards.
+  if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator'].includes(url.pathname)) return;
 
   // Serve frequently used public assets instantly, then refresh them in the background.
   if (FRESH_PUBLIC_ASSETS.has(url.pathname)) {

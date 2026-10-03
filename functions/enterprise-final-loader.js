@@ -1,0 +1,44 @@
+// Final enterprise entrypoint. Adds class-session enforcement controls while
+// preserving that setting when the existing registration settings form saves.
+const app = require('./enterprise-admin-loader');
+const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const admin = require('firebase-admin');
+const db = admin.firestore();
+const COLLECTION = 'sdta_storage';
+
+const parseJson=(raw,fallback)=>{try{return raw?JSON.parse(raw):fallback;}catch(_){return fallback;}};
+async function read(key,fallback){const s=await db.collection(COLLECTION).doc(key).get();return s.exists?parseJson(s.data().value,fallback):fallback;}
+async function write(key,value){await db.collection(COLLECTION).doc(key).set({value:JSON.stringify(value)});}
+async function requireSettingsAdmin(request){
+  const auth=request.auth,token=auth&&auth.token;
+  if(!auth||!token||token.role!=='admin'||!token.username)throw new HttpsError('permission-denied','Administrator access is required.');
+  const admins=await read('sdta_admins',[]);const account=admins.find(a=>String(a.username||'').toLowerCase()===String(token.username).toLowerCase());
+  if(!account||auth.uid!=='admin-'+account.id)throw new HttpsError('permission-denied','This administrator session is no longer valid.');
+  if(!['owner','manager'].includes(account.role||'staff'))throw new HttpsError('permission-denied','Owner or manager access is required.');
+  if(token.sessionId){const sessions=await read('sdta_admin_sessions',[]);const session=sessions.find(s=>s.id===token.sessionId&&s.username===account.username);if(!session||session.revoked)throw new HttpsError('permission-denied','This admin session has been signed out.');}
+  return account;
+}
+
+app.adminSetSessionEnforcement=onCall({enforceAppCheck:true},async request=>{
+  await requireSettingsAdmin(request);
+  const settings=await read('sdta_admin_settings',{});
+  settings.sessionEnforcement=request.data&&request.data.enabled===true;
+  await write('sdta_admin_settings',settings);
+  return {ok:true,enabled:settings.sessionEnforcement};
+});
+
+const baseSave=app.adminSaveRegistrationSettings;
+if(baseSave&&typeof baseSave.run==='function'){
+  app.adminSaveRegistrationSettings=onCall({enforceAppCheck:true},async request=>{
+    const before=await read('sdta_admin_settings',{});
+    const result=await baseSave.run(request);
+    const after=await read('sdta_admin_settings',{});
+    if(Object.prototype.hasOwnProperty.call(before,'sessionEnforcement')){
+      after.sessionEnforcement=before.sessionEnforcement===true;
+      await write('sdta_admin_settings',after);
+    }
+    return result;
+  });
+}
+
+module.exports=app;

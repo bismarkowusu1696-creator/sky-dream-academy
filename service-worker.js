@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v19';
+const CACHE_NAME = 'skydream-pwa-v20';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -72,6 +72,8 @@ self.addEventListener('fetch', event => {
     '/assets/admin-intake.js',
     '/assets/admin-suite.js',
     '/assets/admin-extra-actions.js',
+    '/assets/admin-enterprise-login.js',
+    '/assets/admin-enterprise.js',
     '/assets/admin-suite.css',
     '/assets/facilitator.js'
   ].includes(url.pathname)) {

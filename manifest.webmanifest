@@ -10,6 +10,7 @@
   "theme_color": "#1F3A93",
   "orientation": "any",
   "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/skydream-app-icon-v3.png",
@@ -19,7 +20,7 @@
     },
     {
       "src": "/skydream-app-icon-v3.svg",
-      "sizes": "any",
+      "sizes": "512x512",
       "type": "image/svg+xml",
       "purpose": "any maskable"
     }

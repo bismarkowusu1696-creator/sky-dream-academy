@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v10';
+const CACHE_NAME = 'skydream-pwa-v11';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -15,8 +15,6 @@ const PUBLIC_SHELL = [
   '/assets/schedule-live.js',
   '/pwa.js',
   '/manifest.webmanifest',
-  '/skydream-app-icon-v3.png',
-  '/skydream-app-icon-v3.svg',
   '/logo.png',
   '/offline.html'
 ];

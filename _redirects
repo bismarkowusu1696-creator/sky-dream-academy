@@ -9,6 +9,7 @@ https://skydreamskillstrainingacademy.netlify.app/* https://skydream.academy/:sp
 /contact /contact.html 301!
 /register /register.html 301!
 /check-status /check-status.html 301!
+/student-portal /student-portal.html 200
 /staff /staff.html 200
 /admin /admin.html 200
 /facilitator /facilitator.html 200

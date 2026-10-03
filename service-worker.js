@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v14';
+const CACHE_NAME = 'skydream-pwa-v15';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -45,6 +45,19 @@ self.addEventListener('activate', event => {
   );
 });
 
+async function refreshCache(request) {
+  try {
+    const response = await fetch(request);
+    if (response && response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(request, response.clone());
+    }
+    return response;
+  } catch (_) {
+    return null;
+  }
+}
+
 self.addEventListener('fetch', event => {
   const request = event.request;
   if (request.method !== 'GET') return;
@@ -62,44 +75,43 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Never cache staff dashboards. Their HTML does not contain records, but
-  // keeping protected surfaces out of offline caches is safer and clearer.
+  // Never cache staff dashboards.
   if (url.pathname === '/admin.html' || url.pathname === '/facilitator.html') return;
 
-  // For files that change frequently, prefer the network and update the cache.
-  // This prevents installed PWAs from staying on an old JS/CSS version after a deploy.
+  // Serve frequently used public assets instantly, then refresh them in the background.
   if (FRESH_PUBLIC_ASSETS.has(url.pathname)) {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          if (response && response.ok) {
-            caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
+    event.respondWith((async () => {
+      const cached = await caches.match(request);
+      const update = refreshCache(request);
+      if (cached) {
+        event.waitUntil(update);
+        return cached;
+      }
+      return (await update) || new Response('', { status: 504 });
+    })());
     return;
   }
 
+  // Public navigation is stale-while-revalidate: cached pages open immediately,
+  // while the latest Netlify copy is fetched in the background for the next visit.
   if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          if (response && response.ok) {
-            caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
-          }
-          return response;
-        })
-        .catch(async () => (await caches.match(request)) || (await caches.match('/offline.html')))
-    );
+    event.respondWith((async () => {
+      const cached = await caches.match(request);
+      const update = refreshCache(request);
+      if (cached) {
+        event.waitUntil(update);
+        return cached;
+      }
+      const fresh = await update;
+      return fresh || (await caches.match('/offline.html'));
+    })());
     return;
   }
 
-  event.respondWith(
-    caches.match(request).then(cached => cached || fetch(request).then(response => {
-      if (response && response.ok) caches.open(CACHE_NAME).then(cache => cache.put(request, response.clone()));
-      return response;
-    }))
-  );
+  event.respondWith((async () => {
+    const cached = await caches.match(request);
+    if (cached) return cached;
+    const fresh = await refreshCache(request);
+    return fresh || new Response('', { status: 504 });
+  })());
 });

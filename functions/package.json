@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "description": "Cloud Functions for SkyDream Skills Training Academy",
-  "main": "final-admin-loader.js",
+  "main": "enterprise-final-loader.js",
   "engines": {
     "node": "22"
   },

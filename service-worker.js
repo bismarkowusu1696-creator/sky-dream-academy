@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v18';
+const CACHE_NAME = 'skydream-pwa-v19';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',

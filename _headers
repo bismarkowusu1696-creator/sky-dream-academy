@@ -18,6 +18,10 @@
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, nofollow, noarchive
 
+/student-portal.html
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+
 /check-status.html
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, follow

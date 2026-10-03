@@ -65,6 +65,17 @@ function passwordIsStrong(value) {
   return p.length >= 12 && /[a-z]/.test(p) && /[A-Z]/.test(p) && /\d/.test(p);
 }
 
+function facilitatorPinIsValid(value) {
+  return /^[0-9]{4}$/.test(String(value || ''));
+}
+
+// The facilitator-facing credential remains a simple 4-digit PIN. Internally
+// it is expanded before being passed to the existing scrypt password verifier,
+// so the stored record is still salted and hashed instead of storing the PIN.
+function facilitatorSecretFromPin(pin) {
+  return `SkyDream-Facilitator-${String(pin)}-Aa9!`;
+}
+
 function makePasswordRecord(password) {
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -109,8 +120,7 @@ function wrapBound(callable, kind) {
   });
 }
 
-// Legacy PIN migration uses the exact same login verifier that just accepted
-// the PIN. This avoids a second, conflicting legacy-PIN verification path.
+// Legacy PIN migration is retained only for administrator accounts.
 function wrapLegacyUpgrade(loginCallable, kind) {
   return realOnCall({ enforceAppCheck: true }, async request => {
     const data = request.data || {};
@@ -135,8 +145,6 @@ function wrapLegacyUpgrade(loginCallable, kind) {
       throw new https.HttpsError('permission-denied', 'Current PIN verification failed.');
     }
 
-    // If another request already completed the migration, the normal login
-    // handler can return a final token; let the user continue safely.
     if (!verified.upgradeRequired) {
       if (verified.token) return { token: verified.token, account: verified.account };
       throw new https.HttpsError('failed-precondition', 'This account has already been upgraded. Sign in with the new password.');
@@ -215,8 +223,120 @@ function wrapNextIntake(callable) {
   app[name] = wrapBound(app[name], 'admin');
 });
 
+// New facilitator accounts are created with a 4-digit PIN. The existing
+// facilitator creation handler still gets a strong internal secret so no plain
+// PIN or reversible PIN value is stored in Firestore.
+const securedCreateFacilitator = app.adminCreateFacilitator;
+app.adminCreateFacilitator = realOnCall({ enforceAppCheck: true }, async request => {
+  const data = request.data || {};
+  const pin = String(data.pin || data.password || '');
+  if (!facilitatorPinIsValid(pin)) {
+    throw new https.HttpsError('invalid-argument', 'Facilitator PIN must be exactly 4 digits.');
+  }
+  return securedCreateFacilitator.run({
+    ...request,
+    data: { ...data, password: facilitatorSecretFromPin(pin) }
+  });
+});
+
+// Main administrators can reset any facilitator to a new 4-digit PIN.
+app.adminSetFacilitatorPin = realOnCall({ enforceAppCheck: true }, async request => {
+  const adminAccount = await assertBoundMembership(request, 'admin');
+  if ((adminAccount.role || 'staff') !== 'owner') {
+    throw new https.HttpsError('permission-denied', 'Main administrator access is required.');
+  }
+
+  const data = request.data || {};
+  const id = String(data.id || '').trim();
+  const pin = String(data.pin || '');
+  if (!id || !facilitatorPinIsValid(pin)) {
+    throw new https.HttpsError('invalid-argument', 'Choose a facilitator and enter exactly 4 digits.');
+  }
+
+  const ref = db.collection('sdta_storage').doc('sdta_facilitators');
+  let found = false;
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const list = snap.exists ? parseJson(snap.data().value, []) : [];
+    const account = list.find(item => item.id === id);
+    if (!account) {
+      throw new https.HttpsError('not-found', 'Facilitator account not found.');
+    }
+    Object.assign(account, makePasswordRecord(facilitatorSecretFromPin(pin)));
+    delete account.pinHash;
+    account.failedLogins = 0;
+    delete account.lockedUntil;
+    tx.set(ref, { value: JSON.stringify(list) });
+    found = true;
+  });
+
+  if (found) {
+    try { await admin.auth().revokeRefreshTokens('fac-' + id); } catch (_) {}
+  }
+  return { ok: true };
+});
+
+// Facilitators sign in with exactly four digits. Old legacy PIN accounts are
+// migrated automatically the first time their PIN is successfully verified.
+app.facilitatorLogin = realOnCall({ enforceAppCheck: true }, async request => {
+  const data = request.data || {};
+  const username = String(data.username || '').trim().slice(0, 80);
+  const pin = String(data.pin || data.password || '');
+  if (!username || !facilitatorPinIsValid(pin)) {
+    throw new https.HttpsError('invalid-argument', 'Username and 4-digit PIN are required.');
+  }
+
+  const ref = db.collection('sdta_storage').doc('sdta_facilitators');
+  const snap = await ref.get();
+  const list = snap.exists ? parseJson(snap.data().value, []) : [];
+  const accountBefore = list.find(item => String(item.username || '').toLowerCase() === username.toLowerCase());
+  const verifierSecret = accountBefore && accountBefore.pinHash ? pin : facilitatorSecretFromPin(pin);
+
+  const verified = await originalFacilitatorLogin.run({
+    ...request,
+    data: { username, password: verifierSecret }
+  });
+
+  if (!verified || !verified.account) return verified;
+  if (!verified.upgradeRequired) return verified;
+
+  let account = null;
+  await db.runTransaction(async tx => {
+    const latest = await tx.get(ref);
+    const current = latest.exists ? parseJson(latest.data().value, []) : [];
+    account = current.find(item => item.id === verified.account.id &&
+      String(item.username || '').toLowerCase() === username.toLowerCase());
+    if (!account || !account.pinHash) {
+      throw new https.HttpsError('permission-denied', 'PIN verification failed.');
+    }
+    Object.assign(account, makePasswordRecord(facilitatorSecretFromPin(pin)));
+    delete account.pinHash;
+    account.failedLogins = 0;
+    delete account.lockedUntil;
+    tx.set(ref, { value: JSON.stringify(current) });
+  });
+
+  const token = await admin.auth().createCustomToken('fac-' + account.id, {
+    role: 'facilitator',
+    username: account.username
+  });
+  return {
+    token,
+    account: {
+      id: account.id,
+      name: account.name,
+      username: account.username,
+      phone: account.phone || '',
+      courses: Array.isArray(account.courses) ? account.courses : []
+    }
+  };
+});
+
 app.upgradeAdminPassword = wrapLegacyUpgrade(originalAdminLogin, 'admin');
-app.upgradeFacilitatorPassword = wrapLegacyUpgrade(originalFacilitatorLogin, 'facilitator');
+// Facilitator password upgrades are intentionally disabled: facilitators use 4-digit PINs.
+app.upgradeFacilitatorPassword = realOnCall({ enforceAppCheck: true }, async () => {
+  throw new https.HttpsError('failed-precondition', 'Facilitators now use a 4-digit PIN. Ask the main administrator to reset your PIN if needed.');
+});
 app.adminStartNextIntake = wrapNextIntake(app.adminStartNextIntake);
 
 ['getFacilitatorDashboard', 'markFacilitatorAttendance'].forEach(name => {

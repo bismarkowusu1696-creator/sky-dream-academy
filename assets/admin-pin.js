@@ -1,27 +1,4 @@
 (() => {
-  function loadAsset(tag, attrs) {
-    const el = document.createElement(tag);
-    Object.entries(attrs).forEach(([k,v]) => el[k] = v);
-    document.head.appendChild(el);
-    return el;
-  }
-
-  if (!document.querySelector('link[href="assets/admin-suite.css"]')) {
-    loadAsset('link', { rel: 'stylesheet', href: 'assets/admin-suite.css' });
-  }
-  if (!document.querySelector('script[src="assets/admin-suite.js"]')) {
-    const script = document.createElement('script');
-    script.src = 'assets/admin-suite.js';
-    script.async = false;
-    document.body.appendChild(script);
-  }
-  if (!document.querySelector('script[src="assets/admin-extra-actions.js"]')) {
-    const script = document.createElement('script');
-    script.src = 'assets/admin-extra-actions.js';
-    script.async = false;
-    document.body.appendChild(script);
-  }
-
   function addPinButtons() {
     const list = document.getElementById('facilitatorList');
     if (!list) return;
@@ -61,9 +38,8 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const list = document.getElementById('facilitatorList');
-    if (list) {
-      addPinButtons();
-      new MutationObserver(addPinButtons).observe(list, { childList: true, subtree: true });
-    }
+    if (!list) return;
+    addPinButtons();
+    new MutationObserver(addPinButtons).observe(list, { childList: true, subtree: true });
   });
 })();

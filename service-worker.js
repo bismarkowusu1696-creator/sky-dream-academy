@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v17';
+const CACHE_NAME = 'skydream-pwa-v18';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -64,12 +64,15 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Never serve authentication/security scripts from an old PWA cache.
+  // Never serve authentication/security/admin scripts or admin styling from an old PWA cache.
   if ([
     '/assets/firebase.js',
     '/assets/admin.js',
     '/assets/admin-pin.js',
     '/assets/admin-intake.js',
+    '/assets/admin-suite.js',
+    '/assets/admin-extra-actions.js',
+    '/assets/admin-suite.css',
     '/assets/facilitator.js'
   ].includes(url.pathname)) {
     event.respondWith(fetch(request, { cache: 'no-store' }));

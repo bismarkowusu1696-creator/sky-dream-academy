@@ -9,6 +9,79 @@
   const isIOS = () => /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   const isMobile = () => /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
 
+  function applyResponsiveLayoutPolish() {
+    if (document.getElementById('skydreamResponsivePolish')) return;
+    const style = document.createElement('style');
+    style.id = 'skydreamResponsivePolish';
+    style.textContent = `
+      /* Keep the desktop navigation clean and prevent words breaking letter-by-letter. */
+      .site-header .container.nav{
+        width:min(1480px,calc(100% - 40px));
+      }
+      .site-header .brand{
+        flex:0 1 360px;
+      }
+      .site-header .brand span{
+        overflow-wrap:normal;
+        word-break:normal;
+      }
+      .site-header .nav-links{
+        flex:1 1 auto;
+        justify-content:flex-end;
+        gap:4px;
+        min-width:0;
+      }
+      .site-header .nav-links a{
+        white-space:nowrap;
+        overflow-wrap:normal;
+        word-break:normal;
+        padding:10px 9px;
+        font-size:.96rem;
+      }
+      .site-header .nav-links a.btn{
+        padding:10px 16px;
+      }
+
+      /* Switch to the hamburger before the links become cramped on laptops/tablets. */
+      @media(max-width:1180px){
+        .site-header .nav-toggle{display:block;}
+        .site-header .nav-links{
+          display:none;
+          position:absolute;
+          left:0;
+          right:0;
+          top:70px;
+          flex-direction:column;
+          align-items:stretch;
+          justify-content:flex-start;
+          gap:4px;
+          background:#fff;
+          border:1px solid var(--line);
+          border-radius:14px;
+          padding:10px;
+          box-shadow:var(--shadow);
+          max-height:calc(100dvh - 88px);
+          overflow-y:auto;
+          -webkit-overflow-scrolling:touch;
+        }
+        .site-header .nav-links.open{display:flex;}
+        .site-header .nav-links a{
+          width:100%;
+          white-space:normal;
+          padding:11px 12px;
+          font-size:1rem;
+        }
+        .site-header .nav-links a.btn{padding:11px 14px;}
+        .site-header .brand{flex:1 1 auto;}
+      }
+
+      @media(max-width:620px){
+        .site-header .container.nav{width:calc(100% - 24px);}
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   function hideInstallButton() {
     if (installButton) installButton.hidden = true;
   }
@@ -97,6 +170,8 @@
     deferredInstallPrompt = null;
     hideInstallButton();
   });
+
+  applyResponsiveLayoutPolish();
 
   window.addEventListener('DOMContentLoaded', () => {
     createInstallButton();

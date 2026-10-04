@@ -14,43 +14,59 @@
     const style = document.createElement('style');
     style.id = 'skydreamResponsivePolish';
     style.textContent = `
-      /* Keep the desktop navigation clean and prevent words breaking letter-by-letter. */
+      /* Public header: use the available desktop width and never split menu labels. */
       .site-header .container.nav{
-        width:min(1480px,calc(100% - 40px));
+        width:calc(100% - 48px) !important;
+        max-width:none !important;
       }
       .site-header .brand{
-        flex:0 1 360px;
+        flex:0 0 360px !important;
+        max-width:360px !important;
       }
       .site-header .brand span{
-        overflow-wrap:normal;
-        word-break:normal;
+        overflow-wrap:normal !important;
+        word-break:normal !important;
       }
       .site-header .nav-links{
+        display:flex;
         flex:1 1 auto;
         justify-content:flex-end;
-        gap:4px;
+        align-items:center;
+        gap:6px;
         min-width:0;
       }
       .site-header .nav-links a{
-        white-space:nowrap;
-        overflow-wrap:normal;
-        word-break:normal;
-        padding:10px 9px;
-        font-size:.96rem;
+        flex:0 0 auto !important;
+        min-width:max-content !important;
+        white-space:nowrap !important;
+        overflow-wrap:normal !important;
+        word-break:keep-all !important;
+        padding:10px 10px;
+        font-size:.95rem;
+        line-height:1.2;
       }
       .site-header .nav-links a.btn{
-        padding:10px 16px;
+        padding:11px 18px;
       }
 
-      /* Switch to the hamburger before the links become cramped on laptops/tablets. */
-      @media(max-width:1180px){
-        .site-header .nav-toggle{display:block;}
+      /* On narrower laptop/tablet viewports, use the menu instead of crushing labels. */
+      @media(max-width:1450px){
+        .site-header .container.nav{
+          width:min(1180px,calc(100% - 32px)) !important;
+          max-width:1180px !important;
+        }
+        .site-header .nav-toggle{display:block !important;}
+        .site-header .brand{
+          flex:1 1 auto !important;
+          max-width:none !important;
+        }
         .site-header .nav-links{
-          display:none;
+          display:none !important;
           position:absolute;
           left:0;
           right:0;
           top:70px;
+          z-index:70;
           flex-direction:column;
           align-items:stretch;
           justify-content:flex-start;
@@ -64,19 +80,19 @@
           overflow-y:auto;
           -webkit-overflow-scrolling:touch;
         }
-        .site-header .nav-links.open{display:flex;}
+        .site-header .nav-links.open{display:flex !important;}
         .site-header .nav-links a{
           width:100%;
-          white-space:normal;
+          min-width:0 !important;
+          white-space:normal !important;
           padding:11px 12px;
           font-size:1rem;
         }
         .site-header .nav-links a.btn{padding:11px 14px;}
-        .site-header .brand{flex:1 1 auto;}
       }
 
       @media(max-width:620px){
-        .site-header .container.nav{width:calc(100% - 24px);}
+        .site-header .container.nav{width:calc(100% - 24px) !important;}
       }
     `;
     document.head.appendChild(style);
@@ -154,9 +170,6 @@
 
     document.body.appendChild(installButton);
 
-    // Keep an install entry visible in normal browser mode. When Chromium has
-    // finished its installability checks, the same button opens the native
-    // install prompt. Before that, it gives clear manual-install instructions.
     if (!isStandalone()) showInstallButton();
   }
 

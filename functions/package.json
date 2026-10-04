@@ -1,7 +1,7 @@
 {
   "name": "functions",
   "description": "Cloud Functions for SkyDream Skills Training Academy",
-  "main": "facilitator-create-fix-loader.js",
+  "main": "facilitator-auth-fix-loader.js",
   "engines": {
     "node": "22"
   },

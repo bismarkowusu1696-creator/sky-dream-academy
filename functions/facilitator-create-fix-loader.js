@@ -1,8 +1,7 @@
-// Hotfix for facilitator creation. The older PIN wrapper rebuilt the callable
-// request with object spread; Firebase callable request auth metadata is not
-// guaranteed to survive that transformation. This top-level handler validates
-// the real request directly and creates the facilitator with a salted scrypt
-// hash of the 4-digit PIN-derived internal secret.
+// Hotfix for facilitator creation. Some callable requests were reaching the
+// backend without request.auth even though the administrator was signed in.
+// For this sensitive action we accept the normal callable auth context first,
+// and otherwise verify an explicit Firebase ID token supplied by the admin UI.
 const app = require('./academic-portal-loader');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
@@ -36,11 +35,25 @@ async function readValue(key, fallback) {
   return snap.exists ? parseJson(snap.data().value, fallback) : fallback;
 }
 
+async function resolveAdminAuth(request) {
+  const direct = request && request.auth;
+  if (direct && direct.uid && direct.token) return direct;
+
+  const explicitToken = String(request && request.data && request.data.adminIdToken || '').trim();
+  if (!explicitToken) return null;
+  try {
+    const decoded = await admin.auth().verifyIdToken(explicitToken);
+    return { uid: decoded.uid, token: decoded };
+  } catch (_) {
+    return null;
+  }
+}
+
 async function requireOwnerSession(request) {
-  const auth = request.auth;
+  const auth = await resolveAdminAuth(request);
   const token = auth && auth.token;
   if (!auth || !token || token.role !== 'admin' || !token.username) {
-    throw new HttpsError('permission-denied', 'Administrator access is required.');
+    throw new HttpsError('permission-denied', 'Administrator access is required. Please sign out and sign in again.');
   }
   const admins = await readValue('sdta_admins', []);
   const account = admins.find(a => String(a.username || '').toLowerCase() === String(token.username).toLowerCase());

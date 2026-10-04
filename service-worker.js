@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v23';
+const CACHE_NAME = 'skydream-pwa-v24';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -13,7 +13,6 @@ const PUBLIC_SHELL = [
   '/assets/site.css',
   '/assets/public.js',
   '/assets/schedule-live.js',
-  '/pwa.js',
   '/manifest.webmanifest',
   '/logo.png',
   '/skydream-app-icon-v3.png',
@@ -25,7 +24,6 @@ const FRESH_PUBLIC_ASSETS = new Set([
   '/assets/site.css',
   '/assets/public.js',
   '/assets/schedule-live.js',
-  '/pwa.js',
   '/manifest.webmanifest'
 ]);
 
@@ -64,6 +62,12 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  // Always fetch layout bootstrap fresh so header/responsive fixes take effect immediately.
+  if (url.pathname === '/pwa.js') {
+    event.respondWith(fetch(request, { cache: 'no-store' }));
+    return;
+  }
+
   // Never serve authentication/security/admin/student scripts or admin styling from an old PWA cache.
   if ([
     '/assets/firebase.js',
@@ -86,7 +90,6 @@ self.addEventListener('fetch', event => {
   // Never cache authenticated entry points or dashboards.
   if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator', '/student-portal.html', '/student-portal'].includes(url.pathname)) return;
 
-  // Serve frequently used public assets instantly, then refresh them in the background.
   if (FRESH_PUBLIC_ASSETS.has(url.pathname)) {
     event.respondWith((async () => {
       const cached = await caches.match(request);
@@ -100,8 +103,6 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Public navigation is stale-while-revalidate: cached pages open immediately,
-  // while the latest Netlify copy is fetched in the background for the next visit.
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
       const cached = await caches.match(request);

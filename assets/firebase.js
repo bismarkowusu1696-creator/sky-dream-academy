@@ -8,7 +8,7 @@
     appId: '1:394576038705:web:2d055fb58a02c4b7cafe10'
   };
   const RECAPTCHA_ENTERPRISE_SITE_KEY = '6Lf0DNstAAAAAHJkirEV0aJtks5u-wAd_JEjnjOb';
-  const PUBLIC_CATALOG_CACHE_KEY = 'skydream-public-catalog-v1';
+  const PUBLIC_CATALOG_CACHE_KEY = 'skydream-public-catalog-v2';
   const PUBLIC_CATALOG_CACHE_MS = 2 * 60 * 1000;
 
   if (!window.firebase) {

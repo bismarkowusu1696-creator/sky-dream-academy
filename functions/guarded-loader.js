@@ -78,10 +78,15 @@ async function enforceRateLimit(request, kind, maxRequests, windowMs) {
 function registrationWindow(intake) {
   const value = intake || {};
   const openDate = validIsoDate(value.registrationOpenDate) ? value.registrationOpenDate : '';
-  const fallbackClose = validIsoDate(value.startDate)
-    ? value.startDate
-    : (validIsoDate(value.classesStartDate) ? value.classesStartDate : '');
-  const closeDate = validIsoDate(value.registrationCloseDate) ? value.registrationCloseDate : fallbackClose;
+  const configuredClose = validIsoDate(value.registrationCloseDate) ? value.registrationCloseDate : '';
+  const intakeEnd = validIsoDate(value.endDate) ? value.endDate : '';
+
+  // Older intake records automatically used the orientation/start date as the
+  // registration closing date. That made registration close immediately after
+  // orientation. Treat that legacy value as "no custom close date" and keep
+  // registration open through the intake end date instead.
+  const legacyAutoClose = configuredClose && validIsoDate(value.startDate) && configuredClose === value.startDate;
+  const closeDate = legacyAutoClose ? intakeEnd : (configuredClose || intakeEnd);
   return { openDate, closeDate };
 }
 
@@ -138,22 +143,19 @@ const baseNextIntake = app.adminStartNextIntake;
 app.adminStartNextIntake = onCall({ enforceAppCheck: true }, async request => {
   const data = request.data || {};
   const startDate = cleanDate(data.startDate);
-  const classesStartDate = cleanDate(data.classesStartDate);
+  const endDate = cleanDate(data.endDate);
   const openDate = cleanDate(data.registrationOpenDate);
   const requestedClose = cleanDate(data.registrationCloseDate);
-  const closeDate = requestedClose || startDate;
+  const closeDate = requestedClose || (validIsoDate(endDate) ? endDate : '');
 
   if (openDate && !validIsoDate(openDate)) {
     throw new HttpsError('invalid-argument', 'The registration opening date is invalid.');
   }
-  if (!validIsoDate(closeDate)) {
+  if (closeDate && !validIsoDate(closeDate)) {
     throw new HttpsError('invalid-argument', 'The registration closing date is invalid.');
   }
-  if (openDate && openDate > closeDate) {
+  if (openDate && closeDate && openDate > closeDate) {
     throw new HttpsError('invalid-argument', 'Registration cannot open after it closes.');
-  }
-  if (validIsoDate(classesStartDate) && closeDate > classesStartDate) {
-    throw new HttpsError('invalid-argument', 'Registration must close on or before the first class date.');
   }
 
   ensureCallable(baseNextIntake, 'Next intake');

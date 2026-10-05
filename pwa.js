@@ -1,20 +1,19 @@
 (() => {
   let deferredInstallPrompt = null;
   let installButton = null;
+  let promptReadyResolver = null;
 
   const isStandalone = () =>
     window.matchMedia('(display-mode: standalone)').matches ||
     window.navigator.standalone === true;
 
   const isIOS = () => /iphone|ipad|ipod/i.test(window.navigator.userAgent);
-  const isMobile = () => /android|iphone|ipad|ipod/i.test(window.navigator.userAgent);
 
   function applyResponsiveLayoutPolish() {
     if (document.getElementById('skydreamResponsivePolish')) return;
     const style = document.createElement('style');
     style.id = 'skydreamResponsivePolish';
     style.textContent = `
-      /* Public header: use the available desktop width and never split menu labels. */
       .site-header .container.nav{
         width:calc(100% - 48px) !important;
         max-width:none !important;
@@ -45,11 +44,8 @@
         font-size:.95rem;
         line-height:1.2;
       }
-      .site-header .nav-links a.btn{
-        padding:11px 18px;
-      }
+      .site-header .nav-links a.btn{padding:11px 18px;}
 
-      /* On narrower laptop/tablet viewports, use the menu instead of crushing labels. */
       @media(max-width:1450px){
         .site-header .container.nav{
           width:min(1180px,calc(100% - 32px)) !important;
@@ -102,22 +98,69 @@
     if (installButton) installButton.hidden = true;
   }
 
-  function showInstallButton() {
-    if (installButton && !isStandalone()) installButton.hidden = false;
+  function updateInstallButton() {
+    if (!installButton) return;
+    if (isStandalone()) {
+      hideInstallButton();
+      return;
+    }
+
+    // iOS does not expose beforeinstallprompt; the button opens Safari instructions.
+    // Everywhere else, only show the button when the browser has confirmed that
+    // the app is actually installable. This prevents a button that only shows an alert.
+    installButton.hidden = !(isIOS() || deferredInstallPrompt);
   }
 
-  function fallbackInstallHelp() {
+  function waitForNativePrompt(timeoutMs = 3500) {
+    if (deferredInstallPrompt) return Promise.resolve(deferredInstallPrompt);
+    return new Promise(resolve => {
+      let settled = false;
+      const finish = value => {
+        if (settled) return;
+        settled = true;
+        if (promptReadyResolver === finish) promptReadyResolver = null;
+        resolve(value);
+      };
+      promptReadyResolver = finish;
+      window.setTimeout(() => finish(null), timeoutMs);
+    });
+  }
+
+  async function installApp() {
+    if (isStandalone()) {
+      hideInstallButton();
+      return;
+    }
+
     if (isIOS()) {
       window.alert('To install SkyDream on iPhone or iPad: open this website in Safari, tap the Share button, then choose “Add to Home Screen”.');
       return;
     }
 
-    if (isMobile()) {
-      window.alert('If the install window does not open yet, stay on the site briefly, then tap the browser menu (⋮) and choose “Install app” or “Add to Home screen”.');
+    if (!deferredInstallPrompt && 'serviceWorker' in navigator) {
+      try { await navigator.serviceWorker.ready; } catch (_) {}
+    }
+
+    const promptEvent = deferredInstallPrompt || await waitForNativePrompt();
+    if (!promptEvent) {
+      // Chrome/Edge may temporarily withhold the prompt after it was dismissed,
+      // or when the app is already installed. Do not pretend a native prompt exists.
+      window.alert('The browser is not offering the install window yet. If SkyDream is already installed, open it from your apps. Otherwise refresh this page once, then use Chrome/Edge menu → Install SkyDream (or the install icon in the address bar).');
+      updateInstallButton();
       return;
     }
 
-    window.alert('If the install window does not open yet, use your browser menu and choose “Install SkyDream” or “Install app”. Chrome may also show an install icon at the right side of the address bar.');
+    try {
+      await promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      deferredInstallPrompt = null;
+      if (choice && choice.outcome === 'accepted') hideInstallButton();
+      else updateInstallButton();
+    } catch (err) {
+      console.warn('SkyDream install prompt failed:', err);
+      deferredInstallPrompt = null;
+      updateInstallButton();
+    }
   }
 
   function createInstallButton() {
@@ -133,6 +176,7 @@
         box-shadow:0 10px 28px rgba(31,58,147,.24);cursor:pointer;
       }
       .pwa-install-button:hover{background:#152A6E;}
+      .pwa-install-button:disabled{opacity:.65;cursor:wait;}
       .pwa-install-button[hidden]{display:none!important;}
       .pwa-install-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
       @media(max-width:600px){
@@ -157,26 +201,31 @@
     `;
 
     installButton.addEventListener('click', async () => {
-      if (deferredInstallPrompt) {
-        deferredInstallPrompt.prompt();
-        const choice = await deferredInstallPrompt.userChoice;
-        if (choice && choice.outcome === 'accepted') hideInstallButton();
-        deferredInstallPrompt = null;
-        return;
+      if (installButton.disabled) return;
+      installButton.disabled = true;
+      const label = installButton.querySelector('span');
+      const old = label ? label.textContent : '';
+      if (label) label.textContent = 'Opening…';
+      try { await installApp(); }
+      finally {
+        installButton.disabled = false;
+        if (label) label.textContent = old || 'Install App';
       }
-
-      fallbackInstallHelp();
     });
 
     document.body.appendChild(installButton);
-
-    if (!isStandalone()) showInstallButton();
+    updateInstallButton();
   }
 
   window.addEventListener('beforeinstallprompt', event => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    showInstallButton();
+    if (promptReadyResolver) {
+      const resolve = promptReadyResolver;
+      promptReadyResolver = null;
+      resolve(event);
+    }
+    updateInstallButton();
   });
 
   window.addEventListener('appinstalled', () => {
@@ -184,14 +233,22 @@
     hideInstallButton();
   });
 
+  window.matchMedia('(display-mode: standalone)').addEventListener?.('change', updateInstallButton);
+
   applyResponsiveLayoutPolish();
+
+  async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    try {
+      await navigator.serviceWorker.register('/service-worker.js', { scope: '/' });
+      await navigator.serviceWorker.ready;
+    } catch (error) {
+      console.warn('SkyDream service worker registration failed:', error);
+    }
+  }
 
   window.addEventListener('DOMContentLoaded', () => {
     createInstallButton();
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js', { scope: './' })
-        .catch(error => console.warn('SkyDream service worker registration failed:', error));
-    }
+    registerServiceWorker();
   });
 })();

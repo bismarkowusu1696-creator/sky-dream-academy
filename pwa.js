@@ -100,18 +100,43 @@
 
   function updateInstallButton() {
     if (!installButton) return;
-    if (isStandalone()) {
-      hideInstallButton();
-      return;
-    }
-
-    // iOS does not expose beforeinstallprompt; the button opens Safari instructions.
-    // Everywhere else, only show the button when the browser has confirmed that
-    // the app is actually installable. This prevents a button that only shows an alert.
-    installButton.hidden = !(isIOS() || deferredInstallPrompt);
+    installButton.hidden = isStandalone();
+    installButton.dataset.ready = deferredInstallPrompt ? 'true' : 'false';
+    installButton.title = deferredInstallPrompt
+      ? 'Install SkyDream'
+      : 'Install SkyDream or show installation steps';
   }
 
-  function waitForNativePrompt(timeoutMs = 3500) {
+  function closeInstallHelp() {
+    document.getElementById('pwaInstallHelp')?.remove();
+  }
+
+  function showInstallHelp() {
+    closeInstallHelp();
+    const panel = document.createElement('div');
+    panel.id = 'pwaInstallHelp';
+    panel.className = 'pwa-install-help';
+
+    const body = isIOS()
+      ? '<p>On iPhone/iPad, open this site in <strong>Safari</strong>, tap the <strong>Share</strong> button, then choose <strong>Add to Home Screen</strong>.</p>'
+      : '<p>Chrome has not offered the native install window yet. Use the browser menu <strong>⋮ → Install SkyDream</strong> or the install icon in the address bar. If you dismissed the install prompt earlier, Chrome may temporarily hide it.</p>';
+
+    panel.innerHTML = `
+      <div class="pwa-install-help-card" role="dialog" aria-modal="true" aria-label="Install SkyDream">
+        <button type="button" class="pwa-install-help-close" aria-label="Close">×</button>
+        <h3>Install SkyDream</h3>
+        ${body}
+        <p class="pwa-install-help-note">The blue Install App button will use the browser's native installer automatically whenever Chrome makes it available.</p>
+      </div>
+    `;
+
+    panel.addEventListener('click', event => {
+      if (event.target === panel || event.target.closest('.pwa-install-help-close')) closeInstallHelp();
+    });
+    document.body.appendChild(panel);
+  }
+
+  function waitForNativePrompt(timeoutMs = 2200) {
     if (deferredInstallPrompt) return Promise.resolve(deferredInstallPrompt);
     return new Promise(resolve => {
       let settled = false;
@@ -133,7 +158,7 @@
     }
 
     if (isIOS()) {
-      window.alert('To install SkyDream on iPhone or iPad: open this website in Safari, tap the Share button, then choose “Add to Home Screen”.');
+      showInstallHelp();
       return;
     }
 
@@ -143,9 +168,7 @@
 
     const promptEvent = deferredInstallPrompt || await waitForNativePrompt();
     if (!promptEvent) {
-      // Chrome/Edge may temporarily withhold the prompt after it was dismissed,
-      // or when the app is already installed. Do not pretend a native prompt exists.
-      window.alert('The browser is not offering the install window yet. If SkyDream is already installed, open it from your apps. Otherwise refresh this page once, then use Chrome/Edge menu → Install SkyDream (or the install icon in the address bar).');
+      showInstallHelp();
       updateInstallButton();
       return;
     }
@@ -159,6 +182,7 @@
     } catch (err) {
       console.warn('SkyDream install prompt failed:', err);
       deferredInstallPrompt = null;
+      showInstallHelp();
       updateInstallButton();
     }
   }
@@ -179,8 +203,15 @@
       .pwa-install-button:disabled{opacity:.65;cursor:wait;}
       .pwa-install-button[hidden]{display:none!important;}
       .pwa-install-button svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+      .pwa-install-help{position:fixed;inset:0;z-index:300;background:rgba(8,20,48,.52);display:grid;place-items:center;padding:20px;}
+      .pwa-install-help-card{position:relative;width:min(520px,100%);background:#fff;color:#17233c;border-radius:18px;padding:24px;box-shadow:0 22px 60px rgba(0,0,0,.24);}
+      .pwa-install-help-card h3{margin:0 36px 10px 0;color:#1F3A93;font-size:1.35rem;}
+      .pwa-install-help-card p{margin:10px 0;line-height:1.6;}
+      .pwa-install-help-note{font-size:.9rem;color:#5b6780;}
+      .pwa-install-help-close{position:absolute;right:12px;top:10px;border:0;background:transparent;font-size:1.8rem;line-height:1;cursor:pointer;color:#44506a;}
       @media(max-width:600px){
         .pwa-install-button{left:12px;bottom:12px;padding:10px 14px;font-size:.82rem;}
+        .pwa-install-help-card{padding:20px;}
       }
       @media(display-mode:standalone){.pwa-install-button{display:none!important;}}
     `;
@@ -205,7 +236,7 @@
       installButton.disabled = true;
       const label = installButton.querySelector('span');
       const old = label ? label.textContent : '';
-      if (label) label.textContent = 'Opening…';
+      if (label) label.textContent = deferredInstallPrompt ? 'Opening…' : 'Checking…';
       try { await installApp(); }
       finally {
         installButton.disabled = false;
@@ -230,6 +261,7 @@
 
   window.addEventListener('appinstalled', () => {
     deferredInstallPrompt = null;
+    closeInstallHelp();
     hideInstallButton();
   });
 

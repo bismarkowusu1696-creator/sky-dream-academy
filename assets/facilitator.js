@@ -1,5 +1,5 @@
 (() => {
-  let data=null,account=null,sessionReady=null;
+  let data=null,account=null,sessionReady=null,dashboardLoadPromise=null,loginInProgress=false;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[s]));
   const errorText=e=>window.SkyDreamFirebase?SkyDreamFirebase.friendlyError(e):(e.message||'Something went wrong.');
@@ -16,6 +16,16 @@
     return sessionReady;
   }
 
+  async function prepareLogin(){
+    await ensureTabSession();
+    try{
+      if(SkyDreamFirebase.ensureAppCheckToken)await SkyDreamFirebase.ensureAppCheckToken();
+    }catch(_){
+      // The actual login request will show the friendly security error if App
+      // Check is unavailable. This warm-up makes the first click faster.
+    }
+  }
+
   async function facCall(name,payload={}){
     await ensureTabSession();
     const user=SkyDreamFirebase.auth&&SkyDreamFirebase.auth.currentUser;
@@ -27,22 +37,51 @@
   async function signInToken(token){
     await ensureTabSession();
     await SkyDreamFirebase.auth.signInWithCustomToken(token);
+    await SkyDreamFirebase.auth.currentUser.getIdToken(true);
     await load();
   }
+
   async function login(e){
-    e.preventDefault();clear();
+    e.preventDefault();
+    if(loginInProgress)return;
+    clear();
     const username=$('facUsername').value.trim(),pin=$('facLoginPassword').value.trim();
     if(!/^\d{4}$/.test(pin)){msg('Enter exactly 4 digits for your PIN.','error');return;}
-    const b=e.target.querySelector('button');b.disabled=true;
+    const b=e.target.querySelector('button');
+    const normalText=b.dataset.normalText||(b.dataset.normalText=b.textContent||'Sign in');
+    loginInProgress=true;b.disabled=true;b.textContent='Signing in…';
     try{
+      await prepareLogin();
       const r=await SkyDreamFirebase.call('facilitatorLogin',{username,pin});
       account=r.account;
       if(!r.token)throw new Error('Sign-in could not be completed. Ask the administrator to reset your PIN.');
+      b.textContent='Opening dashboard…';
       await signInToken(r.token);
     }catch(err){msg(errorText(err),'error');}
-    finally{b.disabled=false;}
+    finally{loginInProgress=false;b.disabled=false;b.textContent=normalText;}
   }
-  async function load(){try{await ensureTabSession();data=await facCall('getFacilitatorDashboard');account=data.account;$('facLoginShell').classList.add('hidden');$('facDashboard').classList.remove('hidden');$('facIdentity').textContent=`${account.name} · @${account.username}`;populateCourses();setDefaultDate();render();}catch(err){$('facDashboard').classList.add('hidden');$('facLoginShell').classList.remove('hidden');msg(errorText(err),'error');}}
+
+  async function load(){
+    if(dashboardLoadPromise)return dashboardLoadPromise;
+    dashboardLoadPromise=(async()=>{
+      try{
+        await ensureTabSession();
+        data=await facCall('getFacilitatorDashboard');
+        account=data.account;
+        $('facLoginShell').classList.add('hidden');
+        $('facDashboard').classList.remove('hidden');
+        $('facIdentity').textContent=`${account.name} · @${account.username}`;
+        populateCourses();setDefaultDate();render();
+      }catch(err){
+        $('facDashboard').classList.add('hidden');
+        $('facLoginShell').classList.remove('hidden');
+        msg(errorText(err),'error');
+        throw err;
+      }
+    })();
+    try{return await dashboardLoadPromise;}finally{dashboardLoadPromise=null;}
+  }
+
   function populateCourses(){const sel=$('facCourse');sel.innerHTML=Object.entries(data.courses).map(([id,name])=>`<option value="${id}">${esc(name)}</option>`).join('')||'<option value="">No program assigned</option>';}
   function todayIso(){return new Date().toISOString().slice(0,10);}
   function allowedAttendanceDate(date,intake){
@@ -77,7 +116,7 @@
   function bind(){$('facLoginForm').addEventListener('submit',login);$('facCourse').addEventListener('change',render);$('facDate').addEventListener('change',render);$('facLogout').addEventListener('click',async()=>{await ensureTabSession();await SkyDreamFirebase.auth.signOut();location.reload();});document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.mark)saveMark(b.dataset.student,b.dataset.mark);if(b.dataset.saveNote)saveNote(b.dataset.saveNote);});}
   document.addEventListener('DOMContentLoaded',async()=>{
     bind();
-    try{await ensureTabSession();}catch(err){msg(errorText(err),'error');return;}
+    try{await prepareLogin();}catch(err){msg(errorText(err),'error');return;}
     SkyDreamFirebase.auth.onAuthStateChanged(async user=>{
       if(!user)return;
       try{

@@ -2,7 +2,7 @@ name: Validate SkyDream site
 
 on:
   push:
-    branches: [main, security-seo-hardening]
+    branches: [main, security-seo-hardening, security-hardening-2026-10-06]
   pull_request:
     branches: [main]
 
@@ -24,6 +24,7 @@ jobs:
           node --check functions/no-sms-index.js
           node --check functions/no-secret-loader.js
           node --check functions/guarded-loader.js
+          node --check functions/security-hardening-loader.js
           node --check assets/firebase.js
           node --check assets/public.js
           node --check assets/admin.js
@@ -32,6 +33,22 @@ jobs:
           node --check assets/schedule-live.js
           node --check pwa.js
           node --check service-worker.js
+      - name: Verify production security entrypoint
+        run: |
+          node - <<'NODE'
+          const pkg = require('./functions/package.json');
+          if (pkg.main !== 'security-hardening-loader.js') {
+            throw new Error('Production functions must use security-hardening-loader.js');
+          }
+          const fs = require('fs');
+          const hardening = fs.readFileSync('functions/security-hardening-loader.js', 'utf8');
+          if (!hardening.includes('checkStudentStatus is intentionally not wrapped or changed')) {
+            throw new Error('Student status compatibility guard is missing');
+          }
+          if (!hardening.includes('Administrator PIN sign-in has been disabled')) {
+            throw new Error('Legacy administrator PIN sign-in is not explicitly disabled');
+          }
+          NODE
       - name: Check HTML for duplicate IDs
         run: |
           python - <<'PY'

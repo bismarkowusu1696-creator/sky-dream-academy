@@ -1,9 +1,13 @@
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: SAMEORIGIN
+  X-Permitted-Cross-Domain-Policies: none
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
   Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin
+  Origin-Agent-Cluster: ?1
   Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.google.com https://www.recaptcha.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.cloudfunctions.net https://*.firebaseapp.com https://www.google.com https://www.recaptcha.net wss://*.firebaseio.com; frame-src https://www.google.com https://www.recaptcha.net https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; worker-src 'self'; manifest-src 'self'; media-src 'self'; upgrade-insecure-requests
 
 /pwa.js
@@ -11,6 +15,18 @@
 
 /assets/site.css
   Cache-Control: no-cache, max-age=0, must-revalidate
+
+/assets/admin-enterprise-login.js
+  Cache-Control: no-store, max-age=0
+
+/assets/admin.js
+  Cache-Control: no-store, max-age=0
+
+/assets/admin-suite.js
+  Cache-Control: no-store, max-age=0
+
+/assets/admin-enterprise.js
+  Cache-Control: no-store, max-age=0
 
 /staff.html
   Cache-Control: no-store, max-age=0
@@ -31,3 +47,7 @@
 /check-status.html
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, follow
+
+/skydream-academy.html
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive

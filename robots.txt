@@ -1,4 +1,14 @@
 User-agent: *
 Allow: /
+Disallow: /admin.html
+Disallow: /admin
+Disallow: /staff.html
+Disallow: /staff
+Disallow: /facilitator.html
+Disallow: /facilitator
+Disallow: /student-portal.html
+Disallow: /student-portal
+Disallow: /skydream-academy.html
+Disallow: /skydream-academy
 
 Sitemap: https://skydream.academy/sitemap.xml

@@ -41,7 +41,7 @@
   Cache-Control: no-store, max-age=0
 
 /assets/student-portal.js
-  Cache-Control: no-store, max-age=0
+  Cache-Control: no-cache, max-age=0, must-revalidate
 
 /staff
   Cache-Control: no-store, max-age=0
@@ -68,11 +68,11 @@
   X-Robots-Tag: noindex, nofollow, noarchive
 
 /student-portal
-  Cache-Control: no-store, max-age=0
+  Cache-Control: no-cache, max-age=0, must-revalidate
   X-Robots-Tag: noindex, nofollow, noarchive
 
 /student-portal.html
-  Cache-Control: no-store, max-age=0
+  Cache-Control: no-cache, max-age=0, must-revalidate
   X-Robots-Tag: noindex, nofollow, noarchive
 
 /check-status

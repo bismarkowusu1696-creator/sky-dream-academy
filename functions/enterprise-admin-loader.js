@@ -193,7 +193,8 @@ function studentRisk(student,attendance,settings,intake){
   let consecutiveAbsences=0;for(const r of rows){if(r.status==='Absent')consecutiveAbsences++;else break;}
   const lastAttendanceDate=rows[0]&&rows[0].date||'';
   const courseStart=intake&&(intake.classesStartDate||intake.startDate)||student.intakeStart||'';
-  const inactiveDays=lastAttendanceDate?daysSince(lastAttendanceDate):daysSince(courseStart);
+  const daysSinceStart=daysSince(courseStart);
+  const inactiveDays=lastAttendanceDate?daysSince(lastAttendanceDate):daysSinceStart;
   const fee=Math.max(0,Number(settings&&settings.registrationFee)||0),paid=Math.max(0,Number(student.feePaid)||0),balance=Math.max(0,fee-paid);
   const balanceRatio=fee>0?balance/fee:0;
   let score=0;const reasons=[];
@@ -211,7 +212,7 @@ function studentRisk(student,attendance,settings,intake){
   if(inactiveDays!==null&&inactiveDays>21){score+=20;reasons.push(`No attendance activity for ${inactiveDays} days`);}
   else if(inactiveDays!==null&&inactiveDays>14){score+=12;reasons.push(`No attendance activity for ${inactiveDays} days`);}
   const capped=Math.max(0,Math.min(100,score)),level=capped>=65?'High':capped>=35?'Medium':'Low';
-  return{id:student.id,regNumber:student.regNumber||'',fullName:student.fullName||'',course:student.course||'',status:student.status||'',score:capped,level,reasons,attendance:attendancePct,marked,present,absent,consecutiveAbsences,lastAttendanceDate,inactiveDays,fee,paid,balance};
+  return{id:student.id,regNumber:student.regNumber||'',fullName:student.fullName||'',course:student.course||'',status:student.status||'',score:capped,level,reasons,attendance:attendancePct,marked,present,absent,consecutiveAbsences,lastAttendanceDate,inactiveDays,daysSinceStart,fee,paid,balance};
 }
 function buildRiskAnalysis(students,attendance,settings,intake){
   return (students||[]).filter(s=>!['Cancelled','Completed','Deferred'].includes(s.status||'')).map(s=>studentRisk(s,attendance,settings,intake)).sort((a,b)=>b.score-a.score||a.fullName.localeCompare(b.fullName));
@@ -224,8 +225,7 @@ function buildSmartAlerts(risks,rules){
     if(rules.highRisk.enabled&&r.score>=rules.highRisk.threshold)per.push({rule:'high-risk',title:'Student support alert',message:`Your SkyDream progress needs attention. Current support score: ${r.score}/100. Please contact the academy so we can help you stay on track.`});
     if(rules.attendance.enabled&&r.marked>=rules.attendance.minMarks&&r.attendance<rules.attendance.threshold)per.push({rule:'low-attendance',title:'Attendance reminder',message:`Your attendance is currently ${r.attendance}%. Please attend your upcoming classes or contact your facilitator if you need support.`});
     if(rules.inactivity.enabled&&r.inactiveDays!==null&&r.inactiveDays>=rules.inactivity.days)per.push({rule:'inactivity',title:'We have missed you',message:`We have not recorded class attendance for you in ${r.inactiveDays} days. Please contact your facilitator if you need assistance.`});
-    if(rules.feeBalance.enabled&&r.balance>=rules.feeBalance.minBalance){
-      const startDays=daysSince((r.lastAttendanceDate||''))===null?0:0;
+    if(rules.feeBalance.enabled&&r.balance>=rules.feeBalance.minBalance&&r.daysSinceStart!==null&&r.daysSinceStart>=rules.feeBalance.graceDays){
       per.push({rule:'fee-balance',title:'Payment reminder',message:`Your current SkyDream balance is GHS ${r.balance.toFixed(2)}. Please contact the academy if you need clarification about your account.`});
     }
     per.slice(0,3).forEach(a=>out.push({...a,studentId:r.id,regNumber:r.regNumber,studentName:r.fullName,score:r.score}));

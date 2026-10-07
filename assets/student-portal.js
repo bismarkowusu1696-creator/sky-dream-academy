@@ -59,7 +59,15 @@
     $('portalNoticeList').innerHTML=(portal.notices||[]).length?(portal.notices||[]).map(n=>`<div class="card"><small class="hint">${esc(friendlyDate(n.date))}</small><p class="pre-wrap">${esc(n.message)}</p></div>`).join(''):'<p>No current announcements.</p>';
   }
 
+  function ensurePortalServiceWorker(){
+    if(!('serviceWorker' in navigator))return;
+    navigator.serviceWorker.register('/service-worker.js',{scope:'/'})
+      .then(reg=>reg.update().catch(()=>{}))
+      .catch(err=>console.warn('Portal service worker registration failed',err));
+  }
+
   document.addEventListener('DOMContentLoaded',()=>{
+    ensurePortalServiceWorker();
     $('portalLoginForm').addEventListener('submit',login);
     $('portalLogout').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
     SkyDreamFirebase.auth.onAuthStateChanged(async user=>{

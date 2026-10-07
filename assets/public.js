@@ -81,7 +81,7 @@
         ? registration.message
         : (live ? (live.full ? 'Waitlist currently open' : `${live.available} place${live.available===1?'':'s'} currently available`) : 'Registration open');
       const action = registration.open
-        ? `<a class="btn btn-outline" href="register.html?course=${encodeURIComponent(id)}">Register for this program</a>`
+        ? `<a class="btn btn-outline" href="/register?course=${encodeURIComponent(id)}">Register for this program</a>`
         : '<span class="btn btn-outline" aria-disabled="true">Registration unavailable</span>';
       return `<article class="card program-card">
         <div class="meta"><span>3 months</span><span data-registration-fee>GHS ${catalog ? catalog.registrationFee : 50} registration</span></div>
@@ -198,7 +198,7 @@
           showMessage(message,`Registration successful. Your registration number is ${result.regNumber}. Keep this number safe — you will need it to check your status.`,'success');
           const resultHost = $('registrationSuccess');
           if(resultHost){
-            resultHost.innerHTML = `<h3>Registration confirmed</h3><p><strong>${escapeHtml(result.fullName)}</strong></p><p>Program: ${escapeHtml(result.courseName)}</p><p>Registration number: <strong>${escapeHtml(result.regNumber)}</strong></p><p>Use your registration number and mobile number on the <a href="check-status.html">Check Status</a> page.</p>`;
+            resultHost.innerHTML = `<h3>Registration confirmed</h3><p><strong>${escapeHtml(result.fullName)}</strong></p><p>Program: ${escapeHtml(result.courseName)}</p><p>Registration number: <strong>${escapeHtml(result.regNumber)}</strong></p><p>Use your registration number and mobile number on the <a href="/check-status">Check Status</a> page.</p>`;
             resultHost.classList.remove('hidden');
           }
           populateCourseSelect();

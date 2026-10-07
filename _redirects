@@ -1,14 +1,29 @@
 https://skydream.netlify.app/* https://skydream.academy/:splat 301!
 https://skydreamskillstrainingacademy.netlify.app/* https://skydream.academy/:splat 301!
+https://www.skydream.academy/* https://skydream.academy/:splat 301!
+
+/index.html / 301!
 /skydream-academy / 301!
 /skydream-academy.html / 301!
-/home / 301!
-/programs /programs.html 301!
-/schedule /schedule.html 301!
-/about /about.html 301!
-/contact /contact.html 301!
-/register /register.html 301!
-/check-status /check-status.html 301!
+
+/programs.html /programs 301!
+/schedule.html /schedule 301!
+/about.html /about 301!
+/contact.html /contact 301!
+/register.html /register 301!
+/check-status.html /check-status 301!
+/privacy.html /privacy 301!
+/terms.html /terms 301!
+/student-portal.html /student-portal 301!
+
+/programs /programs.html 200
+/schedule /schedule.html 200
+/about /about.html 200
+/contact /contact.html 200
+/register /register.html 200
+/check-status /check-status.html 200
+/privacy /privacy.html 200
+/terms /terms.html 200
 /student-portal /student-portal.html 200
 /staff /staff.html 200
 /admin /admin.html 200

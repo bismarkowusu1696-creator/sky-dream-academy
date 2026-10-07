@@ -33,6 +33,7 @@
     const order={Monday:1,Tuesday:2,Wednesday:3,Thursday:4,Friday:5,Saturday:6,Sunday:7};
     const timetable=(portal.timetable||[]).slice().sort((x,y)=>(order[x.day]||99)-(order[y.day]||99)||String(x.startTime).localeCompare(String(y.startTime)));
     $('portalTimetableBody').innerHTML=timetable.length?timetable.map(t=>`<tr><td>${esc(t.day)}</td><td>${esc(t.startTime)}–${esc(t.endTime)}</td><td><strong>${esc(t.title||s.courseName)}</strong></td><td>${esc(t.room||'To be announced')}</td></tr>`).join(''):'<tr><td colspan="4">Your timetable has not been published yet.</td></tr>';
+    $('portalMessageList').innerHTML=(portal.messages||[]).length?(portal.messages||[]).map(m=>`<div class="card"><div class="dashboard-top"><strong>SkyDream Administration</strong><small class="hint">${esc(friendlyDate(m.date))}</small></div><p class="pre-wrap">${esc(m.message)}</p></div>`).join(''):'<p>No private messages yet.</p>';
     $('portalNoticeList').innerHTML=(portal.notices||[]).length?(portal.notices||[]).map(n=>`<div class="card"><small class="hint">${esc(friendlyDate(n.date))}</small><p class="pre-wrap">${esc(n.message)}</p></div>`).join(''):'<p>No current announcements.</p>';
   }
 

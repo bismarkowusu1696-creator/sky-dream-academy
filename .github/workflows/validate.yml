@@ -25,10 +25,15 @@ jobs:
           node --check functions/no-secret-loader.js
           node --check functions/guarded-loader.js
           node --check functions/security-hardening-loader.js
+          node --check functions/academic-portal-loader.js
           node --check assets/firebase.js
           node --check assets/public.js
           node --check assets/admin.js
           node --check assets/admin-intake.js
+          node --check assets/admin-pin.js
+          node --check assets/admin-extra-actions.js
+          node --check assets/student-portal.js
+          node --check assets/offline.js
           node --check assets/facilitator.js
           node --check assets/schedule-live.js
           node --check pwa.js
@@ -74,3 +79,44 @@ jobs:
                   print(f'{path}: duplicate IDs: {duplicates}')
           raise SystemExit(1 if failed else 0)
           PY
+
+      - name: Verify strict CSP compatibility
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          failures = []
+          for path in Path('.').glob('*.html'):
+              text = path.read_text(encoding='utf-8')
+              if re.search(r'''style\s*=\s*["']''', text, re.I):
+                  failures.append(f"{path}: inline style attribute")
+              if re.search(r'<style(?:\s|>)', text, re.I):
+                  failures.append(f"{path}: inline style block")
+              if re.search(r'''\son[a-z]+\s*=\s*["']''', text, re.I):
+                  failures.append(f"{path}: inline event handler")
+
+          for path in list(Path('assets').glob('*.js')) + [Path('pwa.js')]:
+              text = path.read_text(encoding='utf-8')
+              if "createElement('style')" in text or 'createElement("style")' in text:
+                  failures.append(f"{path}: runtime-created style block")
+              if '.style.' in text:
+                  failures.append(f"{path}: direct inline style mutation")
+
+          headers = Path('_headers').read_text(encoding='utf-8')
+          if "'unsafe-inline'" in headers:
+              failures.append("_headers: unsafe-inline is forbidden")
+
+          portal = Path('functions/academic-portal-loader.js').read_text(encoding='utf-8')
+          dashboard = portal.split('app.getStudentPortalDashboard=', 1)[-1]
+          if '...doc.data()' in dashboard:
+              failures.append('student portal dashboard returns unfiltered document data')
+
+          if failures:
+              print('\n'.join(failures))
+              raise SystemExit(1)
+          PY
+
+      - name: Validate Firebase configuration
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('firebase.json','utf8')); JSON.parse(require('fs').readFileSync('firestore.indexes.json','utf8'));"

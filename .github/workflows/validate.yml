@@ -19,23 +19,10 @@ jobs:
           node-version: '22'
       - name: Check JavaScript syntax
         run: |
-          node --check functions/index.js
-          node --check functions/secure-index.js
-          node --check functions/no-sms-index.js
-          node --check functions/no-secret-loader.js
-          node --check functions/guarded-loader.js
-          node --check functions/security-hardening-loader.js
-          node --check functions/academic-portal-loader.js
-          node --check assets/firebase.js
-          node --check assets/public.js
-          node --check assets/admin.js
-          node --check assets/admin-intake.js
-          node --check assets/admin-pin.js
-          node --check assets/admin-extra-actions.js
-          node --check assets/student-portal.js
-          node --check assets/offline.js
-          node --check assets/facilitator.js
-          node --check assets/schedule-live.js
+          set -e
+          while IFS= read -r -d '' file; do
+            node --check "$file"
+          done < <(find functions assets -type f -name '*.js' -print0)
           node --check pwa.js
           node --check service-worker.js
       - name: Verify production security entrypoint
@@ -96,16 +83,32 @@ jobs:
               if re.search(r'''\son[a-z]+\s*=\s*["']''', text, re.I):
                   failures.append(f"{path}: inline event handler")
 
-          for path in list(Path('assets').glob('*.js')) + [Path('pwa.js')]:
+          js_paths = list(Path('assets').glob('*.js')) + [Path('pwa.js'), Path('service-worker.js')]
+          for path in js_paths:
               text = path.read_text(encoding='utf-8')
+              if re.search(r'''style\s*=\s*["']''', text, re.I):
+                  failures.append(f"{path}: generated inline style attribute")
+              if re.search(r'''\son[a-z]+\s*=\s*["']''', text, re.I):
+                  failures.append(f"{path}: generated inline event handler")
+              if re.search(r'<style(?:\s|>)', text, re.I):
+                  failures.append(f"{path}: generated inline style block")
+              if re.search(r'<script(?:\s|>)', text, re.I):
+                  failures.append(f"{path}: generated inline script block")
               if "createElement('style')" in text or 'createElement("style")' in text:
                   failures.append(f"{path}: runtime-created style block")
-              if '.style.' in text:
+              if '.style.' in text or 'cssText' in text:
                   failures.append(f"{path}: direct inline style mutation")
 
           headers = Path('_headers').read_text(encoding='utf-8')
           if "'unsafe-inline'" in headers:
               failures.append("_headers: unsafe-inline is forbidden")
+
+          admin_html = Path('admin.html').read_text(encoding='utf-8')
+          admin_js = Path('assets/admin.js').read_text(encoding='utf-8')
+          if 'upgradePanel' in admin_html or 'old PIN' in admin_html:
+              failures.append('admin.html: obsolete legacy PIN upgrade UI is present')
+          if 'upgradeAdminPassword' in admin_js or 'pendingLegacy' in admin_js:
+              failures.append('assets/admin.js: obsolete legacy PIN migration code is present')
 
           portal = Path('functions/academic-portal-loader.js').read_text(encoding='utf-8')
           dashboard = portal.split('app.getStudentPortalDashboard=', 1)[-1]

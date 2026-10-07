@@ -16,7 +16,8 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     env:
       FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
       FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -46,11 +47,20 @@ jobs:
             exit 1
           fi
 
-      - name: Deploy secure functions and Firestore rules
+      - name: Deploy functions and Firestore rules
         shell: bash
         run: |
           if [ "$FIREBASE_AUTH_MODE" = "service-account" ]; then
-            firebase deploy --project skydream-academy --only functions,firestore:rules,firestore:indexes --non-interactive
+            firebase deploy --project skydream-academy --only functions,firestore:rules --non-interactive
           else
-            firebase deploy --project skydream-academy --only functions,firestore:rules,firestore:indexes --non-interactive --token "$FIREBASE_TOKEN"
+            firebase deploy --project skydream-academy --only functions,firestore:rules --non-interactive --token "$FIREBASE_TOKEN"
+          fi
+
+      - name: Deploy Firestore indexes and TTL policies
+        shell: bash
+        run: |
+          if [ "$FIREBASE_AUTH_MODE" = "service-account" ]; then
+            firebase deploy --project skydream-academy --only firestore:indexes --non-interactive
+          else
+            firebase deploy --project skydream-academy --only firestore:indexes --non-interactive --token "$FIREBASE_TOKEN"
           fi

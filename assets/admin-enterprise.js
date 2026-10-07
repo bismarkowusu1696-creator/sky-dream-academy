@@ -141,7 +141,7 @@
     const b=$('saveSmartRules');await withBusy(b,'Saving…',async()=>{const r=await call('adminSaveSmartNotificationRules',{rules:smartRulesPayload()});data.smartNotificationRules=r.rules;renderSmartRules();alert(r.rules.enabled?'Smart notifications enabled.':'Rules saved. Automatic notifications remain off.');});
   }
   async function previewSmartRules(){
-    const b=$('previewSmartRules');await withBusy(b,'Checking…',async()=>{const r=await call('adminPreviewSmartNotificationRules');renderSmartPreview(r);});
+    const b=$('previewSmartRules');await withBusy(b,'Checking…',async()=>{const r=await call('adminPreviewSmartNotificationRules',{rules:smartRulesPayload()});renderSmartPreview(r);});
   }
   async function runSmartRules(){
     if(!$('smartRulesEnabled').checked){alert('Enable automatic student notifications and save the rules first.');return;}

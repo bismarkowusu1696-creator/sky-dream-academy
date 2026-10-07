@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}

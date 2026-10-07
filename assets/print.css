@@ -1,0 +1,15 @@
+body{font-family:Arial,sans-serif;color:#222;margin:0}
+.print-report,.print-profile{padding:32px}
+.print-report table{width:100%;border-collapse:collapse;margin:16px 0}
+.print-report th,.print-report td{border:1px solid #ccc;padding:8px;text-align:left}
+.print-report h1{color:#173b7a}
+.print-profile dt{font-weight:bold;margin-top:12px}
+.print-id{background:#eee;padding:30px}
+.print-id .card{width:540px;height:300px;margin:auto;background:#fff;border-radius:22px;padding:24px;box-sizing:border-box;border:2px solid #1f3a93;position:relative}
+.print-id .top{display:flex;gap:12px;align-items:center;border-bottom:2px solid #29b7c9;padding-bottom:10px}
+.print-id .logo{width:54px;height:54px;object-fit:contain}
+.print-id .name{font-size:24px;font-weight:bold;color:#173b7a}
+.print-id .grid{display:grid;grid-template-columns:1fr 150px;gap:12px;margin-top:16px}
+.print-id .qr{width:130px;height:130px}
+.print-id .small{font-size:12px;color:#555}
+@media print{body{background:#fff!important}.print-id{padding:0}}

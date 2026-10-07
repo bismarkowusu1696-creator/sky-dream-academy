@@ -13,8 +13,7 @@
 
     const card = document.createElement('div');
     card.id = 'intakeManagementCard';
-    card.className = 'card';
-    card.style.marginTop = '20px';
+    card.className = 'card mt-20';
     card.innerHTML = `<h3>Start the next intake</h3>
       <p class="hint">This archives the current intake, starts fresh capacity counting for the new cohort, clears the old waitlist, and keeps all existing student/payment/attendance history.</p>
       <p class="hint">Orientation, classes start and training/graduation dates are required. Registration closing defaults to the orientation date if left blank. Break/resume must either both be filled or both be left blank.</p>

@@ -29,19 +29,19 @@
     {
       "name": "Register",
       "short_name": "Register",
-      "url": "/register.html",
+      "url": "/register",
       "icons": [{"src":"/skydream-app-icon-v3.png?v=2","sizes":"192x192","type":"image/png"}]
     },
     {
       "name": "Check Status",
       "short_name": "Status",
-      "url": "/check-status.html",
+      "url": "/check-status",
       "icons": [{"src":"/skydream-app-icon-v3.png?v=2","sizes":"192x192","type":"image/png"}]
     },
     {
       "name": "Programs",
       "short_name": "Programs",
-      "url": "/programs.html",
+      "url": "/programs",
       "icons": [{"src":"/skydream-app-icon-v3.png?v=2","sizes":"192x192","type":"image/png"}]
     }
   ]

@@ -44,3 +44,5 @@ a{color:inherit;overflow-wrap:anywhere}img{max-width:100%;height:auto;display:bl
 @keyframes skydream-spin{to{transform:rotate(360deg)}}
 
 html[data-skydream-network-busy="true"] body.dashboard-body::before{content:"Working…";position:fixed;top:12px;right:18px;z-index:10000;background:var(--navy);color:#fff;border-radius:999px;padding:8px 14px;font-weight:700;font-size:.86rem;box-shadow:var(--shadow);pointer-events:none}
+
+.btn.is-pressed{transform:translateY(1px) scale(.995);filter:brightness(.96)}

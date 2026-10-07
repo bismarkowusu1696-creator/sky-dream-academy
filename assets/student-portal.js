@@ -1,25 +1,47 @@
 (() => {
   let portal = null;
+  let loadPromise = null;
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const friendlyDate = value => {const d=new Date((value||'').length===10?value+'T00:00:00':value||'');return Number.isNaN(d.getTime())?(value||''):d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});};
   function message(text,type='info'){const el=$('portalMessage');el.textContent=text;el.className=`notice notice-${type}`;el.classList.remove('hidden');}
   function clearMessage(){$('portalMessage').classList.add('hidden');}
 
+  function showLoadingDashboard(){
+    $('portalLogin').classList.add('hidden');
+    $('portalDashboard').classList.remove('hidden');
+    $('portalIdentity').textContent='Loading your portal…';
+    $('portalStats').innerHTML='<div class="portal-stat"><span>Status</span><b>Loading…</b></div>';
+  }
+
   async function login(event){
     event.preventDefault();clearMessage();const button=event.currentTarget.querySelector('button[type=submit]');button.disabled=true;
     try{
       const result=await SkyDreamFirebase.call('studentPortalLogin',{regNumber:$('portalReg').value.trim(),mobile:$('portalMobile').value.trim()});
+      showLoadingDashboard();
       await SkyDreamFirebase.auth.signInWithCustomToken(result.token);
       await load();
-    }catch(err){message(SkyDreamFirebase.friendlyError(err),'error');}
-    finally{button.disabled=false;}
+    }catch(err){
+      $('portalDashboard').classList.add('hidden');$('portalLogin').classList.remove('hidden');
+      message(SkyDreamFirebase.friendlyError(err),'error');
+    }finally{button.disabled=false;}
   }
+
   async function load(){
-    try{
-      portal=await SkyDreamFirebase.call('getStudentPortalDashboard');
-      $('portalLogin').classList.add('hidden');$('portalDashboard').classList.remove('hidden');render();
-    }catch(err){await SkyDreamFirebase.auth.signOut();$('portalDashboard').classList.add('hidden');$('portalLogin').classList.remove('hidden');message(SkyDreamFirebase.friendlyError(err),'error');}
+    if(loadPromise)return loadPromise;
+    showLoadingDashboard();
+    loadPromise=(async()=>{
+      try{
+        portal=await SkyDreamFirebase.call('getStudentPortalDashboard');
+        render();
+      }catch(err){
+        await SkyDreamFirebase.auth.signOut();
+        $('portalDashboard').classList.add('hidden');$('portalLogin').classList.remove('hidden');
+        message(SkyDreamFirebase.friendlyError(err),'error');
+        throw err;
+      }
+    })();
+    try{return await loadPromise;}finally{loadPromise=null;}
   }
   function render(){
     const s=portal.student,p=portal.payment,a=portal.attendance,progress=portal.progress;

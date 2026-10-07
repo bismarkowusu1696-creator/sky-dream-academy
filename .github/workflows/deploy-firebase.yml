@@ -6,6 +6,7 @@ on:
     paths:
       - 'functions/**'
       - 'firestore.rules'
+      - 'firestore.indexes.json'
       - 'firebase.json'
       - '.github/workflows/deploy-firebase.yml'
   workflow_dispatch:
@@ -49,7 +50,7 @@ jobs:
         shell: bash
         run: |
           if [ "$FIREBASE_AUTH_MODE" = "service-account" ]; then
-            firebase deploy --project skydream-academy --only functions,firestore:rules --non-interactive
+            firebase deploy --project skydream-academy --only functions,firestore:rules,firestore:indexes --non-interactive
           else
-            firebase deploy --project skydream-academy --only functions,firestore:rules --non-interactive --token "$FIREBASE_TOKEN"
+            firebase deploy --project skydream-academy --only functions,firestore:rules,firestore:indexes --non-interactive --token "$FIREBASE_TOKEN"
           fi

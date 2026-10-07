@@ -37,6 +37,48 @@
   const functions = firebase.functions();
   const auth = firebase.auth ? firebase.auth() : null;
   let pendingCallableRequests = 0;
+  let lastActionButton = null;
+  let lastActionAt = 0;
+
+  document.addEventListener('click', event => {
+    const button = event.target && event.target.closest ? event.target.closest('button') : null;
+    if (!button || !document.body || !document.body.classList.contains('dashboard-body')) return;
+    lastActionButton = button;
+    lastActionAt = Date.now();
+    button.classList.add('is-pressed');
+    window.setTimeout(() => {
+      if (button.isConnected) button.classList.remove('is-pressed');
+    }, 140);
+  }, true);
+
+  function beginActionButtonBusy() {
+    const button = lastActionButton;
+    if (!button || !button.isConnected || Date.now() - lastActionAt > 1500) return null;
+    const count = Number(button.dataset.firebaseBusyCount || 0);
+    if (count === 0) {
+      button.dataset.firebaseWasDisabled = button.disabled ? '1' : '0';
+      button.disabled = true;
+      button.classList.add('is-busy');
+      button.setAttribute('aria-busy', 'true');
+    }
+    button.dataset.firebaseBusyCount = String(count + 1);
+    return button;
+  }
+
+  function endActionButtonBusy(button) {
+    if (!button) return;
+    const next = Math.max(0, Number(button.dataset.firebaseBusyCount || 1) - 1);
+    if (next > 0) {
+      button.dataset.firebaseBusyCount = String(next);
+      return;
+    }
+    delete button.dataset.firebaseBusyCount;
+    button.classList.remove('is-busy');
+    button.removeAttribute('aria-busy');
+    const wasDisabled = button.dataset.firebaseWasDisabled === '1';
+    delete button.dataset.firebaseWasDisabled;
+    if (button.isConnected && !wasDisabled) button.disabled = false;
+  }
 
   function setCallableBusy(delta) {
     pendingCallableRequests = Math.max(0, pendingCallableRequests + delta);
@@ -90,6 +132,7 @@
       if (cached) return cached;
     }
 
+    const actionButton = beginActionButtonBusy();
     setCallableBusy(1);
     try {
       // Wait for a valid App Check token before every real callable request.
@@ -100,6 +143,7 @@
       return result.data;
     } finally {
       setCallableBusy(-1);
+      endActionButtonBusy(actionButton);
     }
   }
 

@@ -13,7 +13,19 @@
 /pwa.js
   Cache-Control: no-cache, max-age=0, must-revalidate
 
+/service-worker.js
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
 /assets/site.css
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/assets/public.js
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
+/assets/firebase.js
+  Cache-Control: no-store, max-age=0
+
+/assets/schedule-live.js
   Cache-Control: no-cache, max-age=0, must-revalidate
 
 /assets/admin-enterprise-login.js
@@ -28,7 +40,15 @@
 /assets/admin-enterprise.js
   Cache-Control: no-store, max-age=0
 
+/staff
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+
 /staff.html
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/admin
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, nofollow, noarchive
 
@@ -36,13 +56,25 @@
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, nofollow, noarchive
 
+/facilitator
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+
 /facilitator.html
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+
+/student-portal
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, nofollow, noarchive
 
 /student-portal.html
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, nofollow, noarchive
+
+/check-status
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, follow
 
 /check-status.html
   Cache-Control: no-store, max-age=0

@@ -86,7 +86,7 @@
     $('studentCount').textContent=`${rows.length} record${rows.length===1?'':'s'}`;
     $('studentsBody').innerHTML=rows.length?rows.slice().sort((a,b)=>String(b.regDate||'').localeCompare(String(a.regDate||''))).map(s=>{
       const paid=Number(s.feePaid)||0;
-      return `<tr><td>${esc(s.regNumber)}</td><td><strong>${esc(s.fullName)}</strong><br><small>${esc(s.mobile||'')}</small></td><td>${esc(courseName(s.course))}</td><td><span class="badge">${esc(s.status||'Registered')}</span></td><td>GHS ${paid.toFixed(2)}</td><td><div class="toolbar"><button class="btn btn-outline btn-small" data-edit="${esc(s.id)}">Edit</button><button class="btn btn-outline btn-small" data-pay="${esc(s.id)}">Payment</button><button class="btn btn-outline btn-small" data-sms="${esc(s.id)}">SMS</button>${account.role==='owner'?`<button class="btn btn-danger btn-small" data-delete="${esc(s.id)}">Delete</button>`:''}</div></td></tr>`;
+      return `<tr><td>${esc(s.regNumber)}</td><td><strong>${esc(s.fullName)}</strong><br><small>${esc(s.mobile||'')}</small></td><td>${esc(courseName(s.course))}</td><td><span class="badge">${esc(s.status||'Registered')}</span></td><td>GHS ${paid.toFixed(2)}</td><td><div class="toolbar"><button class="btn btn-outline btn-small" data-edit="${esc(s.id)}">Edit</button><button class="btn btn-outline btn-small" data-pay="${esc(s.id)}">Payment</button><button class="btn btn-outline btn-small" data-portal-message="${esc(s.id)}">Message</button>${account.role==='owner'?`<button class="btn btn-danger btn-small" data-delete="${esc(s.id)}">Delete</button>`:''}</div></td></tr>`;
     }).join(''):'<tr><td colspan="6">No matching students.</td></tr>';
   }
 
@@ -113,9 +113,16 @@
     const s=data.students.find(x=>x.id===id); if(!s||!confirm(`Delete ${s.fullName} (${s.regNumber})? This cannot be undone.`))return;
     try{await withBusy(button,'Deleting…',async()=>{await SkyDreamFirebase.call('adminDeleteStudent',{id});await refresh('Registration deleted.');});}catch(err){alert(errText(err));}
   }
-  async function sendSms(id,button){
-    const s=data.students.find(x=>x.id===id); if(!s)return; const body=prompt(`SMS to ${s.fullName}:`); if(!body)return;
-    try{await withBusy(button,'Sending…',async()=>{await SkyDreamFirebase.call('sendCustomSms',{regNumber:s.regNumber,message:body});alert('SMS sent.');});}catch(err){alert(errText(err));}
+  async function sendPortalMessage(id,button){
+    const s=data.students.find(x=>x.id===id); if(!s)return;
+    const body=prompt(`Message to ${s.fullName}'s student portal:`);
+    if(!body||!body.trim())return;
+    try{
+      await withBusy(button,'Sending…',async()=>{
+        await SkyDreamFirebase.call('adminSendStudentMessage',{studentId:s.id,message:body.trim()});
+        alert('Message sent to the student portal.');
+      });
+    }catch(err){alert(errText(err));}
   }
 
   function renderCapacities(){
@@ -164,7 +171,7 @@
     $('adminLoginForm').addEventListener('submit',handleLogin); $('editStudentForm').addEventListener('submit',saveStudent); $('createFacilitatorForm').addEventListener('submit',createFacilitator); $('createAdminForm').addEventListener('submit',createAdmin); $('changePasswordForm').addEventListener('submit',changePassword);
     $('studentSearch').addEventListener('input',renderStudents);$('studentCourseFilter').addEventListener('change',renderStudents);$('exportStudents').addEventListener('click',exportCsv);$('closeStudentModal').addEventListener('click',()=>$('studentModal').classList.add('hidden'));
     $('logoutBtn').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
-    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay,b);if(b.dataset.sms)sendSms(b.dataset.sms,b);if(b.dataset.delete)deleteStudent(b.dataset.delete,b);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity,b);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac,b);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin,b);});
+    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay,b);if(b.dataset.portalMessage)sendPortalMessage(b.dataset.portalMessage,b);if(b.dataset.delete)deleteStudent(b.dataset.delete,b);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity,b);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac,b);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin,b);});
   }
 
   document.addEventListener('DOMContentLoaded',()=>{

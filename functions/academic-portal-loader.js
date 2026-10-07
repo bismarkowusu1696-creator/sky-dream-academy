@@ -17,7 +17,8 @@ const KEYS = {
 const COL = {
   assessments: 'sdta_assessment_records',
   timetable: 'sdta_timetable_entries',
-  rooms: 'sdta_rooms'
+  rooms: 'sdta_rooms',
+  studentMessages: 'sdta_student_messages'
 };
 const COURSE_NAMES = {
   'household-chemicals':'Household Chemicals Production','hair-dressing':'Hair Dressing',cosmetology:'Cosmetology',
@@ -156,6 +157,18 @@ app.adminGlobalSearch=onCall({enforceAppCheck:true},async request=>{
   return{results:results.slice(0,40)};
 });
 
+app.adminSendStudentMessage=onCall({enforceAppCheck:true},async request=>{
+  const account=await requireAdmin(request,'students'),d=request.data||{},studentId=clean(d.studentId,120),message=clean(d.message,1500);
+  if(!studentId||!message)throw new HttpsError('invalid-argument','Choose a student and enter a message.');
+  const students=await readValue(KEYS.students,[]),student=(students||[]).find(s=>s.id===studentId);
+  if(!student)throw new HttpsError('not-found','Student not found.');
+  const ref=db.collection(COL.studentMessages).doc(),createdAt=new Date().toISOString();
+  const record={studentId,message,createdAt,createdBy:account.username||'',active:true};
+  await ref.set(record);
+  await appendAudit(account,'Sent student portal message',message.slice(0,120),student.regNumber||studentId);
+  return{ok:true,message:{id:ref.id,...record}};
+});
+
 app.studentPortalLogin=onCall({enforceAppCheck:true},async request=>{
   await enforcePortalRateLimit(request);const regNumber=clean(request.data&&request.data.regNumber,60).toUpperCase(),phone=normalizePhone(request.data&&request.data.mobile);
   if(!regNumber||!/^0\d{9}$/.test(phone))throw new HttpsError('invalid-argument','Enter your registration number and 10-digit mobile number.');
@@ -165,14 +178,14 @@ app.studentPortalLogin=onCall({enforceAppCheck:true},async request=>{
 });
 app.getStudentPortalDashboard=onCall({enforceAppCheck:true},async request=>{
   const auth=request.auth,token=auth&&auth.token;if(!auth||!token||token.role!=='student'||!token.studentId||auth.uid!=='student-'+token.studentId)throw new HttpsError('permission-denied','Student sign-in is required.');
-  const [students,attendance,broadcasts,settings,intake,assessmentSnap,timetableSnap]=await Promise.all([readValue(KEYS.students,[]),readValue(KEYS.attendance,[]),readValue(KEYS.broadcasts,[]),readValue(KEYS.settings,{}),readValue(KEYS.intake,{}),db.collection(COL.assessments).where('studentId','==',token.studentId).get(),db.collection(COL.timetable).get()]);
+  const [students,attendance,broadcasts,settings,intake,assessmentSnap,timetableSnap,messageSnap]=await Promise.all([readValue(KEYS.students,[]),readValue(KEYS.attendance,[]),readValue(KEYS.broadcasts,[]),readValue(KEYS.settings,{}),readValue(KEYS.intake,{}),db.collection(COL.assessments).where('studentId','==',token.studentId).get(),db.collection(COL.timetable).get(),db.collection(COL.studentMessages).where('studentId','==',token.studentId).limit(100).get()]);
   const student=students.find(s=>s.id===token.studentId);if(!student)throw new HttpsError('permission-denied','Student record is no longer available.');
   const marks=(attendance||[]).filter(a=>a.studentId===student.id),present=marks.filter(a=>a.status==='Present').length,absent=marks.filter(a=>a.status==='Absent').length;
   const assessments=assessmentSnap.docs.map(doc=>{const a=doc.data()||{};return{date:clean(a.date,10),title:clean(a.title,120),type:clean(a.type,40),score:Number(a.score)||0,maxScore:Number(a.maxScore)||0,remark:clean(a.remark,700)};}).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))),totalMax=assessments.reduce((s,a)=>s+(Number(a.maxScore)||0),0),totalScore=assessments.reduce((s,a)=>s+(Number(a.score)||0),0),average=totalMax?Math.round(totalScore/totalMax*100):0;
   const currentIntake=student.intakeStart||intake.startDate||'',timetable=timetableSnap.docs.map(doc=>doc.data()||{}).filter(t=>t.course===student.course&&(!t.intakeStart||!currentIntake||t.intakeStart===currentIntake)).map(t=>({day:clean(t.day,20),startTime:clean(t.startTime,5),endTime:clean(t.endTime,5),title:clean(t.title,120),room:clean(t.room,120)}));
-  const now=Date.now(),notices=(broadcasts||[]).filter(n=>n&&n.active!==false&&(!n.startsAt||new Date(n.startsAt).getTime()<=now)&&(!n.expiresAt||new Date(n.expiresAt).getTime()>now)).slice(-10).reverse().map(n=>({id:n.id,message:n.message,date:n.date||''}));
+  const now=Date.now(),notices=(broadcasts||[]).filter(n=>n&&n.active!==false&&(!n.startsAt||new Date(n.startsAt).getTime()<=now)&&(!n.expiresAt||new Date(n.expiresAt).getTime()>now)).slice(-10).reverse().map(n=>({id:n.id,message:n.message,date:n.date||''})),messages=messageSnap.docs.map(doc=>{const m=doc.data()||{};return{id:doc.id,message:clean(m.message,1500),date:m.createdAt||'',from:clean(m.createdBy,80)};}).filter(m=>m.message).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,50);
   const fee=Number.isFinite(Number(settings.registrationFee))?Number(settings.registrationFee):50,paid=Math.max(0,Number(student.feePaid)||0);
-  return{student:{fullName:student.fullName,regNumber:student.regNumber,course:student.course,courseName:COURSE_NAMES[student.course]||student.course,status:student.status||'Registered',mobile:student.mobile||'',email:student.email||'',intakeStart:currentIntake},payment:{fee,paid,balance:Math.max(0,fee-paid),status:paid>=fee?'Paid':(paid>0?'Partial':'Unpaid')},attendance:{present,absent,marked:present+absent,percentage:(present+absent)?Math.round(present/(present+absent)*100):0,records:marks.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,30).map(r=>({date:clean(r.date,10),status:clean(r.status,20),note:clean(r.note,500)}))},assessments,progress:{average,totalAssessments:assessments.length},timetable,notices};
+  return{student:{fullName:student.fullName,regNumber:student.regNumber,course:student.course,courseName:COURSE_NAMES[student.course]||student.course,status:student.status||'Registered',mobile:student.mobile||'',email:student.email||'',intakeStart:currentIntake},payment:{fee,paid,balance:Math.max(0,fee-paid),status:paid>=fee?'Paid':(paid>0?'Partial':'Unpaid')},attendance:{present,absent,marked:present+absent,percentage:(present+absent)?Math.round(present/(present+absent)*100):0,records:marks.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,30).map(r=>({date:clean(r.date,10),status:clean(r.status,20),note:clean(r.note,500)}))},assessments,progress:{average,totalAssessments:assessments.length},timetable,notices,messages};
 });
 
 module.exports=app;

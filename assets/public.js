@@ -244,6 +244,18 @@
     });
   }
 
+  function warmStudentPortal(){
+    if(!document.querySelector('a[href="/student-portal"]'))return;
+    const warm=()=>{
+      ['/student-portal','/assets/student-portal.js'].forEach(href=>{
+        if(document.head.querySelector(`link[rel="prefetch"][href="${href}"]`))return;
+        const link=document.createElement('link');link.rel='prefetch';link.href=href;document.head.appendChild(link);
+      });
+    };
+    if('requestIdleCallback' in window)requestIdleCallback(warm,{timeout:2500});
+    else setTimeout(warm,1200);
+  }
+
   function initContact(){
     const form = $('contactForm');
     if(!form) return;
@@ -268,6 +280,7 @@
     initRegistration();
     initStatus();
     initContact();
+    warmStudentPortal();
     loadCatalog();
     document.querySelectorAll('[data-year]').forEach(el => el.textContent = new Date().getFullYear());
   });

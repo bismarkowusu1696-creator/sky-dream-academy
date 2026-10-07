@@ -37,3 +37,8 @@ a{color:inherit;overflow-wrap:anywhere}img{max-width:100%;height:auto;display:bl
 @media(max-width:600px){.pwa-install-button{left:12px;bottom:12px;padding:10px 14px;font-size:.82rem}.pwa-install-help-card{padding:20px}}
 @media(max-width:520px){.portal-grid{grid-template-columns:1fr}.portal-table{font-size:.9rem}.portal-panel{padding:16px}}
 @media(display-mode:standalone){.pwa-install-button{display:none!important}}
+
+.btn:active{transform:translateY(1px);filter:brightness(.97)}
+.btn.is-busy,.btn[aria-busy="true"]{cursor:wait;opacity:.72}
+.btn.is-busy::after,.btn[aria-busy="true"]::after{content:"";width:.9em;height:.9em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:skydream-spin .7s linear infinite}
+@keyframes skydream-spin{to{transform:rotate(360deg)}}

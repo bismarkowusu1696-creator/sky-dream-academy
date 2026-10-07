@@ -215,14 +215,15 @@ function studentRisk(student,attendance,settings,intake){
   return{id:student.id,regNumber:student.regNumber||'',fullName:student.fullName||'',course:student.course||'',status:student.status||'',score:capped,level,reasons,attendance:attendancePct,marked,present,absent,consecutiveAbsences,lastAttendanceDate,inactiveDays,daysSinceStart,fee,paid,balance};
 }
 function buildRiskAnalysis(students,attendance,settings,intake){
-  return (students||[]).filter(s=>!['Cancelled','Completed','Deferred'].includes(s.status||'')).map(s=>studentRisk(s,attendance,settings,intake)).sort((a,b)=>b.score-a.score||a.fullName.localeCompare(b.fullName));
+  const current=intake&&intake.startDate||'';
+  return (students||[]).filter(s=>!['Cancelled','Completed','Deferred'].includes(s.status||'')&&(!current||(s.intakeStart||'')===current)).map(s=>studentRisk(s,attendance,settings,intake)).sort((a,b)=>b.score-a.score||a.fullName.localeCompare(b.fullName));
 }
 function riskSummary(rows){return{high:rows.filter(r=>r.level==='High').length,medium:rows.filter(r=>r.level==='Medium').length,low:rows.filter(r=>r.level==='Low').length,total:rows.length};}
 function buildSmartAlerts(risks,rules){
   const out=[];
   for(const r of risks){
     const per=[];
-    if(rules.highRisk.enabled&&r.score>=rules.highRisk.threshold)per.push({rule:'high-risk',title:'Student support alert',message:`Your SkyDream progress needs attention. Current support score: ${r.score}/100. Please contact the academy so we can help you stay on track.`});
+    if(rules.highRisk.enabled&&r.score>=rules.highRisk.threshold)per.push({rule:'high-risk',title:'Student support alert',message:'Your SkyDream course progress needs attention. Please contact the academy so we can help you stay on track.'});
     if(rules.attendance.enabled&&r.marked>=rules.attendance.minMarks&&r.attendance<rules.attendance.threshold)per.push({rule:'low-attendance',title:'Attendance reminder',message:`Your attendance is currently ${r.attendance}%. Please attend your upcoming classes or contact your facilitator if you need support.`});
     if(rules.inactivity.enabled&&r.inactiveDays!==null&&r.inactiveDays>=rules.inactivity.days)per.push({rule:'inactivity',title:'We have missed you',message:`We have not recorded class attendance for you in ${r.inactiveDays} days. Please contact your facilitator if you need assistance.`});
     if(rules.feeBalance.enabled&&r.balance>=rules.feeBalance.minBalance&&r.daysSinceStart!==null&&r.daysSinceStart>=rules.feeBalance.graceDays){
@@ -232,12 +233,12 @@ function buildSmartAlerts(risks,rules){
   }
   return out;
 }
-async function evaluateSmartNotifications({send=false}={}){
+async function evaluateSmartNotifications({send=false,rulesOverride=null}={}){
   const [students,attendance,settings,intake,rawRules,stateRaw,logRaw]=await Promise.all([
     readValue(KEYS.students,[]),readValue(KEYS.attendance,[]),readValue(KEYS.settings,{}),readValue(KEYS.intake,{}),
     readValue(KEYS.smartRules,DEFAULT_SMART_RULES),readValue(KEYS.smartRuleState,{}),readValue(KEYS.smartRuleLog,[])
   ]);
-  const rules=smartRules(rawRules),risks=buildRiskAnalysis(students,attendance,settings,intake),alerts=buildSmartAlerts(risks,rules);
+  const rules=smartRules(rulesOverride||rawRules),risks=buildRiskAnalysis(students,attendance,settings,intake),alerts=buildSmartAlerts(risks,rules);
   const state=stateRaw&&typeof stateRaw==='object'?stateRaw:{},sent=state.sent&&typeof state.sent==='object'?state.sent:{};
   const cooldown=rules.cooldownDays*86400000,now=Date.now();
   const eligible=alerts.filter(a=>{const last=new Date(sent[a.rule+':'+a.studentId]||0).getTime();return !Number.isFinite(last)||last<=0||now-last>=cooldown;});
@@ -261,7 +262,7 @@ function findCourseInQuestion(q){
   return'';
 }
 function assistantAnswer(question,base,risks){
-  const q=String(question||'').trim(),lower=q.toLowerCase(),students=base.students||[],attendance=base.attendance||[],active=students.filter(s=>!['Cancelled','Completed'].includes(s.status||'')),fee=Math.max(0,Number(base.settings&&base.settings.registrationFee)||0);
+  const q=String(question||'').trim(),lower=q.toLowerCase(),students=base.students||[],attendance=base.attendance||[],current=base.intake&&base.intake.startDate||'',active=students.filter(s=>!['Cancelled','Completed','Deferred'].includes(s.status||'')&&(!current||(s.intakeStart||'')===current)),fee=Math.max(0,Number(base.settings&&base.settings.registrationFee)||0);
   const courseId=findCourseInQuestion(lower),courseStudents=courseId?active.filter(s=>s.course===courseId):active;
   const pctMatch=lower.match(/(?:below|under|less than)\s*(\d{1,3})\s*%?/),threshold=pctMatch?Math.max(0,Math.min(100,Number(pctMatch[1]))):70;
   const rowsForAttendance=courseStudents.map(s=>{const a=attendance.filter(x=>x.studentId===s.id&&(x.status==='Present'||x.status==='Absent')),p=a.filter(x=>x.status==='Present').length,m=a.length;return{s,pct:m?Math.round(p/m*100):100,marked:m};});
@@ -327,7 +328,7 @@ app.adminSaveSmartNotificationRules=onCall({enforceAppCheck:true},async request=
   const a=await requirePermission(request,'settings');const rules=smartRules(request.data&&request.data.rules);await writeValue(KEYS.smartRules,rules);await appendAudit(a,'Updated smart notification rules',rules.enabled?'Automation enabled':'Automation disabled');return{ok:true,rules};
 });
 app.adminPreviewSmartNotificationRules=onCall({enforceAppCheck:true},async request=>{
-  await requirePermission(request,'reports');const result=await evaluateSmartNotifications({send:false});return{rules:result.rules,total:result.alerts.length,eligible:result.eligible.length,alerts:result.eligible.slice(0,100)};
+  await requirePermission(request,'reports');const result=await evaluateSmartNotifications({send:false,rulesOverride:request.data&&request.data.rules});return{rules:result.rules,total:result.alerts.length,eligible:result.eligible.length,alerts:result.eligible.slice(0,100)};
 });
 app.adminRunSmartNotificationRules=onCall({enforceAppCheck:true},async request=>{
   const a=await requirePermission(request,'settings');const result=await evaluateSmartNotifications({send:true});await appendAudit(a,'Ran smart notification rules',result.disabled?'Automation is disabled':`${result.sent||0} portal alert(s) sent`);return{ok:true,disabled:!!result.disabled,sent:result.sent||0,eligible:(result.eligible||[]).length};

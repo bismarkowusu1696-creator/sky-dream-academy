@@ -1,6 +1,5 @@
-// Academic operations + student self-service portal extension.
-// New academic records use individual Firestore documents rather than the
-// legacy JSON blobs, so assessments/timetables can grow without one-document limits.
+// Student engagement, attendance and self-service portal extension.
+// Assessment and timetable features are retired; existing historical records are left intact.
 const app = require('./enterprise-final-loader');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
@@ -322,6 +321,7 @@ app.getStudentPortalDashboard=onCall({enforceAppCheck:true},async request=>{
 });
 
 const removedAcademicFeature=onCall({enforceAppCheck:true},async()=>{throw new HttpsError('failed-precondition','Assessments and timetable have been removed from the SkyDream system.');});
+app.adminGetAcademicSnapshot=removedAcademicFeature;
 app.adminSaveAssessment=removedAcademicFeature;
 app.adminDeleteAssessment=removedAcademicFeature;
 app.adminSaveTimetableEntry=removedAcademicFeature;

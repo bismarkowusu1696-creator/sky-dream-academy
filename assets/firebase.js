@@ -36,6 +36,13 @@
 
   const functions = firebase.functions();
   const auth = firebase.auth ? firebase.auth() : null;
+  let pendingCallableRequests = 0;
+
+  function setCallableBusy(delta) {
+    pendingCallableRequests = Math.max(0, pendingCallableRequests + delta);
+    if (pendingCallableRequests) document.documentElement.setAttribute('data-skydream-network-busy', 'true');
+    else document.documentElement.removeAttribute('data-skydream-network-busy');
+  }
 
   function friendlyError(err) {
     const raw = err && err.message ? String(err.message) : 'Something went wrong. Please try again.';
@@ -83,12 +90,17 @@
       if (cached) return cached;
     }
 
-    // Wait for a valid App Check token before every real callable request.
-    await ensureAppCheckToken();
-    const callable = functions.httpsCallable(name);
-    const result = await callable(data);
-    if (name === 'publicCatalog' && result && result.data) storeCachedCatalog(result.data);
-    return result.data;
+    setCallableBusy(1);
+    try {
+      // Wait for a valid App Check token before every real callable request.
+      await ensureAppCheckToken();
+      const callable = functions.httpsCallable(name);
+      const result = await callable(data);
+      if (name === 'publicCatalog' && result && result.data) storeCachedCatalog(result.data);
+      return result.data;
+    } finally {
+      setCallableBusy(-1);
+    }
   }
 
   window.SkyDreamFirebase = { functions, auth, call, friendlyError, ensureAppCheckToken };

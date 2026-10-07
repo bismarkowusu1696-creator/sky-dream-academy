@@ -40,6 +40,9 @@
 /assets/admin-enterprise.js
   Cache-Control: no-store, max-age=0
 
+/assets/student-portal.js
+  Cache-Control: no-store, max-age=0
+
 /staff
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, nofollow, noarchive

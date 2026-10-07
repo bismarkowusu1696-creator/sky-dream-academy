@@ -97,7 +97,10 @@ function ensureCallable(callable, name) {
 }
 
 const baseCatalog = app.publicCatalog;
-app.publicCatalog = onCall({ enforceAppCheck: true }, async request => {
+app.publicCatalog = onCall({ enforceAppCheck: false }, async request => {
+  // Only public intake and program availability is returned here. Keep the
+  // endpoint readable if browser App Check is unavailable, while rate-limiting abuse.
+  await enforceRateLimit(request, 'catalog', 120, 60 * 1000);
   ensureCallable(baseCatalog, 'Catalog');
   const result = await baseCatalog.run(request);
   const intake = { ...((result && result.intake) || {}) };

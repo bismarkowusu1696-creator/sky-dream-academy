@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v29';
+const CACHE_NAME = 'skydream-pwa-v30';
 const PUBLIC_SHELL = [
   '/',
   '/index.html',
@@ -30,11 +30,17 @@ const FRESH_PUBLIC_ASSETS = new Set([
 ]);
 
 self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(PUBLIC_SHELL))
-      .then(() => self.skipWaiting())
-  );
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    await Promise.allSettled(
+      PUBLIC_SHELL.map(async path => {
+        const response = await fetch(path, { cache: 'reload' });
+        if (!response.ok) throw new Error(`Failed to precache ${path}: ${response.status}`);
+        await cache.put(path, response);
+      })
+    );
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skydream-pwa-v31';
+const CACHE_NAME = 'skydream-pwa-v32';
 const PUBLIC_SHELL = [
   '/',
   '/programs',
@@ -7,11 +7,13 @@ const PUBLIC_SHELL = [
   '/contact',
   '/register',
   '/check-status',
+  '/student-portal',
   '/privacy',
   '/terms',
   '/assets/site.css',
   '/assets/public.js',
   '/assets/schedule-live.js',
+  '/assets/student-portal.js',
   '/assets/offline.js',
   '/assets/print.css',
   '/manifest.webmanifest',
@@ -25,6 +27,8 @@ const FRESH_PUBLIC_ASSETS = new Set([
   '/assets/site.css',
   '/assets/public.js',
   '/assets/schedule-live.js',
+  '/assets/student-portal.js',
+  '/student-portal',
   '/manifest.webmanifest'
 ]);
 
@@ -87,15 +91,14 @@ self.addEventListener('fetch', event => {
     '/assets/admin-enterprise.js',
     '/assets/admin-academic.js',
     '/assets/admin-suite.css',
-    '/assets/facilitator.js',
-    '/assets/student-portal.js'
+    '/assets/facilitator.js'
   ].includes(url.pathname)) {
     event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }
 
   // Never cache authenticated entry points or dashboards.
-  if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator', '/student-portal.html', '/student-portal'].includes(url.pathname)) return;
+  if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator'].includes(url.pathname)) return;
 
   if (FRESH_PUBLIC_ASSETS.has(url.pathname)) {
     event.respondWith((async () => {

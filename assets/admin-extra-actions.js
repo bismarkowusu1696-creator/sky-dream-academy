@@ -10,7 +10,7 @@
     if (!host) {
       host = document.createElement('div');
       host.id = 'suiteAnnouncementControls';
-      host.style.marginTop = '18px';
+      host.className = 'mt-18';
       list.parentNode.appendChild(host);
     }
     return host;
@@ -30,7 +30,7 @@
     try {
       const snap = await SkyDreamFirebase.call('adminGetSuiteSnapshot');
       const notices = (snap.broadcasts || []).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,30);
-      host.innerHTML = `<h3>Manage announcements</h3>${notices.length ? notices.map(n=>`<div class="card" style="margin-bottom:10px"><div class="dashboard-top"><span class="badge">${state(n)}</span><small>${esc(friendly(n.date))}</small></div><p>${esc(n.message||'')}</p><div class="toolbar"><button class="btn btn-outline btn-small" type="button" data-extra-toggle="${esc(n.id)}" data-extra-active="${n.active===false?'false':'true'}">${n.active===false?'Show':'Hide'}</button><button class="btn btn-danger btn-small" type="button" data-extra-delete="${esc(n.id)}">Delete</button></div></div>`).join('') : '<p>No announcements.</p>'}`;
+      host.innerHTML = `<h3>Manage announcements</h3>${notices.length ? notices.map(n=>`<div class="card announcement-card-spacing"><div class="dashboard-top"><span class="badge">${state(n)}</span><small>${esc(friendly(n.date))}</small></div><p>${esc(n.message||'')}</p><div class="toolbar"><button class="btn btn-outline btn-small" type="button" data-extra-toggle="${esc(n.id)}" data-extra-active="${n.active===false?'false':'true'}">${n.active===false?'Show':'Hide'}</button><button class="btn btn-danger btn-small" type="button" data-extra-delete="${esc(n.id)}">Delete</button></div></div>`).join('') : '<p>No announcements.</p>'}`;
     } catch (err) {
       host.textContent = SkyDreamFirebase.friendlyError(err);
     }

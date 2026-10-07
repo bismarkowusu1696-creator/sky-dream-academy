@@ -109,8 +109,8 @@
     ensurePortalServiceWorker();
     $('portalLoginForm').addEventListener('submit',login);
     $('portalLogout').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
-    const messagesLink=document.querySelector('a[href="#portalMessages"]');
-    if(messagesLink)messagesLink.addEventListener('click',()=>markMessagesRead());
+    document.addEventListener('click',event=>{if(event.target.closest('a[href="#portalMessages"]'))markMessagesRead();});
+    window.addEventListener('hashchange',()=>{if(location.hash==='#portalMessages')markMessagesRead();});
     SkyDreamFirebase.auth.onAuthStateChanged(async user=>{
       if(!user)return;
       try{const token=await user.getIdTokenResult();if(token.claims.role==='student')await load();else await SkyDreamFirebase.auth.signOut();}catch(_){await SkyDreamFirebase.auth.signOut();}

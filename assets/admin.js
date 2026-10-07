@@ -12,6 +12,26 @@
   function clearMessage(){ const el=$('adminMessage'); if(el)el.classList.add('hidden'); }
   function errText(err){ return window.SkyDreamFirebase ? SkyDreamFirebase.friendlyError(err) : (err.message||'Something went wrong.'); }
 
+  async function withBusy(button,busyText,task){
+    if(!button||button.dataset.busy==='1')return;
+    const normal=button.textContent;
+    button.dataset.busy='1';
+    button.disabled=true;
+    button.classList.add('is-busy');
+    button.setAttribute('aria-busy','true');
+    if(busyText)button.textContent=busyText;
+    try{return await task();}
+    finally{
+      if(button.isConnected){
+        button.disabled=false;
+        button.classList.remove('is-busy');
+        button.removeAttribute('aria-busy');
+        delete button.dataset.busy;
+        button.textContent=normal;
+      }
+    }
+  }
+
   async function signInToken(token){
     await SkyDreamFirebase.auth.signInWithCustomToken(token);
     await loadDashboard();
@@ -104,26 +124,26 @@
       $('studentModal').classList.add('hidden'); await refresh('Student record updated.');
     }catch(err){alert(errText(err));}finally{btn.disabled=false;}
   }
-  async function addPayment(id){
+  async function addPayment(id,button){
     const s=data.students.find(x=>x.id===id); if(!s)return;
     const amount=prompt(`Payment amount for ${s.fullName} (GHS):`); if(amount===null)return;
     const note=prompt('Payment note (optional):','')||'';
-    try{await SkyDreamFirebase.call('adminAddPayment',{id,amount:Number(amount),note}); await refresh('Payment recorded.');}catch(err){alert(errText(err));}
+    try{await withBusy(button,'Saving…',async()=>{await SkyDreamFirebase.call('adminAddPayment',{id,amount:Number(amount),note});await refresh('Payment recorded.');});}catch(err){alert(errText(err));}
   }
-  async function deleteStudent(id){
+  async function deleteStudent(id,button){
     const s=data.students.find(x=>x.id===id); if(!s||!confirm(`Delete ${s.fullName} (${s.regNumber})? This cannot be undone.`))return;
-    try{await SkyDreamFirebase.call('adminDeleteStudent',{id}); await refresh('Registration deleted.');}catch(err){alert(errText(err));}
+    try{await withBusy(button,'Deleting…',async()=>{await SkyDreamFirebase.call('adminDeleteStudent',{id});await refresh('Registration deleted.');});}catch(err){alert(errText(err));}
   }
-  async function sendSms(id){
+  async function sendSms(id,button){
     const s=data.students.find(x=>x.id===id); if(!s)return; const body=prompt(`SMS to ${s.fullName}:`); if(!body)return;
-    try{await SkyDreamFirebase.call('sendCustomSms',{regNumber:s.regNumber,message:body}); alert('SMS sent.');}catch(err){alert(errText(err));}
+    try{await withBusy(button,'Sending…',async()=>{await SkyDreamFirebase.call('sendCustomSms',{regNumber:s.regNumber,message:body});alert('SMS sent.');});}catch(err){alert(errText(err));}
   }
 
   function renderCapacities(){
     $('capacityGrid').innerHTML=Object.entries(data.courses).map(([id,name])=>`<div class="card"><h3>${esc(name)}</h3><div class="field"><label>Capacity</label><input type="number" min="1" max="500" value="${Number(data.capacities[id])||25}" data-capacity-input="${id}"></div><button class="btn btn-primary btn-small" data-save-capacity="${id}">Save</button></div>`).join('');
   }
-  async function saveCapacity(id){
-    const input=document.querySelector(`[data-capacity-input="${CSS.escape(id)}"]`); try{await SkyDreamFirebase.call('adminSetCapacity',{course:id,capacity:Number(input.value)});await refresh('Program capacity updated.');}catch(err){alert(errText(err));}
+  async function saveCapacity(id,button){
+    const input=document.querySelector(`[data-capacity-input="${CSS.escape(id)}"]`); try{await withBusy(button,'Saving…',async()=>{await SkyDreamFirebase.call('adminSetCapacity',{course:id,capacity:Number(input.value)});await refresh('Program capacity updated.');});}catch(err){alert(errText(err));}
   }
 
   function renderFacilitators(){
@@ -135,14 +155,14 @@
     e.preventDefault(); const courses=Array.from($('facCourseChoices').querySelectorAll('input:checked')).map(x=>x.value); const btn=e.target.querySelector('button[type=submit]');btn.disabled=true;
     try{await SkyDreamFirebase.call('adminCreateFacilitator',{name:$('facName').value,username:$('facUsername').value,phone:$('facPhone').value,password:$('facPassword').value,courses});e.target.reset();await refresh('Facilitator account created.');}catch(err){alert(errText(err));}finally{btn.disabled=false;}
   }
-  async function deleteFacilitator(id){if(!confirm('Remove this facilitator account?'))return;try{await SkyDreamFirebase.call('adminDeleteFacilitator',{id});await refresh('Facilitator removed.');}catch(err){alert(errText(err));}}
+  async function deleteFacilitator(id,button){if(!confirm('Remove this facilitator account?'))return;try{await withBusy(button,'Removing…',async()=>{await SkyDreamFirebase.call('adminDeleteFacilitator',{id});await refresh('Facilitator removed.');});}catch(err){alert(errText(err));}}
 
   function renderAdmins(){
     $('adminUsersList').innerHTML=data.admins.map(a=>`<div class="card"><h3>${esc(a.name||a.username)}</h3><p>@${esc(a.username)} · ${a.role==='owner'?'Main administrator':'Staff administrator'}</p>${account.role==='owner'&&a.role!=='owner'&&a.username!==account.username?`<button class="btn btn-danger btn-small" data-delete-admin="${esc(a.id)}">Remove</button>`:''}</div>`).join('');
     $('adminCreatePanel').classList.toggle('hidden',account.role!=='owner');
   }
   async function createAdmin(e){e.preventDefault();const btn=e.target.querySelector('button[type=submit]');btn.disabled=true;try{await SkyDreamFirebase.call('adminCreateAdmin',{name:$('newAdminName').value,username:$('newAdminUsername').value,password:$('newAdminPassword').value});e.target.reset();await refresh('Administrator created.');}catch(err){alert(errText(err));}finally{btn.disabled=false;}}
-  async function deleteAdmin(id){if(!confirm('Remove this administrator account?'))return;try{await SkyDreamFirebase.call('adminDeleteAdmin',{id});await refresh('Administrator removed.');}catch(err){alert(errText(err));}}
+  async function deleteAdmin(id,button){if(!confirm('Remove this administrator account?'))return;try{await withBusy(button,'Removing…',async()=>{await SkyDreamFirebase.call('adminDeleteAdmin',{id});await refresh('Administrator removed.');});}catch(err){alert(errText(err));}}
 
   function renderContacts(){
     $('contactList').innerHTML=data.contactMessages.length?data.contactMessages.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).map(m=>`<div class="card"><h3>${esc(m.name)}</h3><p><a href="mailto:${esc(m.email)}">${esc(m.email)}</a> · ${esc(new Date(m.date).toLocaleString())}</p><p>${esc(m.message)}</p></div>`).join(''):'<p>No contact messages.</p>';
@@ -159,13 +179,13 @@
     const rows=[['Registration Number','Name','Program','Mobile','Status','Fee Paid'],...filteredStudents().map(s=>[s.regNumber,s.fullName,courseName(s.course),s.mobile,s.status,Number(s.feePaid)||0])];
     const csv=rows.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\n'); const url=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));const a=document.createElement('a');a.href=url;a.download='SkyDream-Students.csv';a.click();URL.revokeObjectURL(url);
   }
-  async function refresh(msg){data=await SkyDreamFirebase.call('getAdminSnapshot');renderAll();if(msg)message(msg,'success');}
+  async function refresh(msg){if(msg)message(msg,'success');data=await SkyDreamFirebase.call('getAdminSnapshot');renderAll();}
 
   function bindEvents(){
     $('adminLoginForm').addEventListener('submit',handleLogin); $('upgradeForm').addEventListener('submit',handleUpgrade); $('editStudentForm').addEventListener('submit',saveStudent); $('createFacilitatorForm').addEventListener('submit',createFacilitator); $('createAdminForm').addEventListener('submit',createAdmin); $('changePasswordForm').addEventListener('submit',changePassword);
     $('studentSearch').addEventListener('input',renderStudents);$('studentCourseFilter').addEventListener('change',renderStudents);$('exportStudents').addEventListener('click',exportCsv);$('closeStudentModal').addEventListener('click',()=>$('studentModal').classList.add('hidden'));
     $('logoutBtn').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
-    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay);if(b.dataset.sms)sendSms(b.dataset.sms);if(b.dataset.delete)deleteStudent(b.dataset.delete);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin);});
+    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay,b);if(b.dataset.sms)sendSms(b.dataset.sms,b);if(b.dataset.delete)deleteStudent(b.dataset.delete,b);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity,b);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac,b);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin,b);});
   }
 
   document.addEventListener('DOMContentLoaded',()=>{

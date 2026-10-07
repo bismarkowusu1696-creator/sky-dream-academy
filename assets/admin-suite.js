@@ -31,7 +31,7 @@
     const overview = $('overview');
     const analytics = document.createElement('section');
     analytics.id = 'adminAnalytics'; analytics.className = 'dashboard-panel';
-    analytics.innerHTML = `<h2>Dashboard analytics</h2><div id="suiteKpis" class="admin-suite-grid"></div><div class="card mt-18"><h3>Registrations by program</h3><div id="suiteProgramBars"></div></div>`;
+    analytics.innerHTML = `<h2>Admin intelligence dashboard</h2><div id="suiteKpis" class="admin-suite-grid"></div><div class="grid grid-2 mt-18"><div class="card"><h3>Registrations by program</h3><div id="suiteProgramBars"></div></div><div class="card"><h3>Students needing attention</h3><div id="suiteRiskList"></div></div></div>`;
     overview.parentNode.insertBefore(analytics, overview.nextSibling);
 
     const students = $('students');
@@ -126,11 +126,18 @@
     const present = marked.filter(a => a.status === 'Present').length;
     const rate = marked.length ? Math.round((present / marked.length) * 100) : 0;
     const activeFac = (suite.facilitators || []).filter(f => f.active !== false).length;
-    $('suiteKpis').innerHTML = `<div class="admin-suite-kpi"><b>${currentStudents.length}</b><span>Current students</span></div><div class="admin-suite-kpi"><b>${activeFac}</b><span>Active facilitators</span></div><div class="admin-suite-kpi"><b>${rate}%</b><span>Attendance rate</span></div><div class="admin-suite-kpi"><b>${students.length}</b><span>Total registrations</span></div>`;
+    const fee = Math.max(0,Number(suite.settings && suite.settings.registrationFee)||0);
+    const outstanding = currentStudents.reduce((sum,s)=>sum+Math.max(0,fee-(Number(s.feePaid)||0)),0);
+    const unread = Number(suite.messageStats && suite.messageStats.unread)||0;
+    const totalCapacity = Object.values(suite.capacities||{}).reduce((sum,n)=>sum+(Number(n)||0),0);
+    const capacityPct = totalCapacity ? Math.min(100,Math.round(currentStudents.length/totalCapacity*100)) : 0;
+    $('suiteKpis').innerHTML = `<div class="admin-suite-kpi"><b>${currentStudents.length}</b><span>Current students</span></div><div class="admin-suite-kpi"><b>${rate}%</b><span>Attendance rate</span></div><div class="admin-suite-kpi"><b>GHS ${outstanding.toFixed(0)}</b><span>Outstanding fees</span></div><div class="admin-suite-kpi"><b>${unread}</b><span>Unread student messages</span></div><div class="admin-suite-kpi"><b>${activeFac}</b><span>Active facilitators</span></div><div class="admin-suite-kpi"><b>${capacityPct}%</b><span>Capacity used</span></div>`;
     const counts = {};
-    students.forEach(s => { if (s.status !== 'Cancelled') counts[s.course] = (counts[s.course] || 0) + 1; });
+    currentStudents.forEach(s => counts[s.course] = (counts[s.course] || 0) + 1);
     const max = Math.max(1, ...Object.values(counts));
     $('suiteProgramBars').innerHTML = Object.entries(suite.courses || {}).map(([id,name]) => { const n=counts[id]||0; return `<div class="my-12"><div class="dashboard-top"><span>${esc(name)}</span><b>${n}</b></div><progress class="admin-suite-progress" max="100" value="${Math.round(n/max*100)}" aria-label="${esc(name)} registrations">${Math.round(n/max*100)}%</progress></div>`; }).join('');
+    const risk=currentStudents.map(s=>{const a=attendanceForStudent(s.id),p=a.filter(x=>x.status==='Present').length,ab=a.filter(x=>x.status==='Absent').length,m=p+ab,pct=m?Math.round(p/m*100):100,balance=Math.max(0,fee-(Number(s.feePaid)||0));return{s,pct,m,balance};}).filter(x=>(x.m>=3&&x.pct<70)||x.balance>0).sort((a,b)=>(a.pct-b.pct)||(b.balance-a.balance)).slice(0,10);
+    $('suiteRiskList').innerHTML=risk.length?risk.map(x=>`<button type="button" class="admin-search-result" data-suite-student="${esc(x.s.id)}"><strong>${esc(x.s.fullName)}</strong><br><small>${x.m>=3?`Attendance ${x.pct}% · `:''}${x.balance>0?`Balance GHS ${x.balance.toFixed(2)}`:''}</small></button>`).join(''):'<p class="hint">No current students need attention.</p>';
   }
 
   function filteredStudents() {
@@ -153,6 +160,16 @@
     if(!body||!body.trim())return;
     await SkyDreamFirebase.call('adminSendStudentMessage',{studentId:s.id,message:body.trim()});
     alert('Message sent to the student portal.');
+    loadStudentMessages(id).catch(()=>{});
+    queueLoadSuite();
+  }
+  async function loadStudentMessages(id){
+    const host=$('suiteStudentMessages');if(!host)return;
+    host.innerHTML='<p class="hint">Loading message history…</p>';
+    const result=await SkyDreamFirebase.call('adminGetStudentMessages',{studentId:id});
+    if(selectedStudentId!==id||!$('suiteStudentMessages'))return;
+    const list=result.messages||[];
+    $('suiteStudentMessages').innerHTML=list.length?list.map(m=>`<div class="card"><div class="dashboard-top"><strong>${esc(m.from||'SkyDream')}</strong><span class="badge">${m.readAt?'Read':'Unread'}</span></div><p class="pre-wrap">${esc(m.message)}</p><small class="hint">Sent ${esc(friendlyDate(m.date))}${m.readAt?` · Read ${esc(friendlyDate(m.readAt))}`:''}</small></div>`).join(''):'<p class="hint">No portal messages have been sent to this student.</p>';
   }
   function renderStudentProfile(id) {
     selectedStudentId = id;
@@ -160,7 +177,8 @@
     document.querySelectorAll('[data-suite-student]').forEach(b => b.classList.toggle('active', b.dataset.suiteStudent===id));
     const att = attendanceForStudent(id); const p=att.filter(a=>a.status==='Present').length, a=att.filter(x=>x.status==='Absent').length; const marked=p+a; const pct=marked?Math.round(p/marked*100):0;
     const payments = Array.isArray(s.payments) ? s.payments : [];
-    $('suiteStudentProfile').innerHTML = `<div class="dashboard-top"><div><h3 class="m-0">${esc(s.fullName)}</h3><span class="admin-suite-tag">${esc(s.status || 'Registered')}</span></div></div><div class="admin-suite-profile-grid"><div><small>Registration number</small><strong>${esc(s.regNumber)}</strong></div><div><small>Program</small><strong>${esc(courseName(s.course))}</strong></div><div><small>Mobile</small><strong>${esc(s.mobile || '')}</strong></div><div><small>WhatsApp</small><strong>${esc(s.whatsapp || '')}</strong></div><div><small>Email</small><strong>${esc(s.email || '—')}</strong></div><div><small>Ghana Card</small><strong>${esc(s.ghanaCard || '—')}</strong></div><div><small>Date of birth</small><strong>${esc(s.dob || '—')}</strong></div><div><small>Address</small><strong>${esc(s.address || '—')}</strong></div><div><small>Emergency contact</small><strong>${esc(s.emName || '—')} ${s.emPhone?`· ${esc(s.emPhone)}`:''}</strong></div><div><small>Attendance</small><strong>${p} present / ${a} absent (${pct}%)</strong></div></div><h4 class="mt-18">Payment history</h4><div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Amount</th><th>Note</th></tr></thead><tbody>${payments.length?payments.map(x=>`<tr><td>${esc(friendlyDate(x.date))}</td><td>GHS ${Number(x.amount||0).toFixed(2)}</td><td>${esc(x.note||'')}</td></tr>`).join(''):'<tr><td colspan="3">No payments recorded.</td></tr>'}</tbody></table></div><div class="admin-suite-actions"><button type="button" class="btn btn-primary btn-small" data-suite-message="${esc(s.id)}">Message Student</button><button type="button" class="btn btn-outline btn-small" data-suite-idcard="${esc(s.id)}">Print Student ID</button><button type="button" class="btn btn-outline btn-small" data-suite-profile-print="${esc(s.id)}">Print Profile</button></div>`;
+    $('suiteStudentProfile').innerHTML = `<div class="dashboard-top"><div><h3 class="m-0">${esc(s.fullName)}</h3><span class="admin-suite-tag">${esc(s.status || 'Registered')}</span></div></div><div class="admin-suite-profile-grid"><div><small>Registration number</small><strong>${esc(s.regNumber)}</strong></div><div><small>Program</small><strong>${esc(courseName(s.course))}</strong></div><div><small>Mobile</small><strong>${esc(s.mobile || '')}</strong></div><div><small>WhatsApp</small><strong>${esc(s.whatsapp || '')}</strong></div><div><small>Email</small><strong>${esc(s.email || '—')}</strong></div><div><small>Ghana Card</small><strong>${esc(s.ghanaCard || '—')}</strong></div><div><small>Date of birth</small><strong>${esc(s.dob || '—')}</strong></div><div><small>Address</small><strong>${esc(s.address || '—')}</strong></div><div><small>Emergency contact</small><strong>${esc(s.emName || '—')} ${s.emPhone?`· ${esc(s.emPhone)}`:''}</strong></div><div><small>Attendance</small><strong>${p} present / ${a} absent (${pct}%)</strong></div></div><h4 class="mt-18">Payment history</h4><div class="table-wrap"><table class="table"><thead><tr><th>Date</th><th>Amount</th><th>Note</th></tr></thead><tbody>${payments.length?payments.map(x=>`<tr><td>${esc(friendlyDate(x.date))}</td><td>GHS ${Number(x.amount||0).toFixed(2)}</td><td>${esc(x.note||'')}</td></tr>`).join(''):'<tr><td colspan="3">No payments recorded.</td></tr>'}</tbody></table></div><h4 class="mt-18">Portal messages & read receipts</h4><div id="suiteStudentMessages"><p class="hint">Loading message history…</p></div><div class="admin-suite-actions"><button type="button" class="btn btn-primary btn-small" data-suite-message="${esc(s.id)}">Message Student</button><button type="button" class="btn btn-outline btn-small" data-suite-idcard="${esc(s.id)}">Print Student ID</button><button type="button" class="btn btn-outline btn-small" data-suite-profile-print="${esc(s.id)}">Print Profile</button></div>`;
+    loadStudentMessages(id).catch(()=>{const h=$('suiteStudentMessages');if(h)h.innerHTML='<p class="hint">Could not load message history.</p>';});
   }
 
   function renderAttendance() {

@@ -8,6 +8,7 @@ const admin = require('firebase-admin');
 const crypto = require('crypto');
 
 const db = admin.firestore();
+const STUDENT_MESSAGE_COLLECTION = 'sdta_student_messages';
 const STORAGE_COLLECTION = 'sdta_storage';
 const KEYS = {
   students: 'sdta_students',
@@ -154,7 +155,7 @@ wrapAdminAction('adminStartNextIntake', 'settings', 'Started next intake', true)
 // One consolidated snapshot powers analytics, profiles, reports and management tools.
 app.adminGetSuiteSnapshot = onCall({ enforceAppCheck: true }, async request => {
   const account = await adminAccountFor(request);
-  const [students, admins, capacities, facilitators, attendance, intake, broadcasts, settings, audit] = await Promise.all([
+  const [students, admins, capacities, facilitators, attendance, intake, broadcasts, settings, audit, messageSnap] = await Promise.all([
     readValue(KEYS.students, []),
     readValue(KEYS.admins, []),
     readValue(KEYS.capacities, {}),
@@ -163,8 +164,15 @@ app.adminGetSuiteSnapshot = onCall({ enforceAppCheck: true }, async request => {
     readValue(KEYS.intake, {}),
     readValue(KEYS.broadcasts, []),
     readValue(KEYS.settings, DEFAULT_SETTINGS),
-    readValue(KEYS.audit, [])
+    readValue(KEYS.audit, []),
+    db.collection(STUDENT_MESSAGE_COLLECTION).limit(5000).get()
   ]);
+  const messageDocs = messageSnap.docs.map(doc => doc.data() || {});
+  const messageStats = {
+    total: messageDocs.length,
+    unread: messageDocs.filter(m => !m.readAt).length,
+    read: messageDocs.filter(m => !!m.readAt).length
+  };
   return {
     account: { id: account.id, username: account.username, name: account.name || '', role: account.role || 'staff' },
     permissions: permissionsFor(account.role || 'staff'),
@@ -177,6 +185,7 @@ app.adminGetSuiteSnapshot = onCall({ enforceAppCheck: true }, async request => {
     broadcasts,
     settings: { ...DEFAULT_SETTINGS, ...(settings || {}) },
     audit: Array.isArray(audit) ? audit.slice(-250).reverse() : [],
+    messageStats,
     courses: COURSE_NAMES,
     roles: Object.keys(ROLE_PERMISSIONS)
   };

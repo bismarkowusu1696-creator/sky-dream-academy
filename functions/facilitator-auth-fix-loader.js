@@ -51,5 +51,7 @@ function repairFacilitatorCallable(name) {
 
 repairFacilitatorCallable('getFacilitatorDashboard');
 repairFacilitatorCallable('markFacilitatorAttendance');
+repairFacilitatorCallable('facilitatorSendStudentMessage');
+repairFacilitatorCallable('facilitatorCreateQrAttendance');
 
 module.exports = app;

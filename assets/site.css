@@ -16,7 +16,7 @@ a{color:inherit;overflow-wrap:anywhere}img{max-width:100%;height:auto;display:bl
 .sidebar-brand{color:#fff!important}
 .dashboard-heading{margin:0;color:var(--navy)}
 .admin-message-floating{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:200;max-width:min(620px,calc(100% - 24px));box-shadow:var(--shadow)}
-.mt-12{margin-top:12px}.mt-18{margin-top:18px}.mt-20{margin-top:20px}.mt-24{margin-top:24px}.mr-8{margin-right:8px}
+.mt-12{margin-top:12px}.mt-18{margin-top:18px}.mt-20{margin-top:20px}.mt-24{margin-top:24px}.mr-8{margin-right:8px}.no-shadow{box-shadow:none}
 .staff-choice-grid{gap:16px;margin-top:24px}
 .honeypot-field{position:absolute!important;left:-10000px!important}
 .announcement-card-spacing{margin-bottom:10px}

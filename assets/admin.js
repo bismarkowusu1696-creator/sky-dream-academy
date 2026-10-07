@@ -1,7 +1,6 @@
 (() => {
   let data = null;
   let account = null;
-  let pendingLegacy = null;
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const courseName = id => data && data.courses && data.courses[id] ? data.courses[id] : id;
@@ -44,29 +43,9 @@
     try{
       const res=await SkyDreamFirebase.call('adminLogin',{username,password});
       account=res.account;
-      if(res.upgradeRequired){
-        pendingLegacy={username,pin:password};
-        $('upgradePanel').classList.remove('hidden');
-        $('adminLoginPanel').classList.add('hidden');
-        $('upgradeName').textContent=account.name||account.username;
-      }else{
-        await signInToken(res.token);
-      }
+      await signInToken(res.token);
     }catch(err){ message(errText(err),'error'); }
     finally{ btn.disabled=false; }
-  }
-
-  async function handleUpgrade(e){
-    e.preventDefault(); clearMessage();
-    if(!pendingLegacy)return;
-    const p1=$('upgradePassword').value,p2=$('upgradePassword2').value;
-    if(p1!==p2){ message('The new passwords do not match.','error'); return; }
-    const btn=e.target.querySelector('button[type=submit]'); btn.disabled=true;
-    try{
-      const res=await SkyDreamFirebase.call('upgradeAdminPassword',{username:pendingLegacy.username,currentPin:pendingLegacy.pin,newPassword:p1});
-      pendingLegacy=null; account=res.account; await signInToken(res.token);
-    }catch(err){ message(errText(err),'error'); }
-    finally{btn.disabled=false;}
   }
 
   async function loadDashboard(){
@@ -80,7 +59,7 @@
       renderAll();
     }catch(err){
       await SkyDreamFirebase.auth.signOut();
-      $('dashboardShell').classList.add('hidden'); $('loginShell').classList.remove('hidden'); $('adminLoginPanel').classList.remove('hidden'); $('upgradePanel').classList.add('hidden');
+      $('dashboardShell').classList.add('hidden'); $('loginShell').classList.remove('hidden'); $('adminLoginPanel').classList.remove('hidden');
       message(errText(err),'error');
     }
   }
@@ -182,7 +161,7 @@
   async function refresh(msg){if(msg)message(msg,'success');data=await SkyDreamFirebase.call('getAdminSnapshot');renderAll();}
 
   function bindEvents(){
-    $('adminLoginForm').addEventListener('submit',handleLogin); $('upgradeForm').addEventListener('submit',handleUpgrade); $('editStudentForm').addEventListener('submit',saveStudent); $('createFacilitatorForm').addEventListener('submit',createFacilitator); $('createAdminForm').addEventListener('submit',createAdmin); $('changePasswordForm').addEventListener('submit',changePassword);
+    $('adminLoginForm').addEventListener('submit',handleLogin); $('editStudentForm').addEventListener('submit',saveStudent); $('createFacilitatorForm').addEventListener('submit',createFacilitator); $('createAdminForm').addEventListener('submit',createAdmin); $('changePasswordForm').addEventListener('submit',changePassword);
     $('studentSearch').addEventListener('input',renderStudents);$('studentCourseFilter').addEventListener('change',renderStudents);$('exportStudents').addEventListener('click',exportCsv);$('closeStudentModal').addEventListener('click',()=>$('studentModal').classList.add('hidden'));
     $('logoutBtn').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
     document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay,b);if(b.dataset.sms)sendSms(b.dataset.sms,b);if(b.dataset.delete)deleteStudent(b.dataset.delete,b);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity,b);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac,b);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin,b);});

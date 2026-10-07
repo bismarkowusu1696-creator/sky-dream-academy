@@ -135,8 +135,10 @@
     const actionButton = beginActionButtonBusy();
     setCallableBusy(1);
     try {
-      // Wait for a valid App Check token before every real callable request.
-      await ensureAppCheckToken();
+      // Public catalogue data is intentionally readable without App Check so
+      // schedule/program information remains available to visitors and crawlers.
+      // Sensitive and state-changing calls still require a valid App Check token.
+      if (name !== 'publicCatalog') await ensureAppCheckToken();
       const callable = functions.httpsCallable(name);
       const result = await callable(data);
       if (name === 'publicCatalog' && result && result.data) storeCachedCatalog(result.data);

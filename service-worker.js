@@ -89,7 +89,6 @@ self.addEventListener('fetch', event => {
     '/assets/admin-extra-actions.js',
     '/assets/admin-enterprise-login.js',
     '/assets/admin-enterprise.js',
-    '/assets/admin-academic.js',
     '/assets/admin-suite.css',
     '/assets/facilitator.js'
   ].includes(url.pathname)) {

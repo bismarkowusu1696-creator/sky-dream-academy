@@ -39,6 +39,9 @@
   function inject(){
     nav('#enterpriseSecurity','Security & Devices');
     nav('#notificationsCenter','Notifications');
+    nav('#studentRiskCenter','AI Risk Centre');
+    nav('#smartNotificationRules','Smart Rules');
+    nav('#adminAssistant','Admin Assistant');
     nav('#studentImport','Import & Duplicates');
     nav('#cohortArchive','Intake Archive');
     nav('#classSessions','Class Sessions');
@@ -52,6 +55,33 @@
       <div class="grid grid-2"><div class="card"><h3>2-step verification</h3><p id="twoFactorStatus" class="hint">Loading…</p><div class="toolbar"><button id="enable2fa" class="btn btn-primary btn-small" type="button">Set up authenticator</button><button id="disable2fa" class="btn btn-outline btn-small" type="button">Disable</button></div><div id="twoFactorSetup" class="hidden mt-12"></div></div>
       <div class="card"><h3>Admin sessions</h3><p class="hint">Review signed-in devices and revoke access.</p><button id="signOutAllDevices" class="btn btn-outline btn-small" type="button">Sign out all my devices</button></div></div><div id="sessionList" class="grid mt-16"></div>`,'account');
     section('notificationsCenter','Notification Centre',`<p class="hint">New registrations, enquiries, capacity warnings, attendance warnings and deadlines appear here.</p><div id="notificationList" class="grid"></div>`,'account');
+    section('studentRiskCenter','AI Student Risk Centre',`
+      <p class="hint">Explainable risk scoring uses attendance, consecutive absences, inactivity and outstanding fees. It does not make final decisions for you.</p>
+      <div id="riskSummary" class="admin-suite-grid"></div>
+      <div class="toolbar mt-16"><label>Show <select id="riskLevelFilter"><option value="">All risk levels</option><option>High</option><option>Medium</option><option>Low</option></select></label></div>
+      <div class="table-wrap mt-14"><table class="table"><thead><tr><th>Student</th><th>Program</th><th>Score</th><th>Level</th><th>Attendance</th><th>Balance</th><th>Why</th><th></th></tr></thead><tbody id="riskTableBody"></tbody></table></div>`,'account');
+    section('smartNotificationRules','Smart Notification Rules',`
+      <p class="hint">These rules create private Student Portal alerts automatically. Automation is off by default and uses a cooldown to avoid repeated messages.</p>
+      <div class="card"><div class="form-grid">
+        <div class="field full"><label><input id="smartRulesEnabled" type="checkbox"> Enable automatic student notifications</label></div>
+        <div class="field"><label><input id="smartAttendanceEnabled" type="checkbox"> Low attendance rule</label><input id="smartAttendanceThreshold" type="number" min="40" max="95"><span class="hint">Alert below this attendance %</span></div>
+        <div class="field"><label>Minimum attendance records</label><input id="smartAttendanceMinMarks" type="number" min="1" max="20"></div>
+        <div class="field"><label><input id="smartFeeEnabled" type="checkbox"> Outstanding fee rule</label><input id="smartFeeGraceDays" type="number" min="0" max="180"><span class="hint">Grace days after classes start</span></div>
+        <div class="field"><label>Minimum balance (GHS)</label><input id="smartFeeMinBalance" type="number" min="0" step="1"></div>
+        <div class="field"><label><input id="smartInactiveEnabled" type="checkbox"> Inactivity rule</label><input id="smartInactiveDays" type="number" min="7" max="90"><span class="hint">Days without attendance activity</span></div>
+        <div class="field"><label><input id="smartHighRiskEnabled" type="checkbox"> High-risk rule</label><input id="smartHighRiskThreshold" type="number" min="35" max="95"><span class="hint">Risk score threshold</span></div>
+        <div class="field"><label>Cooldown between repeat alerts</label><input id="smartCooldownDays" type="number" min="1" max="30"><span class="hint">Days</span></div>
+      </div><div class="toolbar mt-14"><button id="saveSmartRules" class="btn btn-primary" type="button">Save Rules</button><button id="previewSmartRules" class="btn btn-outline" type="button">Preview Alerts</button><button id="runSmartRules" class="btn btn-outline" type="button">Run Now</button></div></div>
+      <div id="smartRulePreview" class="mt-14"></div>`,'account');
+    section('adminAssistant','Private Admin Assistant',`
+      <p class="hint">Ask questions in normal language. Answers are calculated from SkyDream's own protected data and are not sent to an external AI provider.</p>
+      <div class="card"><div class="field"><label>Ask SkyDream</label><textarea id="adminAssistantQuestion" rows="3" maxlength="400" placeholder="Example: Which students have attendance below 70%?"></textarea></div>
+      <div class="toolbar"><button id="askAdminAssistant" class="btn btn-primary" type="button">Ask Assistant</button>
+      <button class="btn btn-outline btn-small" type="button" data-assistant-question="Give me an overall summary">Summary</button>
+      <button class="btn btn-outline btn-small" type="button" data-assistant-question="Show me the high-risk students">High risk</button>
+      <button class="btn btn-outline btn-small" type="button" data-assistant-question="Who has attendance below 70%">Low attendance</button>
+      <button class="btn btn-outline btn-small" type="button" data-assistant-question="Who owes fees">Outstanding fees</button></div></div>
+      <div id="adminAssistantResult" class="mt-14"></div>`,'account');
     section('studentImport','Student Import & Duplicate Control',`
       <div class="grid grid-2"><div class="card"><h3>Import CSV</h3><input id="csvFile" type="file" accept=".csv,text/csv"><p class="hint">Recommended columns: Full Name, Mobile, Program, Email, Ghana Card, WhatsApp, Address, DOB, Gender.</p><div class="toolbar"><button id="previewImport" class="btn btn-outline btn-small" type="button">Preview</button><button id="commitImport" class="btn btn-primary btn-small" type="button" disabled>Import valid rows</button></div><div id="importSummary" class="hint"></div></div><div class="card"><h3>Duplicate detection</h3><p class="hint">Find records sharing a mobile number, email or Ghana Card.</p><button id="findDuplicates" class="btn btn-outline btn-small" type="button">Find duplicates</button></div></div><div id="importPreview" class="table-wrap mt-14"></div><div id="duplicateList" class="mt-14"></div>`,'account');
     section('cohortArchive','Intake / Cohort Archive',`<p class="hint">Archive completed intakes without deleting their student records.</p><div id="cohortList" class="grid grid-3"></div>`,'account');
@@ -69,7 +99,7 @@
   async function refresh(){ data=await call('adminGetEnterpriseSnapshot'); render(); }
   function queueRefresh(){setTimeout(()=>refresh().catch(e=>console.warn('Background enterprise refresh failed',e)),1600);}
   function queueRecycle(){setTimeout(()=>loadRecycle().catch(e=>console.warn('Background recycle refresh failed',e)),1600);}
-  function render(){ if(!data)return; renderSecurity();renderNotifications();renderCohorts();renderSessions();renderPerformance();renderNotes();renderHistory();populateSelectors(); }
+  function render(){ if(!data)return; renderSecurity();renderNotifications();renderRisk();renderSmartRules();renderCohorts();renderSessions();renderPerformance();renderNotes();renderHistory();populateSelectors(); }
   function populateSelectors(){
     if($('classCourse')) $('classCourse').innerHTML=Object.entries(data.courses||{}).map(([id,n])=>`<option value="${esc(id)}">${esc(n)}</option>`).join('');
     if($('classFacilitator')) $('classFacilitator').innerHTML='<option value="">Any assigned facilitator</option>'+(data.facilitators||[]).map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('');
@@ -82,6 +112,57 @@
     $('sessionList').innerHTML=(data.sessions||[]).map(s=>`<div class="card"><div class="dashboard-top"><strong>${esc(s.username)}</strong><span class="badge">${s.revoked?'Revoked':'Active'}</span></div><p><small>${esc(date(s.createdAt))}</small></p><p class="hint">${esc(s.userAgent||'Unknown device')}<br>${esc(s.ip||'IP unavailable')}</p>${!s.revoked?`<button class="btn btn-outline btn-small" data-revoke-session="${esc(s.id)}">Revoke</button>`:''}</div>`).join('')||'<p>No recorded sessions yet. Sign out and sign in again to create a device-bound session.</p>';
   }
   function renderNotifications(){ $('notificationList').innerHTML=(data.notifications||[]).map(n=>`<div class="card" data-notification-card="${esc(n.id)}"><div class="dashboard-top"><strong>${esc(n.title)}</strong><small>${esc(date(n.date))}</small></div><p>${esc(n.message)}</p><button class="btn btn-outline btn-small" data-dismiss-notification="${esc(n.id)}">Dismiss</button></div>`).join('')||'<p>No notifications need your attention.</p>'; }
+
+  function renderRisk(){
+    if(!$('riskTableBody'))return;
+    const rows=data.riskAnalysis||[],summary=data.riskSummary||{high:0,medium:0,low:0,total:0},filter=$('riskLevelFilter')&&$('riskLevelFilter').value;
+    $('riskSummary').innerHTML=`<div class="admin-suite-kpi"><b>${summary.high||0}</b><span>High risk</span></div><div class="admin-suite-kpi"><b>${summary.medium||0}</b><span>Medium risk</span></div><div class="admin-suite-kpi"><b>${summary.low||0}</b><span>Low risk</span></div><div class="admin-suite-kpi"><b>${summary.total||0}</b><span>Students analysed</span></div>`;
+    const shown=rows.filter(r=>!filter||r.level===filter);
+    $('riskTableBody').innerHTML=shown.length?shown.map(r=>`<tr><td><strong>${esc(r.fullName)}</strong><br><small>${esc(r.regNumber)}</small></td><td>${esc(course(r.course))}</td><td><strong>${Number(r.score)||0}/100</strong></td><td><span class="badge">${esc(r.level)}</span></td><td>${Number(r.attendance)||0}%</td><td>GHS ${Number(r.balance||0).toFixed(2)}</td><td>${esc((r.reasons||[]).join('; ')||'No major risk signals')}</td><td><button class="btn btn-outline btn-small" type="button" data-risk-student="${esc(r.id)}">Profile</button></td></tr>`).join(''):'<tr><td colspan="8">No students match this risk level.</td></tr>';
+  }
+  function renderSmartRules(){
+    const r=data.smartNotificationRules||{};
+    if(!$('smartRulesEnabled'))return;
+    $('smartRulesEnabled').checked=!!r.enabled;
+    $('smartAttendanceEnabled').checked=r.attendance?.enabled!==false;$('smartAttendanceThreshold').value=r.attendance?.threshold??70;$('smartAttendanceMinMarks').value=r.attendance?.minMarks??3;
+    $('smartFeeEnabled').checked=r.feeBalance?.enabled!==false;$('smartFeeGraceDays').value=r.feeBalance?.graceDays??14;$('smartFeeMinBalance').value=r.feeBalance?.minBalance??1;
+    $('smartInactiveEnabled').checked=r.inactivity?.enabled!==false;$('smartInactiveDays').value=r.inactivity?.days??14;
+    $('smartHighRiskEnabled').checked=r.highRisk?.enabled!==false;$('smartHighRiskThreshold').value=r.highRisk?.threshold??65;
+    $('smartCooldownDays').value=r.cooldownDays??7;
+  }
+  function smartRulesPayload(){
+    return{enabled:$('smartRulesEnabled').checked,attendance:{enabled:$('smartAttendanceEnabled').checked,threshold:Number($('smartAttendanceThreshold').value),minMarks:Number($('smartAttendanceMinMarks').value)},feeBalance:{enabled:$('smartFeeEnabled').checked,graceDays:Number($('smartFeeGraceDays').value),minBalance:Number($('smartFeeMinBalance').value)},inactivity:{enabled:$('smartInactiveEnabled').checked,days:Number($('smartInactiveDays').value)},highRisk:{enabled:$('smartHighRiskEnabled').checked,threshold:Number($('smartHighRiskThreshold').value)},cooldownDays:Number($('smartCooldownDays').value)};
+  }
+  function renderSmartPreview(result){
+    const host=$('smartRulePreview');if(!host)return;const rows=result.alerts||[];
+    host.innerHTML=`<div class="card"><strong>${Number(result.eligible)||0} alert(s) currently eligible</strong><p class="hint">${Number(result.total)||0} rule match(es) before cooldown filtering.</p></div>`+(rows.length?rows.slice(0,30).map(a=>`<div class="card"><div class="dashboard-top"><strong>${esc(a.studentName)}</strong><span class="badge">${esc(a.rule)}</span></div><p>${esc(a.message)}</p></div>`).join(''):'');
+  }
+  async function saveSmartRules(){
+    const b=$('saveSmartRules');await withBusy(b,'Saving…',async()=>{const r=await call('adminSaveSmartNotificationRules',{rules:smartRulesPayload()});data.smartNotificationRules=r.rules;renderSmartRules();alert(r.rules.enabled?'Smart notifications enabled.':'Rules saved. Automatic notifications remain off.');});
+  }
+  async function previewSmartRules(){
+    const b=$('previewSmartRules');await withBusy(b,'Checking…',async()=>{const r=await call('adminPreviewSmartNotificationRules');renderSmartPreview(r);});
+  }
+  async function runSmartRules(){
+    if(!$('smartRulesEnabled').checked){alert('Enable automatic student notifications and save the rules first.');return;}
+    if(!confirm('Run the saved smart rules now and send eligible Student Portal alerts?'))return;
+    const b=$('runSmartRules');await withBusy(b,'Running…',async()=>{const r=await call('adminRunSmartNotificationRules');alert(r.disabled?'Automation is disabled.':`${r.sent||0} Student Portal alert(s) sent.`);queueRefresh();});
+  }
+  function renderAssistantResult(result){
+    const host=$('adminAssistantResult');if(!host)return;const rows=result.rows||[];
+    let table='';
+    if(rows.length){const cols=Object.keys(rows[0]);table=`<div class="table-wrap"><table class="table"><thead><tr>${cols.map(k=>`<th>${esc(k.replace(/([A-Z])/g,' $1'))}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${cols.map(k=>`<td>${esc(row[k])}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;}
+    host.innerHTML=`<div class="card"><div class="dashboard-top"><strong>SkyDream Assistant</strong><small>${esc(date(result.asOf))}</small></div><p class="pre-wrap">${esc(result.answer||'')}</p></div>`+table;
+  }
+  async function askAssistant(question){
+    const q=(question||$('adminAssistantQuestion').value||'').trim();if(!q)return;
+    $('adminAssistantQuestion').value=q;const b=$('askAdminAssistant');await withBusy(b,'Thinking…',async()=>{const r=await call('adminAskAssistant',{question:q});renderAssistantResult(r);});
+  }
+  function openRiskStudent(id){
+    const s=(data.students||[]).find(x=>x.id===id);if(!s)return;
+    const search=document.getElementById('suiteStudentSearch');if(search){search.value=s.regNumber||s.fullName;search.dispatchEvent(new Event('input'));location.hash='studentProfiles';}
+  }
+
   function renderCohorts(){ $('cohortList').innerHTML=(data.cohorts||[]).map(c=>`<div class="card"><div class="dashboard-top"><h3>${esc(c.label||c.intakeStart)}</h3><span class="badge">${c.archived?'Archived':'Active'}</span></div><p>${Number(c.students)||0} student(s)</p>${/^\d{4}-/.test(c.intakeStart)?`<button class="btn btn-outline btn-small" data-cohort="${esc(c.intakeStart)}" data-archived="${c.archived?'true':'false'}">${c.archived?'Restore':'Archive'}</button>`:''}</div>`).join('')||'<p>No intake records yet.</p>'; }
   function renderSessions(){ $('classSessionList').innerHTML=(data.classSessions||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(s=>{const f=(data.facilitators||[]).find(x=>x.id===s.facilitatorId);return `<div class="card"><div class="dashboard-top"><strong>${esc(s.title||'Class session')}</strong><span class="badge">${esc(s.status||'Scheduled')}</span></div><p>${esc(s.date)} · ${esc(course(s.course))}</p><p class="hint">${esc(f?f.name:'Any assigned facilitator')}</p><div class="toolbar"><button class="btn btn-outline btn-small" data-session-status="${esc(s.id)}" data-status="Completed">Complete</button><button class="btn btn-outline btn-small" data-session-status="${esc(s.id)}" data-status="Cancelled">Cancel</button><button class="btn btn-danger btn-small" data-delete-class="${esc(s.id)}">Delete</button></div></div>`;}).join('')||'<p>No class sessions have been created.</p>'; }
   function renderPerformance(){ $('facPerformanceBody').innerHTML=(data.facilitatorPerformance||[]).map(f=>`<tr><td><strong>${esc(f.name)}</strong><br><small>@${esc(f.username)}</small></td><td>${f.assignedStudents}</td><td>${f.attendanceMarks}</td><td>${f.sessions}</td><td>${f.completedSessions}</td></tr>`).join('')||'<tr><td colspan="5">No facilitator data.</td></tr>'; }
@@ -107,8 +188,17 @@
     $('addInternalNote').onclick=async()=>{const text=$('noteText').value.trim();if(!text)return;const b=$('addInternalNote');await withBusy(b,'Adding…',async()=>{await call('adminAddInternalNote',{targetType:$('noteType').value,targetId:$('noteTarget').value,text});$('noteText').value='';alert('Note added.');queueRefresh();});};
     $('refreshRecycle').onclick=()=>loadRecycle().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
     $('runBackup').onclick=async()=>{const b=$('runBackup');b.disabled=true;$('backupStatus').textContent='Creating cloud backup…';try{const r=await call('adminRunManualBackup');$('backupStatus').textContent=`Backup created: ${r.path}`;}catch(e){$('backupStatus').textContent=SkyDreamFirebase.friendlyError(e);}finally{b.disabled=false;}};
+    $('riskLevelFilter').onchange=renderRisk;
+    $('saveSmartRules').onclick=()=>saveSmartRules().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    $('previewSmartRules').onclick=()=>previewSmartRules().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    $('runSmartRules').onclick=()=>runSmartRules().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    $('askAdminAssistant').onclick=()=>askAssistant().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    $('adminAssistantQuestion').addEventListener('keydown',e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();askAssistant().catch(err=>alert(SkyDreamFirebase.friendlyError(err)));}});
+
     document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;try{
-      if(b.dataset.revokeSession){await withBusy(b,'Revoking…',async()=>{const id=b.dataset.revokeSession;await call('adminRevokeSession',{id});const row=(data.sessions||[]).find(s=>s.id===id);if(row)row.revoked=true;renderSecurity();queueRefresh();});}
+      if(b.dataset.assistantQuestion){await askAssistant(b.dataset.assistantQuestion);}
+      else if(b.dataset.riskStudent){openRiskStudent(b.dataset.riskStudent);}
+      else if(b.dataset.revokeSession){await withBusy(b,'Revoking…',async()=>{const id=b.dataset.revokeSession;await call('adminRevokeSession',{id});const row=(data.sessions||[]).find(s=>s.id===id);if(row)row.revoked=true;renderSecurity();queueRefresh();});}
       else if(b.dataset.dismissNotification){
         const id=b.dataset.dismissNotification;
         const previous=(data.notifications||[]).slice();

@@ -7,6 +7,26 @@
   const course = id => data && data.courses && data.courses[id] ? data.courses[id] : id || '';
   const call = (name, payload={}) => SkyDreamFirebase.call(name, payload);
 
+  async function withBusy(button, busyText, task){
+    if(!button || button.dataset.busy==='1') return;
+    const normalText=button.textContent;
+    button.dataset.busy='1';
+    button.disabled=true;
+    button.classList.add('is-busy');
+    button.setAttribute('aria-busy','true');
+    if(busyText) button.textContent=busyText;
+    try{return await task();}
+    finally{
+      if(button.isConnected){
+        button.disabled=false;
+        button.classList.remove('is-busy');
+        button.removeAttribute('aria-busy');
+        delete button.dataset.busy;
+        button.textContent=normalText;
+      }
+    }
+  }
+
   function nav(href,label,before='#account'){
     const host=document.querySelector('.dashboard-sidebar nav'); if(!host||host.querySelector(`a[href="${href}"]`))return;
     const a=document.createElement('a');a.href=href;a.textContent=label;host.insertBefore(a,host.querySelector(`a[href="${before}"]`)||host.querySelector('button')||null);
@@ -59,7 +79,7 @@
     $('enable2fa').classList.toggle('hidden',data.twoFactorEnabled);$('disable2fa').classList.toggle('hidden',!data.twoFactorEnabled);
     $('sessionList').innerHTML=(data.sessions||[]).map(s=>`<div class="card"><div class="dashboard-top"><strong>${esc(s.username)}</strong><span class="badge">${s.revoked?'Revoked':'Active'}</span></div><p><small>${esc(date(s.createdAt))}</small></p><p class="hint">${esc(s.userAgent||'Unknown device')}<br>${esc(s.ip||'IP unavailable')}</p>${!s.revoked?`<button class="btn btn-outline btn-small" data-revoke-session="${esc(s.id)}">Revoke</button>`:''}</div>`).join('')||'<p>No recorded sessions yet. Sign out and sign in again to create a device-bound session.</p>';
   }
-  function renderNotifications(){ $('notificationList').innerHTML=(data.notifications||[]).map(n=>`<div class="card"><div class="dashboard-top"><strong>${esc(n.title)}</strong><small>${esc(date(n.date))}</small></div><p>${esc(n.message)}</p><button class="btn btn-outline btn-small" data-dismiss-notification="${esc(n.id)}">Dismiss</button></div>`).join('')||'<p>No notifications need your attention.</p>'; }
+  function renderNotifications(){ $('notificationList').innerHTML=(data.notifications||[]).map(n=>`<div class="card" data-notification-card="${esc(n.id)}"><div class="dashboard-top"><strong>${esc(n.title)}</strong><small>${esc(date(n.date))}</small></div><p>${esc(n.message)}</p><button class="btn btn-outline btn-small" data-dismiss-notification="${esc(n.id)}">Dismiss</button></div>`).join('')||'<p>No notifications need your attention.</p>'; }
   function renderCohorts(){ $('cohortList').innerHTML=(data.cohorts||[]).map(c=>`<div class="card"><div class="dashboard-top"><h3>${esc(c.label||c.intakeStart)}</h3><span class="badge">${c.archived?'Archived':'Active'}</span></div><p>${Number(c.students)||0} student(s)</p>${/^\d{4}-/.test(c.intakeStart)?`<button class="btn btn-outline btn-small" data-cohort="${esc(c.intakeStart)}" data-archived="${c.archived?'true':'false'}">${c.archived?'Restore':'Archive'}</button>`:''}</div>`).join('')||'<p>No intake records yet.</p>'; }
   function renderSessions(){ $('classSessionList').innerHTML=(data.classSessions||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))).map(s=>{const f=(data.facilitators||[]).find(x=>x.id===s.facilitatorId);return `<div class="card"><div class="dashboard-top"><strong>${esc(s.title||'Class session')}</strong><span class="badge">${esc(s.status||'Scheduled')}</span></div><p>${esc(s.date)} · ${esc(course(s.course))}</p><p class="hint">${esc(f?f.name:'Any assigned facilitator')}</p><div class="toolbar"><button class="btn btn-outline btn-small" data-session-status="${esc(s.id)}" data-status="Completed">Complete</button><button class="btn btn-outline btn-small" data-session-status="${esc(s.id)}" data-status="Cancelled">Cancel</button><button class="btn btn-danger btn-small" data-delete-class="${esc(s.id)}">Delete</button></div></div>`;}).join('')||'<p>No class sessions have been created.</p>'; }
   function renderPerformance(){ $('facPerformanceBody').innerHTML=(data.facilitatorPerformance||[]).map(f=>`<tr><td><strong>${esc(f.name)}</strong><br><small>@${esc(f.username)}</small></td><td>${f.assignedStudents}</td><td>${f.attendanceMarks}</td><td>${f.sessions}</td><td>${f.completedSessions}</td></tr>`).join('')||'<tr><td colspan="5">No facilitator data.</td></tr>'; }
@@ -77,24 +97,31 @@
     $('signOutAllDevices').onclick=async()=>{if(!confirm('Sign out every session for your admin account?'))return;await call('adminRevokeAllSessions',{});await SkyDreamFirebase.auth.signOut();location.reload();};
     $('csvFile').onchange=e=>{const f=e.target.files&&e.target.files[0];importCsv='';$('commitImport').disabled=true;if(!f)return;const rd=new FileReader();rd.onload=()=>{importCsv=String(rd.result||'');$('importSummary').textContent=`Loaded ${f.name}. Click Preview.`;};rd.readAsText(f);};
     $('previewImport').onclick=()=>previewImport().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
-    $('commitImport').onclick=async()=>{if(!confirm('Import all valid rows and skip detected duplicates?'))return;const r=await call('adminCommitStudentImport',{csv:importCsv,skipDuplicates:true});alert(`${r.imported} imported; ${r.skipped} skipped.`);await refresh();};
+    $('commitImport').onclick=async()=>{if(!confirm('Import all valid rows and skip detected duplicates?'))return;const b=$('commitImport');await withBusy(b,'Importing…',async()=>{const r=await call('adminCommitStudentImport',{csv:importCsv,skipDuplicates:true});alert(`${r.imported} imported; ${r.skipped} skipped.`);await refresh();});};
     $('findDuplicates').onclick=()=>findDuplicates().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
-    $('createClassSession').onclick=async()=>{await call('adminCreateClassSession',{date:$('classDate').value,course:$('classCourse').value,facilitatorId:$('classFacilitator').value,title:$('classTitle').value});await refresh();};
+    $('createClassSession').onclick=async()=>{const b=$('createClassSession');await withBusy(b,'Creating…',async()=>{await call('adminCreateClassSession',{date:$('classDate').value,course:$('classCourse').value,facilitatorId:$('classFacilitator').value,title:$('classTitle').value});await refresh();});};
     $('sessionEnforcement').onchange=async()=>{try{await call('adminSetSessionEnforcement',{enabled:$('sessionEnforcement').checked});}catch(e){$('sessionEnforcement').checked=!$('sessionEnforcement').checked;alert(SkyDreamFirebase.friendlyError(e));}};
     $('noteType').onchange=renderNoteTargets;$('noteTarget').onchange=renderNotes;
-    $('addInternalNote').onclick=async()=>{const text=$('noteText').value.trim();if(!text)return;await call('adminAddInternalNote',{targetType:$('noteType').value,targetId:$('noteTarget').value,text});$('noteText').value='';await refresh();};
+    $('addInternalNote').onclick=async()=>{const text=$('noteText').value.trim();if(!text)return;const b=$('addInternalNote');await withBusy(b,'Adding…',async()=>{await call('adminAddInternalNote',{targetType:$('noteType').value,targetId:$('noteTarget').value,text});$('noteText').value='';await refresh();});};
     $('refreshRecycle').onclick=()=>loadRecycle().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
     $('runBackup').onclick=async()=>{const b=$('runBackup');b.disabled=true;$('backupStatus').textContent='Creating cloud backup…';try{const r=await call('adminRunManualBackup');$('backupStatus').textContent=`Backup created: ${r.path}`;}catch(e){$('backupStatus').textContent=SkyDreamFirebase.friendlyError(e);}finally{b.disabled=false;}};
-    document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;try{
-      if(b.dataset.revokeSession){await call('adminRevokeSession',{id:b.dataset.revokeSession});await refresh();}
-      else if(b.dataset.dismissNotification){await call('adminDismissNotification',{id:b.dataset.dismissNotification});await refresh();}
-      else if(b.dataset.cohort){await call('adminSetCohortArchived',{intakeStart:b.dataset.cohort,archived:b.dataset.archived!=='true'});await refresh();}
-      else if(b.dataset.sessionStatus){await call('adminUpdateClassSession',{id:b.dataset.sessionStatus,status:b.dataset.status});await refresh();}
-      else if(b.dataset.deleteClass){if(confirm('Delete this class session?')){await call('adminDeleteClassSession',{id:b.dataset.deleteClass});await refresh();}}
-      else if(b.dataset.deleteNote){if(confirm('Delete this internal note?')){await call('adminDeleteInternalNote',{id:b.dataset.deleteNote});await refresh();}}
-      else if(b.dataset.restoreBin){await call('adminRestoreRecycleItem',{id:b.dataset.restoreBin});await loadRecycle();await refresh();}
-      else if(b.dataset.purgeBin){if(confirm('Permanently delete this recycle item? This cannot be undone.')){await call('adminPurgeRecycleItem',{id:b.dataset.purgeBin});await loadRecycle();}}
-      else if(b.dataset.mergeRun!==undefined){const gi=b.dataset.mergeRun,keep=document.querySelector(`input[name="keep${gi}"]:checked`),sel=document.querySelector(`[data-merge-group="${gi}"]`);if(!keep||!sel)return;if(keep.value===sel.value){alert('Choose a different record to merge/remove.');return;}if(confirm('Merge the selected duplicate into the record marked Keep?')){await call('adminMergeStudents',{keepId:keep.value,mergeId:sel.value});await findDuplicates();await refresh();}}
+    document.addEventListener('click',async e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;try{
+      if(b.dataset.revokeSession){await withBusy(b,'Revoking…',async()=>{await call('adminRevokeSession',{id:b.dataset.revokeSession});await refresh();});}
+      else if(b.dataset.dismissNotification){
+        const id=b.dataset.dismissNotification;
+        const previous=(data.notifications||[]).slice();
+        data.notifications=previous.filter(n=>n.id!==id);
+        renderNotifications();
+        try{await call('adminDismissNotification',{id});}
+        catch(err){data.notifications=previous;renderNotifications();throw err;}
+      }
+      else if(b.dataset.cohort){await withBusy(b,b.dataset.archived==='true'?'Restoring…':'Archiving…',async()=>{await call('adminSetCohortArchived',{intakeStart:b.dataset.cohort,archived:b.dataset.archived!=='true'});await refresh();});}
+      else if(b.dataset.sessionStatus){await withBusy(b,'Saving…',async()=>{await call('adminUpdateClassSession',{id:b.dataset.sessionStatus,status:b.dataset.status});await refresh();});}
+      else if(b.dataset.deleteClass){if(confirm('Delete this class session?'))await withBusy(b,'Deleting…',async()=>{await call('adminDeleteClassSession',{id:b.dataset.deleteClass});await refresh();});}
+      else if(b.dataset.deleteNote){if(confirm('Delete this internal note?'))await withBusy(b,'Deleting…',async()=>{await call('adminDeleteInternalNote',{id:b.dataset.deleteNote});await refresh();});}
+      else if(b.dataset.restoreBin){await withBusy(b,'Restoring…',async()=>{await call('adminRestoreRecycleItem',{id:b.dataset.restoreBin});await loadRecycle();await refresh();});}
+      else if(b.dataset.purgeBin){if(confirm('Permanently delete this recycle item? This cannot be undone.'))await withBusy(b,'Deleting…',async()=>{await call('adminPurgeRecycleItem',{id:b.dataset.purgeBin});await loadRecycle();});}
+      else if(b.dataset.mergeRun!==undefined){const gi=b.dataset.mergeRun,keep=document.querySelector(`input[name="keep${gi}"]:checked`),sel=document.querySelector(`[data-merge-group="${gi}"]`);if(!keep||!sel)return;if(keep.value===sel.value){alert('Choose a different record to merge/remove.');return;}if(confirm('Merge the selected duplicate into the record marked Keep?'))await withBusy(b,'Merging…',async()=>{await call('adminMergeStudents',{keepId:keep.value,mergeId:sel.value});await findDuplicates();await refresh();});}
     }catch(err){alert(SkyDreamFirebase.friendlyError(err));}});
   }
 

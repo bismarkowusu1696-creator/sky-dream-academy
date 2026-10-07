@@ -23,9 +23,10 @@ cd functions
 npm install
 cd ..
 firebase deploy --only functions,firestore:rules --project skydream-academy
+firebase deploy --only firestore:indexes --project skydream-academy
 ```
 
-This deploys Cloud Functions and the restrictive Firestore rules. Do not manually delete the existing `sdta_storage` documents; they contain student, administrator, facilitator, attendance, payment, waitlist and intake records.
+These commands deploy Cloud Functions, the restrictive Firestore rules, and Firestore index/TTL policies. Do not manually delete the existing `sdta_storage` documents; they contain student, administrator, facilitator, attendance, payment, waitlist and intake records.
 
 ## 3. Important callable functions
 
@@ -36,10 +37,8 @@ Verify in Firebase Console that these functions are present when backend changes
 - `checkStudentStatus`
 - `submitContactMessage`
 - `adminLogin`
-- `upgradeAdminPassword`
 - `getAdminSnapshot`
 - `facilitatorLogin`
-- `upgradeFacilitatorPassword`
 - `getFacilitatorDashboard`
 - `markFacilitatorAttendance`
 - `adminStartNextIntake`
@@ -52,7 +51,7 @@ The `_redirects` file redirects the old Netlify hostnames and legacy routes to t
 
 ## 5. Administrator and facilitator accounts
 
-Existing accounts that still use a legacy PIN can enter it once and then upgrade to a password with at least 12 characters including uppercase, lowercase and a number. New accounts use strong passwords.
+Administrator accounts use strong passwords with at least 12 characters including uppercase, lowercase and a number. Legacy administrator PIN sign-in and PIN migration are disabled. Facilitators continue to use their separate 4-digit PIN flow.
 
 ## 6. Search indexing
 
@@ -76,3 +75,10 @@ Test on both desktop and phone:
 - PWA install/update and removal of old cached versions.
 
 SMS actions should remain hidden until an SMS provider is deliberately configured.
+
+
+## 8. GitHub Actions runner fallback
+
+If a GitHub Actions job fails before the first step with no runner assigned, an empty steps list, and runner ID 0, the repository code has not started executing. Re-running or changing workflow commands cannot fix that pre-runner condition.
+
+While GitHub-hosted runners are unavailable, deploy the Firebase backend from a trusted computer with Firebase CLI using the commands in section 2. The automated workflow remains configured so it can resume once GitHub assigns runners normally.

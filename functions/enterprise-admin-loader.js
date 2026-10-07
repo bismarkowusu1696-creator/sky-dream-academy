@@ -18,7 +18,8 @@ const KEYS = {
   settings: 'sdta_admin_settings', recycle: 'sdta_recycle_bin', sessions: 'sdta_admin_sessions',
   twoFactor: 'sdta_admin_2fa', challenges: 'sdta_2fa_challenges', cohortMeta: 'sdta_cohort_meta',
   notificationState: 'sdta_notification_state', classSessions: 'sdta_class_sessions', notes: 'sdta_internal_notes',
-  history: 'sdta_change_history', audit: 'sdta_activity_log'
+  history: 'sdta_change_history', audit: 'sdta_activity_log', smartRules: 'sdta_smart_notification_rules',
+  smartRuleState: 'sdta_smart_notification_state', smartRuleLog: 'sdta_smart_notification_log'
 };
 const COURSE_NAMES = {
   'household-chemicals':'Household Chemicals Production','hair-dressing':'Hair Dressing',cosmetology:'Cosmetology',
@@ -160,20 +161,183 @@ wrapHistory('adminUpdateStudent','students','student');
 wrapHistory('adminUpdateFacilitator','facilitators','facilitator');
 wrapHistory('adminSetAdminRole','settings','admin');
 
+
+const DEFAULT_SMART_RULES={
+  enabled:false,
+  attendance:{enabled:true,threshold:70,minMarks:3},
+  feeBalance:{enabled:true,graceDays:14,minBalance:1},
+  inactivity:{enabled:true,days:14},
+  highRisk:{enabled:true,threshold:65},
+  cooldownDays:7
+};
+function clamp(n,min,max,fallback){const v=Number(n);return Number.isFinite(v)?Math.max(min,Math.min(max,v)):fallback;}
+function smartRules(raw){
+  const x=raw&&typeof raw==='object'?raw:{};
+  return{
+    enabled:x.enabled===true,
+    attendance:{enabled:x.attendance?.enabled!==false,threshold:clamp(x.attendance?.threshold,40,95,70),minMarks:clamp(x.attendance?.minMarks,1,20,3)},
+    feeBalance:{enabled:x.feeBalance?.enabled!==false,graceDays:clamp(x.feeBalance?.graceDays,0,180,14),minBalance:clamp(x.feeBalance?.minBalance,0,100000,1)},
+    inactivity:{enabled:x.inactivity?.enabled!==false,days:clamp(x.inactivity?.days,7,90,14)},
+    highRisk:{enabled:x.highRisk?.enabled!==false,threshold:clamp(x.highRisk?.threshold,35,95,65)},
+    cooldownDays:clamp(x.cooldownDays,1,30,7)
+  };
+}
+function daysSince(date){
+  const t=new Date(date||0).getTime();
+  return Number.isFinite(t)&&t>0?Math.max(0,Math.floor((Date.now()-t)/86400000)):null;
+}
+function studentRisk(student,attendance,settings,intake){
+  const rows=(attendance||[]).filter(r=>r.studentId===student.id&&(r.status==='Present'||r.status==='Absent')).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const present=rows.filter(r=>r.status==='Present').length,absent=rows.filter(r=>r.status==='Absent').length,marked=present+absent;
+  const attendancePct=marked?Math.round(present/marked*100):100;
+  let consecutiveAbsences=0;for(const r of rows){if(r.status==='Absent')consecutiveAbsences++;else break;}
+  const lastAttendanceDate=rows[0]&&rows[0].date||'';
+  const courseStart=intake&&(intake.classesStartDate||intake.startDate)||student.intakeStart||'';
+  const daysSinceStart=daysSince(courseStart);
+  const inactiveDays=lastAttendanceDate?daysSince(lastAttendanceDate):daysSinceStart;
+  const fee=Math.max(0,Number(settings&&settings.registrationFee)||0),paid=Math.max(0,Number(student.feePaid)||0),balance=Math.max(0,fee-paid);
+  const balanceRatio=fee>0?balance/fee:0;
+  let score=0;const reasons=[];
+  if(marked>=3){
+    if(attendancePct<50){score+=40;reasons.push(`Very low attendance (${attendancePct}%)`);}
+    else if(attendancePct<70){score+=30;reasons.push(`Low attendance (${attendancePct}%)`);}
+    else if(attendancePct<80){score+=15;reasons.push(`Attendance below target (${attendancePct}%)`);}
+  }
+  if(consecutiveAbsences>=3){score+=25;reasons.push(`${consecutiveAbsences} consecutive absences`);}
+  else if(consecutiveAbsences===2){score+=15;reasons.push('2 consecutive absences');}
+  else if(consecutiveAbsences===1){score+=5;}
+  if(balanceRatio>=0.75){score+=20;reasons.push(`Large outstanding balance (GHS ${balance.toFixed(2)})`);}
+  else if(balanceRatio>=0.5){score+=15;reasons.push(`Outstanding balance (GHS ${balance.toFixed(2)})`);}
+  else if(balance>0){score+=8;reasons.push(`Fee balance GHS ${balance.toFixed(2)}`);}
+  if(inactiveDays!==null&&inactiveDays>21){score+=20;reasons.push(`No attendance activity for ${inactiveDays} days`);}
+  else if(inactiveDays!==null&&inactiveDays>14){score+=12;reasons.push(`No attendance activity for ${inactiveDays} days`);}
+  const capped=Math.max(0,Math.min(100,score)),level=capped>=65?'High':capped>=35?'Medium':'Low';
+  return{id:student.id,regNumber:student.regNumber||'',fullName:student.fullName||'',course:student.course||'',status:student.status||'',score:capped,level,reasons,attendance:attendancePct,marked,present,absent,consecutiveAbsences,lastAttendanceDate,inactiveDays,daysSinceStart,fee,paid,balance};
+}
+function buildRiskAnalysis(students,attendance,settings,intake){
+  const current=intake&&intake.startDate||'';
+  return (students||[]).filter(s=>!['Cancelled','Completed','Deferred'].includes(s.status||'')&&(!current||(s.intakeStart||'')===current)).map(s=>studentRisk(s,attendance,settings,intake)).sort((a,b)=>b.score-a.score||a.fullName.localeCompare(b.fullName));
+}
+function riskSummary(rows){return{high:rows.filter(r=>r.level==='High').length,medium:rows.filter(r=>r.level==='Medium').length,low:rows.filter(r=>r.level==='Low').length,total:rows.length};}
+function buildSmartAlerts(risks,rules){
+  const out=[];
+  for(const r of risks){
+    const per=[];
+    if(rules.highRisk.enabled&&r.score>=rules.highRisk.threshold)per.push({rule:'high-risk',title:'Student support alert',message:'Your SkyDream course progress needs attention. Please contact the academy so we can help you stay on track.'});
+    if(rules.attendance.enabled&&r.marked>=rules.attendance.minMarks&&r.attendance<rules.attendance.threshold)per.push({rule:'low-attendance',title:'Attendance reminder',message:`Your attendance is currently ${r.attendance}%. Please attend your upcoming classes or contact your facilitator if you need support.`});
+    if(rules.inactivity.enabled&&r.inactiveDays!==null&&r.inactiveDays>=rules.inactivity.days)per.push({rule:'inactivity',title:'We have missed you',message:`We have not recorded class attendance for you in ${r.inactiveDays} days. Please contact your facilitator if you need assistance.`});
+    if(rules.feeBalance.enabled&&r.balance>=rules.feeBalance.minBalance&&r.daysSinceStart!==null&&r.daysSinceStart>=rules.feeBalance.graceDays){
+      per.push({rule:'fee-balance',title:'Payment reminder',message:`Your current SkyDream balance is GHS ${r.balance.toFixed(2)}. Please contact the academy if you need clarification about your account.`});
+    }
+    per.slice(0,3).forEach(a=>out.push({...a,studentId:r.id,regNumber:r.regNumber,studentName:r.fullName,score:r.score}));
+  }
+  return out;
+}
+async function evaluateSmartNotifications({send=false,rulesOverride=null}={}){
+  const [students,attendance,settings,intake,rawRules,stateRaw,logRaw]=await Promise.all([
+    readValue(KEYS.students,[]),readValue(KEYS.attendance,[]),readValue(KEYS.settings,{}),readValue(KEYS.intake,{}),
+    readValue(KEYS.smartRules,DEFAULT_SMART_RULES),readValue(KEYS.smartRuleState,{}),readValue(KEYS.smartRuleLog,[])
+  ]);
+  const rules=smartRules(rulesOverride||rawRules),risks=buildRiskAnalysis(students,attendance,settings,intake),alerts=buildSmartAlerts(risks,rules);
+  const state=stateRaw&&typeof stateRaw==='object'?stateRaw:{},sent=state.sent&&typeof state.sent==='object'?state.sent:{};
+  const cooldown=rules.cooldownDays*86400000,now=Date.now();
+  const eligible=alerts.filter(a=>{const last=new Date(sent[a.rule+':'+a.studentId]||0).getTime();return !Number.isFinite(last)||last<=0||now-last>=cooldown;});
+  if(!send)return{rules,risks,alerts,eligible};
+  if(!rules.enabled)return{rules,risks,alerts,eligible:[],sent:0,disabled:true};
+  let batch=db.batch(),ops=0,sentCount=0;const log=Array.isArray(logRaw)?logRaw:[];
+  for(const a of eligible.slice(0,200)){
+    const ref=db.collection('sdta_student_messages').doc(),createdAt=nowIso();
+    batch.set(ref,{studentId:a.studentId,message:a.message,createdAt,createdBy:'smart-rules',senderName:'SkyDream Smart Alerts',senderType:'system',active:true,readAt:'',systemRule:a.rule});
+    sent[a.rule+':'+a.studentId]=createdAt;log.push({id:'rule_'+crypto.randomUUID(),date:createdAt,rule:a.rule,studentId:a.studentId,regNumber:a.regNumber,title:a.title});
+    ops++;sentCount++;
+    if(ops>=400){await batch.commit();batch=db.batch();ops=0;}
+  }
+  if(ops)await batch.commit();
+  state.sent=sent;state.updatedAt=nowIso();await writeValue(KEYS.smartRuleState,state);await writeValue(KEYS.smartRuleLog,log.slice(-1000));
+  return{rules,risks,alerts,eligible,sent:sentCount,disabled:false};
+}
+function findCourseInQuestion(q){
+  const text=String(q||'').toLowerCase();
+  for(const [id,name] of Object.entries(COURSE_NAMES)){if(text.includes(id.replace(/-/g,' '))||text.includes(name.toLowerCase()))return id;}
+  return'';
+}
+function assistantAnswer(question,base,risks){
+  const q=String(question||'').trim(),lower=q.toLowerCase(),students=base.students||[],attendance=base.attendance||[],current=base.intake&&base.intake.startDate||'',active=students.filter(s=>!['Cancelled','Completed','Deferred'].includes(s.status||'')&&(!current||(s.intakeStart||'')===current)),fee=Math.max(0,Number(base.settings&&base.settings.registrationFee)||0);
+  const courseId=findCourseInQuestion(lower),courseStudents=courseId?active.filter(s=>s.course===courseId):active;
+  const pctMatch=lower.match(/(?:below|under|less than)\s*(\d{1,3})\s*%?/),threshold=pctMatch?Math.max(0,Math.min(100,Number(pctMatch[1]))):70;
+  const rowsForAttendance=courseStudents.map(s=>{const a=attendance.filter(x=>x.studentId===s.id&&(x.status==='Present'||x.status==='Absent')),p=a.filter(x=>x.status==='Present').length,m=a.length;return{s,pct:m?Math.round(p/m*100):100,marked:m};});
+  if(/summary|overview|how are we doing/.test(lower)){
+    const high=risks.filter(r=>r.level==='High').length,outstanding=active.reduce((n,s)=>n+Math.max(0,fee-(Number(s.feePaid)||0)),0),marked=attendance.filter(a=>a.status==='Present'||a.status==='Absent'),present=marked.filter(a=>a.status==='Present').length,rate=marked.length?Math.round(present/marked.length*100):0;
+    return{answer:`SkyDream currently has ${active.length} active/registered students, ${high} high-risk student(s), ${rate}% recorded attendance, and GHS ${outstanding.toFixed(2)} outstanding under the current fee setting.`,rows:[]};
+  }
+  if(/high.?risk|at risk|risk students|drop.?out/.test(lower)){
+    const list=risks.filter(r=>r.level==='High').slice(0,20);
+    return{answer:list.length?`${list.length} high-risk student(s) are shown below. The score is explainable and based on attendance, absences, inactivity and outstanding fees.`:'No students are currently classified as High risk.',rows:list.map(r=>({student:r.fullName,regNumber:r.regNumber,course:COURSE_NAMES[r.course]||r.course,score:r.score,reasons:r.reasons.join('; ')}))};
+  }
+  if(/attendance/.test(lower)&&/(below|under|low|less than)/.test(lower)){
+    const list=rowsForAttendance.filter(x=>x.marked>=3&&x.pct<threshold).sort((a,b)=>a.pct-b.pct).slice(0,30);
+    return{answer:`${list.length} student(s)${courseId?' in '+COURSE_NAMES[courseId]:''} have attendance below ${threshold}% with at least 3 recorded sessions.`,rows:list.map(x=>({student:x.s.fullName,regNumber:x.s.regNumber,attendance:x.pct+'%',marked:x.marked}))};
+  }
+  if(/owe|owing|outstanding|balance|unpaid|fees?/.test(lower)){
+    const list=courseStudents.map(s=>({s,balance:Math.max(0,fee-(Number(s.feePaid)||0))})).filter(x=>x.balance>0).sort((a,b)=>b.balance-a.balance),total=list.reduce((n,x)=>n+x.balance,0);
+    return{answer:`${list.length} student(s)${courseId?' in '+COURSE_NAMES[courseId]:''} have an outstanding balance totalling GHS ${total.toFixed(2)}.`,rows:list.slice(0,30).map(x=>({student:x.s.fullName,regNumber:x.s.regNumber,balance:'GHS '+x.balance.toFixed(2)}))};
+  }
+  if(/popular|largest|most students|top program|top course/.test(lower)){
+    const counts={};active.forEach(s=>counts[s.course]=(counts[s.course]||0)+1);const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]);const top=sorted[0];
+    return{answer:top?`${COURSE_NAMES[top[0]]||top[0]} currently has the most students with ${top[1]} active/registered student(s).`:'There are no active student registrations to compare.',rows:sorted.slice(0,10).map(([id,count])=>({program:COURSE_NAMES[id]||id,students:count}))};
+  }
+  if(/how many|number of students|student count|students/.test(lower)){
+    return{answer:`There are ${courseStudents.length} active/registered student(s)${courseId?' in '+COURSE_NAMES[courseId]:''}.`,rows:[]};
+  }
+  if(/facilitator/.test(lower)){
+    const rows=(base.facilitators||[]).filter(f=>f.active!==false);return{answer:`There are ${rows.length} active facilitator(s).`,rows:rows.slice(0,30).map(f=>({facilitator:f.name,username:f.username,programs:(f.courses||[]).map(c=>COURSE_NAMES[c]||c).join(', ')}))};
+  }
+  if(/capacity|full|spaces|places/.test(lower)){
+    const rows=Object.entries(base.capacities||{}).map(([id,cap])=>{const used=active.filter(s=>s.course===id).length;return{program:COURSE_NAMES[id]||id,used,capacity:Number(cap)||0,remaining:Math.max(0,(Number(cap)||0)-used)};}).sort((a,b)=>a.remaining-b.remaining);
+    return{answer:'Here is the current program-capacity position.',rows:rows.slice(0,30)};
+  }
+  if(/unread.*message|message.*unread/.test(lower)){
+    const n=Number(base.messageStats&&base.messageStats.unread)||0;return{answer:`There are ${n} unread student portal message(s).`,rows:[]};
+  }
+  if(/this month|monthly registration|registrations this month/.test(lower)){
+    const ym=new Date().toISOString().slice(0,7),rows=students.filter(s=>String(s.regDate||'').startsWith(ym));
+    return{answer:`${rows.length} student(s) registered this month.`,rows:rows.slice(0,30).map(s=>({student:s.fullName,regNumber:s.regNumber,program:COURSE_NAMES[s.course]||s.course,date:s.regDate||''}))};
+  }
+  return{answer:'I can answer questions about student counts, high-risk students, attendance below a percentage, outstanding fees, popular programs, facilitators, capacity, unread messages, registrations this month, or give you an overall summary.',rows:[]};
+}
+
 const baseSuite=app.adminGetSuiteSnapshot;
 app.adminGetEnterpriseSnapshot=onCall({enforceAppCheck:true},async request=>{
   const a=await assertSession(request);const base=await baseSuite.run(request);
-  const [intakeHistory,contacts,recycle,classSessions,notes,history,cohortMeta,sessions,two,notificationState]=await Promise.all([
-    readValue(KEYS.intakeHistory,[]),readValue(KEYS.contacts,[]),readValue(KEYS.recycle,[]),readValue(KEYS.classSessions,[]),readValue(KEYS.notes,[]),readValue(KEYS.history,[]),readValue(KEYS.cohortMeta,{}),readValue(KEYS.sessions,[]),read2fa(),readValue(KEYS.notificationState,{})
+  const [intakeHistory,contacts,recycle,classSessions,notes,history,cohortMeta,sessions,two,notificationState,rawSmartRules,smartLog]=await Promise.all([
+    readValue(KEYS.intakeHistory,[]),readValue(KEYS.contacts,[]),readValue(KEYS.recycle,[]),readValue(KEYS.classSessions,[]),readValue(KEYS.notes,[]),readValue(KEYS.history,[]),readValue(KEYS.cohortMeta,{}),readValue(KEYS.sessions,[]),read2fa(),readValue(KEYS.notificationState,{}),readValue(KEYS.smartRules,DEFAULT_SMART_RULES),readValue(KEYS.smartRuleLog,[])
   ]);
-  const students=base.students||[],attendance=base.attendance||[],facilitators=base.facilitators||[];
+  const students=base.students||[],attendance=base.attendance||[],facilitators=base.facilitators||[],risks=buildRiskAnalysis(students,attendance,base.settings||{},base.intake||{}),riskStats=riskSummary(risks),rules=smartRules(rawSmartRules);
   const cohortMap={};for(const s of students){const k=s.intakeStart||'Unknown';cohortMap[k]=cohortMap[k]||{intakeStart:k,label:k,students:0,archived:!!(cohortMeta[k]&&cohortMeta[k].archived)};cohortMap[k].students++;}for(const h of (Array.isArray(intakeHistory)?intakeHistory:[])){const k=h.startDate||h.intakeStart;if(k){cohortMap[k]=cohortMap[k]||{intakeStart:k,label:h.label||k,students:0,archived:true};if(h.label)cohortMap[k].label=h.label;}}if(base.intake&&base.intake.startDate){const k=base.intake.startDate;cohortMap[k]=cohortMap[k]||{intakeStart:k,label:base.intake.label||k,students:0,archived:false};}
   const performance=facilitators.map(f=>{const marks=attendance.filter(r=>String(r.markedBy||'').toLowerCase()===String(f.username||'').toLowerCase()),sessions=classSessions.filter(s=>s.facilitatorId===f.id),assignedStudents=students.filter(s=>(f.courses||[]).includes(s.course)&&s.status!=='Cancelled').length;return {id:f.id,name:f.name,username:f.username,assignedStudents,attendanceMarks:marks.length,sessions:sessions.length,completedSessions:sessions.filter(s=>s.status==='Completed').length};});
-  const notifications=[];const seven=Date.now()-7*86400000;for(const s of students){const t=new Date(s.regDate||0).getTime();if(t>=seven)notifications.push({id:'registration:'+s.id,type:'registration',title:'New registration',message:`${s.fullName} registered for ${COURSE_NAMES[s.course]||s.course}.`,date:s.regDate});}for(const m of (Array.isArray(contacts)?contacts:[])){const t=new Date(m.date||0).getTime();if(t>=seven)notifications.push({id:'contact:'+m.id,type:'message',title:'New website message',message:`Message from ${m.name||m.email||'visitor'}.`,date:m.date});}for(const [course,cap] of Object.entries(base.capacities||{})){const count=students.filter(s=>s.course===course&&s.status!=='Cancelled'&&(!base.intake.startDate||s.intakeStart===base.intake.startDate)).length;const c=Number(cap)||0;if(c&&count/c>=0.8)notifications.push({id:'capacity:'+course+':'+(base.intake.startDate||''),type:'capacity',title:'Program nearly full',message:`${COURSE_NAMES[course]||course}: ${count}/${c} places used.`,date:nowIso()});}const close=base.intake&&base.intake.registrationCloseDate;if(close){const days=Math.ceil((new Date(close+'T23:59:59Z').getTime()-Date.now())/86400000);if(days>=0&&days<=7)notifications.push({id:'registration-closing:'+close,type:'deadline',title:'Registration closing soon',message:`Registration closes in ${days} day(s) on ${close}.`,date:nowIso()});}for(const n of (base.broadcasts||[])){if(n.expiresAt){const hrs=(new Date(n.expiresAt).getTime()-Date.now())/3600000;if(hrs>0&&hrs<=48)notifications.push({id:'notice-expiry:'+n.id,type:'announcement',title:'Announcement expiring',message:(n.message||'Announcement').slice(0,120),date:n.expiresAt});}}for(const s of students){const rows=attendance.filter(r=>r.studentId===s.id&&(r.status==='Present'||r.status==='Absent'));if(rows.length>=3){const pct=rows.filter(r=>r.status==='Present').length/rows.length;if(pct<0.75)notifications.push({id:'low-attendance:'+s.id,type:'attendance',title:'Low attendance',message:`${s.fullName} is at ${Math.round(pct*100)}% attendance.`,date:nowIso()});}}
+  const notifications=[];const seven=Date.now()-7*86400000;for(const s of students){const t=new Date(s.regDate||0).getTime();if(t>=seven)notifications.push({id:'registration:'+s.id,type:'registration',title:'New registration',message:`${s.fullName} registered for ${COURSE_NAMES[s.course]||s.course}.`,date:s.regDate});}for(const m of (Array.isArray(contacts)?contacts:[])){const t=new Date(m.date||0).getTime();if(t>=seven)notifications.push({id:'contact:'+m.id,type:'message',title:'New website message',message:`Message from ${m.name||m.email||'visitor'}.`,date:m.date});}for(const [course,cap] of Object.entries(base.capacities||{})){const count=students.filter(s=>s.course===course&&s.status!=='Cancelled'&&(!base.intake.startDate||s.intakeStart===base.intake.startDate)).length;const c=Number(cap)||0;if(c&&count/c>=0.8)notifications.push({id:'capacity:'+course+':'+(base.intake.startDate||''),type:'capacity',title:'Program nearly full',message:`${COURSE_NAMES[course]||course}: ${count}/${c} places used.`,date:nowIso()});}const close=base.intake&&base.intake.registrationCloseDate;if(close){const days=Math.ceil((new Date(close+'T23:59:59Z').getTime()-Date.now())/86400000);if(days>=0&&days<=7)notifications.push({id:'registration-closing:'+close,type:'deadline',title:'Registration closing soon',message:`Registration closes in ${days} day(s) on ${close}.`,date:nowIso()});}for(const n of (base.broadcasts||[])){if(n.expiresAt){const hrs=(new Date(n.expiresAt).getTime()-Date.now())/3600000;if(hrs>0&&hrs<=48)notifications.push({id:'notice-expiry:'+n.id,type:'announcement',title:'Announcement expiring',message:(n.message||'Announcement').slice(0,120),date:n.expiresAt});}}for(const s of students){const rows=attendance.filter(r=>r.studentId===s.id&&(r.status==='Present'||r.status==='Absent'));if(rows.length>=3){const pct=rows.filter(r=>r.status==='Present').length/rows.length;if(pct<0.75)notifications.push({id:'low-attendance:'+s.id,type:'attendance',title:'Low attendance',message:`${s.fullName} is at ${Math.round(pct*100)}% attendance.`,date:nowIso()});}}for(const r of risks.filter(x=>x.level==='High').slice(0,50)){notifications.push({id:'high-risk:'+r.id,type:'risk',title:'High student risk',message:`${r.fullName} has a risk score of ${r.score}/100 — ${r.reasons.slice(0,2).join('; ')||'review recommended'}.`,date:nowIso()});}
   const dismissed=Array.isArray(notificationState[a.username])?new Set(notificationState[a.username]):new Set();
-  return {...base,cohorts:Object.values(cohortMap).sort((x,y)=>String(y.intakeStart).localeCompare(String(x.intakeStart))),classSessions:Array.isArray(classSessions)?classSessions:[],facilitatorPerformance:performance,internalNotes:Array.isArray(notes)?notes:[],changeHistory:Array.isArray(history)?history.slice(-500).reverse():[],recycleCount:Array.isArray(recycle)?recycle.length:0,notifications:notifications.filter(n=>!dismissed.has(n.id)).sort((x,y)=>String(y.date).localeCompare(String(x.date))).slice(0,100),sessions:(Array.isArray(sessions)?sessions:[]).filter(s=>(a.role||'staff')==='owner'||s.username===a.username).slice().sort((x,y)=>String(y.createdAt).localeCompare(String(x.createdAt))).slice(0,100),twoFactorEnabled:!!two.find(x=>x.username===a.username&&x.enabled)};
+  return {...base,cohorts:Object.values(cohortMap).sort((x,y)=>String(y.intakeStart).localeCompare(String(x.intakeStart))),classSessions:Array.isArray(classSessions)?classSessions:[],facilitatorPerformance:performance,internalNotes:Array.isArray(notes)?notes:[],changeHistory:Array.isArray(history)?history.slice(-500).reverse():[],recycleCount:Array.isArray(recycle)?recycle.length:0,notifications:notifications.filter(n=>!dismissed.has(n.id)).sort((x,y)=>String(y.date).localeCompare(String(x.date))).slice(0,100),sessions:(Array.isArray(sessions)?sessions:[]).filter(s=>(a.role||'staff')==='owner'||s.username===a.username).slice().sort((x,y)=>String(y.createdAt).localeCompare(String(x.createdAt))).slice(0,100),twoFactorEnabled:!!two.find(x=>x.username===a.username&&x.enabled),riskAnalysis:risks,riskSummary:riskStats,smartNotificationRules:rules,smartNotificationLog:Array.isArray(smartLog)?smartLog.slice(-100).reverse():[]};
 });
 app.adminDismissNotification=onCall({enforceAppCheck:true},async request=>{const a=await assertSession(request),id=clean(request.data&&request.data.id,200);const state=await readValue(KEYS.notificationState,{});const list=Array.isArray(state[a.username])?state[a.username]:[];if(!list.includes(id))list.push(id);state[a.username]=list.slice(-500);await writeValue(KEYS.notificationState,state);return {ok:true};});
+
+app.adminGetStudentRiskAnalysis=onCall({enforceAppCheck:true},async request=>{
+  await requirePermission(request,'reports');const [students,attendance,settings,intake]=await Promise.all([readValue(KEYS.students,[]),readValue(KEYS.attendance,[]),readValue(KEYS.settings,{}),readValue(KEYS.intake,{})]);const rows=buildRiskAnalysis(students,attendance,settings,intake);return{rows,summary:riskSummary(rows)};
+});
+app.adminSaveSmartNotificationRules=onCall({enforceAppCheck:true},async request=>{
+  const a=await requirePermission(request,'settings');const rules=smartRules(request.data&&request.data.rules);await writeValue(KEYS.smartRules,rules);await appendAudit(a,'Updated smart notification rules',rules.enabled?'Automation enabled':'Automation disabled');return{ok:true,rules};
+});
+app.adminPreviewSmartNotificationRules=onCall({enforceAppCheck:true},async request=>{
+  await requirePermission(request,'reports');const result=await evaluateSmartNotifications({send:false,rulesOverride:request.data&&request.data.rules});return{rules:result.rules,total:result.alerts.length,eligible:result.eligible.length,alerts:result.eligible.slice(0,100)};
+});
+app.adminRunSmartNotificationRules=onCall({enforceAppCheck:true},async request=>{
+  const a=await requirePermission(request,'settings');const result=await evaluateSmartNotifications({send:true});await appendAudit(a,'Ran smart notification rules',result.disabled?'Automation is disabled':`${result.sent||0} portal alert(s) sent`);return{ok:true,disabled:!!result.disabled,sent:result.sent||0,eligible:(result.eligible||[]).length};
+});
+app.adminAskAssistant=onCall({enforceAppCheck:true},async request=>{
+  const a=await requirePermission(request,'reports');const question=clean(request.data&&request.data.question,400);if(question.length<2)throw new HttpsError('invalid-argument','Ask a question about SkyDream data.');const base=await baseSuite.run(request);const risks=buildRiskAnalysis(base.students||[],base.attendance||[],base.settings||{},base.intake||{});const result=assistantAnswer(question,base,risks);await appendAudit(a,'Used Admin Assistant','',question.slice(0,80));return{...result,asOf:nowIso()};
+});
+app.smartNotificationDaily=onSchedule({schedule:'every day 08:00',timeZone:'Africa/Accra',region:'us-central1'},async()=>{await evaluateSmartNotifications({send:true});});
+
 
 async function createBackup(){
   const keys=Object.values(KEYS);const data={createdAt:nowIso(),project:'skydream-academy',documents:{}};for(const key of keys)data.documents[key]=await readValue(key,null);

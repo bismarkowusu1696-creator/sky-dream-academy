@@ -8,10 +8,9 @@
       if (!card || card.querySelector('[data-set-fac-pin]')) return;
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'btn btn-outline btn-small';
+      btn.className = 'btn btn-outline btn-small mr-8';
       btn.dataset.setFacPin = id;
       btn.textContent = 'Set PIN';
-      btn.style.marginRight = '8px';
       removeBtn.parentNode.insertBefore(btn, removeBtn);
     });
   }

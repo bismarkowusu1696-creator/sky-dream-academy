@@ -344,6 +344,6 @@
 
   document.addEventListener('DOMContentLoaded',()=>{
     inject();
-    SkyDreamFirebase.auth.onAuthStateChanged(async user=>{if(!user)return;try{const t=await user.getIdTokenResult();if(t.claims.role==='admin'){await refresh();if((data.account&&data.account.role)==='owner')await loadRecycle();}}catch(e){console.warn('Enterprise admin tools could not load.',e);}});
+    SkyDreamFirebase.auth.onAuthStateChanged(async user=>{if(!user)return;try{const t=await user.getIdTokenResult();if(t.claims.role==='admin'&&t.claims.adminRole==='owner'){await refresh();if((data.account&&data.account.role)==='owner')await loadRecycle();}}catch(e){console.warn('Enterprise admin tools could not load.',e);}});
   });
 })();

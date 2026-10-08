@@ -32,9 +32,8 @@ const COURSE_CODES = {
   'fashion-design':'FS',beading:'BE',french:'FL',korean:'KL',pastries:'PA','graphic-design':'GD',barbering:'BA',accounting:'AC'
 };
 const ROLE_PERMISSIONS = {
-  owner:['*'], manager:['students','attendance','facilitators','reports','announcements','settings'],
-  staff:['students','attendance','reports','announcements'], registration:['students','attendance','reports'],
-  finance:['reports'], viewer:['reports']
+  owner:['*'], manager:['registrations'], staff:['registrations'],
+  registration:['registrations'], finance:['registrations'], viewer:['registrations']
 };
 
 const refFor = key => db.collection(COLLECTION).doc(key);

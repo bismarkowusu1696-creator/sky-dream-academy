@@ -40,11 +40,11 @@ const COURSE_NAMES = {
 
 const ROLE_PERMISSIONS = {
   owner: ['*'],
-  manager: ['students', 'attendance', 'facilitators', 'reports', 'announcements', 'settings'],
-  staff: ['students', 'attendance', 'reports', 'announcements'],
-  registration: ['students', 'attendance', 'reports'],
-  finance: ['reports'],
-  viewer: ['reports']
+  manager: ['registrations'],
+  staff: ['registrations'],
+  registration: ['registrations'],
+  finance: ['registrations'],
+  viewer: ['registrations']
 };
 
 const DEFAULT_SETTINGS = {

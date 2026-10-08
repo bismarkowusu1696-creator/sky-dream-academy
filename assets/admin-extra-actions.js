@@ -27,6 +27,8 @@
   async function renderControls() {
     const host = ensureHost();
     if (!host || !SkyDreamFirebase.auth.currentUser) return;
+    const token = await SkyDreamFirebase.auth.currentUser.getIdTokenResult();
+    if (token.claims.adminRole !== 'owner') return;
     try {
       const snap = await SkyDreamFirebase.call('adminGetSuiteSnapshot');
       const notices = (snap.broadcasts || []).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,30);
@@ -77,7 +79,7 @@
       if (!user) return;
       try {
         const token = await user.getIdTokenResult();
-        if (token.claims.role === 'admin') scheduleRefresh();
+        if (token.claims.role === 'admin' && token.claims.adminRole === 'owner') scheduleRefresh();
       } catch (_) {}
     });
   });

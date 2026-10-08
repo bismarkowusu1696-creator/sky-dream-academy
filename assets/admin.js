@@ -51,15 +51,20 @@
   async function loadDashboard(){
     clearMessage();
     try{
-      data=await SkyDreamFirebase.call('getAdminSnapshot');
       const token=await SkyDreamFirebase.auth.currentUser.getIdTokenResult();
       account={username:token.claims.username,role:token.claims.adminRole||'staff'};
+      if(account.role!=='owner'){
+        if(!window.SkyDreamRegistrationWorkspace)throw new Error('The registration workspace is still loading. Refresh and try again.');
+        await window.SkyDreamRegistrationWorkspace.open();
+        return;
+      }
+      data=await SkyDreamFirebase.call('getAdminSnapshot');
       $('loginShell').classList.add('hidden'); $('dashboardShell').classList.remove('hidden');
       $('adminIdentity').textContent=`@${account.username} · ${account.role==='owner'?'Main administrator':'Staff administrator'}`;
       renderAll();
     }catch(err){
       await SkyDreamFirebase.auth.signOut();
-      $('dashboardShell').classList.add('hidden'); $('loginShell').classList.remove('hidden'); $('adminLoginPanel').classList.remove('hidden');
+      $('dashboardShell').classList.add('hidden'); $('registrationStaffShell').classList.add('hidden'); $('loginShell').classList.remove('hidden'); $('adminLoginPanel').classList.remove('hidden');
       message(errText(err),'error');
     }
   }

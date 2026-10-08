@@ -375,6 +375,83 @@ if (baseFacilitatorLogin && typeof baseFacilitatorLogin.run === 'function') {
   });
 }
 
+// Registration-only workspaces are the sole operational privilege of every
+// non-owner administrator, regardless of historical role name. Access is
+// evaluated against the stored account on every request, never token role.
+app.adminGetRegistrationWorkspace = onCall({ enforceAppCheck: true }, async request => {
+  const { account } = await requireStrongAdminSession(request);
+  const [rawStudents, intake] = await Promise.all([
+    readStorage('sdta_students', []),
+    readStorage('sdta_intake', {})
+  ]);
+  const students = (Array.isArray(rawStudents) ? rawStudents : []).map(s => ({
+    id: clean(s.id, 120),
+    regNumber: clean(s.regNumber, 80),
+    fullName: clean(s.fullName, 160),
+    mobile: clean(s.mobile, 30),
+    email: clean(s.email, 160),
+    course: clean(s.course, 80),
+    status: clean(s.status || 'Registered', 30),
+    intakeStart: clean(s.intakeStart, 30),
+    regDate: clean(s.regDate, 50)
+  }));
+  return {
+    account: { username: account.username, role: account.role || 'staff' },
+    intakeStart: clean(intake && intake.startDate, 30),
+    students
+  };
+});
+
+app.adminSetRegistrationStatus = onCall({ enforceAppCheck: true }, async request => {
+  const { account } = await requireStrongAdminSession(request);
+  const id = clean(request.data && request.data.id, 120);
+  const status = clean(request.data && request.data.status, 30);
+  if (!id || !['Registered', 'Cancelled'].includes(status)) {
+    throw new HttpsError('invalid-argument', 'Only Registered or Cancelled can be selected.');
+  }
+  const studentsRef = db.collection(STORAGE_COLLECTION).doc('sdta_students');
+  const auditRef = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
+  let result = null;
+  await db.runTransaction(async tx => {
+    const [studentSnap, auditSnap] = await Promise.all([tx.get(studentsRef), tx.get(auditRef)]);
+    const list = studentSnap.exists ? parseJson(studentSnap.data().value, []) : [];
+    if (!Array.isArray(list)) throw new HttpsError('internal', 'Registration records are unavailable.');
+    const student = list.find(s => s.id === id);
+    if (!student) throw new HttpsError('not-found', 'The registration was not found.');
+    if (status === 'Registered' && student.status === 'Cancelled') {
+      // Preserve the existing no-duplicate rule when reactivating a cancellation.
+      const phone = String(student.mobile || '').replace(/\D/g, '').slice(-10);
+      const card = String(student.ghanaCard || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const conflict = list.find(s => s.id !== id && s.status !== 'Cancelled' &&
+        String(s.intakeStart || '') === String(student.intakeStart || '') &&
+        ((phone && String(s.mobile || '').replace(/\D/g, '').slice(-10) === phone) ||
+         (card && String(s.ghanaCard || '').toUpperCase().replace(/[^A-Z0-9]/g, '') === card)));
+      if (conflict) throw new HttpsError('already-exists', 'Another active registration in this intake has the same phone number or Ghana Card.');
+    }
+    const oldStatus = student.status || 'Registered';
+    if (oldStatus === status) {
+      result = { ok: true, changed: false, status };
+      return;
+    }
+    student.status = status;
+    const audit = auditSnap.exists ? parseJson(auditSnap.data().value, []) : [];
+    const history = Array.isArray(audit) ? audit : [];
+    history.push({
+      id: 'audit_' + crypto.randomUUID(),
+      date: new Date().toISOString(),
+      admin: account.username,
+      role: account.role || 'staff',
+      action: 'Changed registration status',
+      detail: oldStatus + ' → ' + status,
+      target: clean(student.regNumber || id, 120)
+    });
+    tx.set(studentsRef, { value: JSON.stringify(list) });
+    tx.set(auditRef, { value: JSON.stringify(history.slice(-500)) });
+    result = { ok: true, changed: true, status };
+  });
+  return result;
+});
+
 // Apply one final session check to every exported administrator callable, even
 // if a future feature forgets to add its own authorization wrapper.
 const PRE_AUTH_ADMIN_CALLS = new Set(['adminLogin', 'adminVerifyTwoFactorLogin', 'adminRecoverWithCode']);
@@ -385,7 +462,13 @@ for (const name of Object.keys(app)) {
   if (!base || typeof base.run !== 'function') continue;
 
   app[name] = onCall({ enforceAppCheck: true }, async request => {
-    const { auth } = await requireStrongAdminSession(request);
+    const { account, auth } = await requireStrongAdminSession(request);
+    // Deny by default for all subordinate admins, including existing manager,
+    // staff, registration, finance, and viewer accounts.
+    if ((account.role || 'staff') !== 'owner' &&
+        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminChangePassword']).has(name)) {
+      throw new HttpsError('permission-denied', 'This administrator can only export registrations and change registration status.');
+    }
     return base.run(delegatedRequest(request, auth));
   });
 }

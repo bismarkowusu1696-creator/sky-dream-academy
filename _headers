@@ -37,6 +37,9 @@
 /assets/admin.js
   Cache-Control: no-store, max-age=0
 
+/assets/admin-registration.js
+  Cache-Control: no-store, max-age=0
+
 /assets/admin-suite.js
   Cache-Control: no-store, max-age=0
 

@@ -125,6 +125,63 @@
       (!q || [s.fullName, s.regNumber, s.mobile, s.email].some(v => clean(v).toLowerCase().includes(q)))
     );
   }
+  function populateFacilitatorPrograms() {
+    const host = $('registrationFacilitatorCourses');
+    const courses = workspace && workspace.courses || {};
+    host.innerHTML = Object.entries(courses).map(([id,name]) =>
+      '<label class="check-row"><input type="checkbox" value="' + esc(id) + '"><span>' +
+      esc(name) + '</span></label>'
+    ).join('') || '<p class="hint">No programs configured.</p>';
+  }
+  function renderFacilitators() {
+    const facilitators = workspace && Array.isArray(workspace.facilitators) ? workspace.facilitators : [];
+    $('registrationFacilitatorCount').textContent = facilitators.length + ' facilitator(s)';
+    $('registrationFacilitatorList').innerHTML = facilitators.length ? facilitators.slice()
+      .sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')))
+      .map(f => '<div class="card"><strong>' + esc(f.name) +
+        '</strong><p class="hint">@' + esc(f.username) + ' · ' + esc(f.phone) +
+        '</p><p>' + esc((f.courses || []).map(course => workspace.courses[course] || labelCourse(course)).join(', ') || 'No assigned programs') +
+        '</p><span class="badge">' + (f.active ? 'Active' : 'Inactive') + '</span></div>')
+      .join('') : '<p class="hint">No facilitator accounts yet.</p>';
+  }
+  async function createFacilitator(event) {
+    event.preventDefault();
+    const button = $('registrationFacilitatorSubmit');
+    const msg = $('registrationFacilitatorMessage');
+    msg.classList.add('hidden');
+    const pin = $('registrationFacilitatorPin').value;
+    const courses = Array.from($('registrationFacilitatorCourses').querySelectorAll('input:checked'))
+      .map(input => input.value);
+    if (!/^[0-9]{4}$/.test(pin) || !courses.length) {
+      msg.textContent = 'Enter a 4-digit PIN and select at least one program.';
+      msg.className = 'notice notice-error mt-14';
+      return;
+    }
+    const payload = {
+      name: $('registrationFacilitatorName').value.trim(),
+      username: $('registrationFacilitatorUsername').value.trim(),
+      phone: $('registrationFacilitatorPhone').value.trim(),
+      pin,
+      courses
+    };
+    button.disabled = true;
+    button.textContent = 'Creating…';
+    try {
+      const created = await SkyDreamFirebase.call('adminDeskCreateFacilitator',payload);
+      $('registrationFacilitatorForm').reset();
+      await refresh();
+      const name = created && created.facilitator && created.facilitator.name || payload.name;
+      msg.textContent = name + ' was added successfully. Share the 4-digit PIN privately with the facilitator.';
+      msg.className = 'notice notice-success mt-14';
+    } catch (error) {
+      msg.textContent = SkyDreamFirebase.friendlyError(error);
+      msg.className = 'notice notice-error mt-14';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Create facilitator';
+    }
+  }
+
   function populateFilters() {
     const keepCourse = $('registrationStaffCourse').value;
     const keepIntake = $('registrationStaffIntake').value;
@@ -141,6 +198,7 @@
     if (!workspace) return;
     renderOverview();
     renderReports();
+    renderFacilitators();
     const rows = filtered();
     $('registrationStaffCount').textContent = rows.length + ' registration(s) shown · ' + workspace.students.length + ' total';
     $('registrationStaffBody').innerHTML = rows.length ? rows.map(s =>
@@ -233,6 +291,7 @@
       $('dashboardShell').classList.add('hidden');
       $('registrationStaffShell').classList.remove('hidden');
       populateFilters();
+      populateFacilitatorPrograms();
       render();
       if (location.hash === '#registrationStaffPassword') location.hash = 'registrationStaffOverview';
     })();
@@ -298,6 +357,9 @@
     document.addEventListener('keydown',event=>{
       if (event.key==='Escape' && !$('registrationStaffEditModal').classList.contains('hidden')) closeRegistrationEditor();
     });
+    $('registrationFacilitatorForm').addEventListener('submit', createFacilitator);
+    $('registrationFacilitatorRefresh').addEventListener('click', () => refresh()
+      .catch(error => { const msg = $('registrationFacilitatorMessage'); msg.textContent = SkyDreamFirebase.friendlyError(error); msg.className = 'notice notice-error mt-14'; }));
     $('registrationStaffLogout').addEventListener('click', async () => {
       await SkyDreamFirebase.auth.signOut();
       location.reload();

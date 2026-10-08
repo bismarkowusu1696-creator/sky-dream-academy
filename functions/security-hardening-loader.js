@@ -483,9 +483,10 @@ function registrationNumberFor(course, list, intakeStart) {
 // evaluated against the stored account on every request, never token role.
 app.adminGetRegistrationWorkspace = onCall({ enforceAppCheck: true }, async request => {
   const { account } = await requireStrongAdminSession(request);
-  const [rawStudents, intake] = await Promise.all([
+  const [rawStudents, intake, rawFacilitators] = await Promise.all([
     readStorage('sdta_students', []),
-    readStorage('sdta_intake', {})
+    readStorage('sdta_intake', {}),
+    readStorage('sdta_facilitators', [])
   ]);
   const students = (Array.isArray(rawStudents) ? rawStudents : []).map(s => ({
     id: clean(s.id, 120),
@@ -505,7 +506,16 @@ app.adminGetRegistrationWorkspace = onCall({ enforceAppCheck: true }, async requ
     account: { username: account.username, role: account.role || 'staff' },
     intakeStart: clean(intake && intake.startDate, 30),
     courses: REGISTRATION_COURSES,
-    students
+    students,
+    facilitators: (Array.isArray(rawFacilitators) ? rawFacilitators : [])
+      .map(f => ({
+        id: clean(f.id, 120),
+        name: clean(f.name, 120),
+        username: clean(f.username, 80),
+        phone: clean(f.phone, 30),
+        courses: Array.isArray(f.courses) ? f.courses.filter(c => Object.prototype.hasOwnProperty.call(REGISTRATION_COURSES, c)) : [],
+        active: f.active !== false
+      }))
   };
 });
 
@@ -710,6 +720,62 @@ app.adminEditRegistration = onCall({ enforceAppCheck: true }, async request => {
   return result;
 });
 
+// Registration desk may CREATE facilitator accounts, but cannot edit/remove
+// them, reset their PINs, or open the owner's facilitator controls.
+app.adminDeskCreateFacilitator = onCall({ enforceAppCheck: true }, async request => {
+  const { account } = await requireStrongAdminSession(request);
+  await enforceRateLimit(request, 'registration-desk-create-facilitator', account.username, 12, 60 * 60 * 1000);
+  const data = request.data || {};
+  const name = clean(data.name, 120);
+  const username = clean(data.username, 80);
+  const phone = normalizeGhanaPhone(data.phone);
+  const pin = String(data.pin == null ? '' : data.pin);
+  const requestedCourses = data.courses;
+  if (name.length < 2 || String(data.name == null ? '' : data.name).trim().length > 120 ||
+      !/^[A-Za-z0-9._-]{3,80}$/.test(username) ||
+      !/^0\d{9}$/.test(phone) ||
+      !/^\d{4}$/.test(pin) ||
+      !Array.isArray(requestedCourses) || requestedCourses.length < 1 || requestedCourses.length > 20 ||
+      requestedCourses.some(course => typeof course !== 'string' ||
+        !Object.prototype.hasOwnProperty.call(REGISTRATION_COURSES, course))) {
+    throw new HttpsError('invalid-argument',
+      'Enter a name, unique username, valid Ghana phone number, 4-digit PIN and at least one valid program.');
+  }
+  const courses = [...new Set(requestedCourses)];
+  const facilitatorRef = db.collection(STORAGE_COLLECTION).doc('sdta_facilitators');
+  const auditRef = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
+  const createdAt = new Date().toISOString();
+  const facilitator = {
+    id: 'fac_' + crypto.randomUUID(),
+    name, username, phone, courses,
+    active: true, createdBy: account.username, createdAt,
+    ...makePasswordRecord('SkyDream-Facilitator-' + pin + '-Aa9!')
+  };
+  await db.runTransaction(async tx => {
+    const [facSnap,auditSnap] = await Promise.all([tx.get(facilitatorRef),tx.get(auditRef)]);
+    const list = facSnap.exists ? parseJson(facSnap.data().value, []) : [];
+    if (!Array.isArray(list)) throw new HttpsError('internal','Facilitator records are unavailable.');
+    if (list.some(f => String(f.username || '').toLowerCase() === username.toLowerCase())) {
+      throw new HttpsError('already-exists','That facilitator username is already registered.');
+    }
+    const history = auditSnap.exists ? parseJson(auditSnap.data().value,[]) : [];
+    if (!Array.isArray(history)) throw new HttpsError('internal','Audit history is unavailable.');
+    list.push(facilitator);
+    history.push({
+      id: 'audit_' + crypto.randomUUID(),
+      date: createdAt,
+      admin: account.username,
+      role: account.role || 'staff',
+      action: 'Created facilitator from registration desk',
+      target: username,
+      detail: name + ' · Programs: ' + courses.join(', ')
+    });
+    tx.set(facilitatorRef, { value: JSON.stringify(list) });
+    tx.set(auditRef, { value: JSON.stringify(history.slice(-1000)) });
+  });
+  return { ok: true, facilitator: { id: facilitator.id, name, username, phone, courses, active: true } };
+});
+
 // Apply one final session check to every exported administrator callable, even
 // if a future feature forgets to add its own authorization wrapper.
 const PRE_AUTH_ADMIN_CALLS = new Set(['adminLogin', 'adminVerifyTwoFactorLogin', 'adminRecoverWithCode']);
@@ -724,8 +790,8 @@ for (const name of Object.keys(app)) {
     // Deny by default for all subordinate admins, including existing manager,
     // staff, registration, finance, and viewer accounts.
     if ((account.role || 'staff') !== 'owner' &&
-        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration']).has(name)) {
-      throw new HttpsError('permission-denied', 'Staff administrators can only view, export or edit approved registration fields.');
+        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator']).has(name)) {
+      throw new HttpsError('permission-denied', 'Staff administrators can only manage approved registration fields and create facilitator accounts.');
     }
     return base.run(delegatedRequest(request, auth));
   });

@@ -44,7 +44,10 @@ module.exports = function installRegistrationDeskOperations(app, env) {
   const recordAudit = (tx, ref, snapshot, entry) => {
     const values = readTx(snapshot, []);
     if (!Array.isArray(values)) throw new HttpsError('internal','Audit records are unavailable.');
+    // Preserve legacy recent activity while also retaining an immutable
+    // per-entry audit document that does not disappear at 1,000 actions.
     tx.set(ref,{ value: JSON.stringify([...values, entry].slice(-1000)) });
+    tx.create(db.collection('sdta_admin_audit_archive').doc(entry.id), entry);
   };
   const validDate = value => value === '' || (/^\d{4}-\d{2}-\d{2}$/.test(value) &&
     !Number.isNaN(Date.parse(value+'T00:00:00Z')) &&
@@ -60,7 +63,7 @@ module.exports = function installRegistrationDeskOperations(app, env) {
   function formatTemplate(template, student, intake) {
     const replacements = {
       student: String(student.fullName || ''),
-      program: String(student.course || '').replace(/-/g,' '),
+      program: String(env.registrationCourses[student.course] || student.course || ''),
       registration: String(student.regNumber || ''),
       orientation_date: String(intake && intake.startDate || '')
     };
@@ -90,12 +93,16 @@ module.exports = function installRegistrationDeskOperations(app, env) {
       capacities[course]={limit,used,available:Math.max(0,limit-used)};
     }
     const cursor=String(cursorMap && cursorMap[account.username] || '');
-    // A first-time desk user sees only very recent registrations as unread.
-    const since=dateStamp(cursor) || (Date.now() - 60*60*1000);
-    const fresh=safeStudents.filter(s=>dateStamp(s.regDate)>since)
-      .sort((a,b)=>dateStamp(b.regDate)-dateStamp(a.regDate)).slice(0,20)
-      .map(s=>({id:s.id,regNumber:s.regNumber,fullName:s.fullName,course:s.course,
-        date:s.regDate}));
+    // New accounts see registrations from the current intake (or previous
+    // 30 days if an intake date is unavailable), never an arbitrary 1-hour cut.
+    const since=dateStamp(cursor) ||
+      (dateStamp(current) || (Date.now() - 30*24*60*60*1000));
+    const unread=safeStudents.filter(s=>dateStamp(s.regDate)>=since &&
+      (!current || String(s.intakeStart||'')===current || !!cursor))
+      .sort((a,b)=>dateStamp(b.regDate)-dateStamp(a.regDate));
+    const fresh=unread.slice(0,20).map(s=>({
+      id:s.id,regNumber:s.regNumber,fullName:s.fullName,course:s.course,date:s.regDate
+    }));
     const ownAudit=(Array.isArray(audit)?audit:[])
       .filter(a=>String(a.admin || '').toLowerCase()===String(account.username).toLowerCase())
       .slice(-60).reverse().map(a=>({
@@ -105,7 +112,7 @@ module.exports = function installRegistrationDeskOperations(app, env) {
       serverTime:nowIso(), currentIntake:current,
       workflow:workflow && typeof workflow==='object' && !Array.isArray(workflow)?workflow:{},
       onboarding:onboarding && typeof onboarding==='object' && !Array.isArray(onboarding)?onboarding:{},
-      capacity:capacities, newRegistrations:fresh, unreadCount:fresh.length,
+      capacity:capacities, newRegistrations:fresh, unreadCount:unread.length,
       facilitators:safeFacilitators.length,
       templates:(Array.isArray(templates)?templates:[]).filter(t=>t.approved===true).map(publicTemplate),
       ownAudit

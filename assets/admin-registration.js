@@ -55,11 +55,14 @@
         esc(s.status) + '</span></td><td>' + action + '</td></tr>';
     }).join('') : '<tr><td colspan="6">No matching registrations.</td></tr>';
   }
-  async function refresh() {
+  async function refresh(verifiedWorkspace = null) {
     if (loading) return loading;
     loading = (async () => {
-      workspace = await SkyDreamFirebase.call('adminGetRegistrationWorkspace');
-      $('registrationStaffIdentity').textContent = '@' + workspace.account.username + ' · Registration-only administrator';
+      workspace = verifiedWorkspace || await SkyDreamFirebase.call('adminGetRegistrationWorkspace');
+      if (!workspace || !workspace.account || workspace.account.role === 'owner') {
+        throw new Error('Registration-only workspace is not available for this account.');
+      }
+      $('registrationStaffIdentity').textContent = '@' + workspace.account.username + ' · Registration staff (' + workspace.account.role + ')';
       $('loginShell').classList.add('hidden');
       $('dashboardShell').classList.add('hidden');
       $('registrationStaffShell').classList.remove('hidden');

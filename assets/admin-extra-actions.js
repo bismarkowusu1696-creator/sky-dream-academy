@@ -27,8 +27,7 @@
   async function renderControls() {
     const host = ensureHost();
     if (!host || !SkyDreamFirebase.auth.currentUser) return;
-    const token = await SkyDreamFirebase.auth.currentUser.getIdTokenResult();
-    if (token.claims.adminRole !== 'owner') return;
+    if (window.SkyDreamAdminOwnerVerified !== true) return;
     try {
       const snap = await SkyDreamFirebase.call('adminGetSuiteSnapshot');
       const notices = (snap.broadcasts || []).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,30);
@@ -75,12 +74,6 @@
       scheduleRefresh();
     }, 100);
 
-    SkyDreamFirebase.auth.onAuthStateChanged(async user => {
-      if (!user) return;
-      try {
-        const token = await user.getIdTokenResult();
-        if (token.claims.role === 'admin' && token.claims.adminRole === 'owner') scheduleRefresh();
-      } catch (_) {}
-    });
+    window.addEventListener('skydream-owner-session-ready', scheduleRefresh);
   });
 })();

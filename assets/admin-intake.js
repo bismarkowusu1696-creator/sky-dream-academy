@@ -2,11 +2,10 @@
   const esc = value => String(value == null ? '' : value).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const input = (id, label, type='date', value='', required=true) => `<div class="field"><label for="${id}">${esc(label)}</label><input id="${id}" type="${type}" value="${esc(value)}" ${type==='date' ? '' : 'maxlength="100"'} ${required ? 'required' : ''}></div>`;
 
-  async function installIntakePanel(user) {
+  async function installIntakePanel() {
     const overview = document.getElementById('overview');
     if (!overview || document.getElementById('intakeManagementCard')) return;
-    const token = await user.getIdTokenResult();
-    if (token.claims.role !== 'admin' || token.claims.adminRole !== 'owner') return;
+    if (window.SkyDreamAdminOwnerVerified !== true) return;
 
     try { await SkyDreamFirebase.call('getAdminSnapshot'); }
     catch (_) { return; }
@@ -86,9 +85,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
-    if (!window.SkyDreamFirebase || !SkyDreamFirebase.auth) return;
-    SkyDreamFirebase.auth.onAuthStateChanged(user => {
-      if (user) installIntakePanel(user).catch(console.error);
+    window.addEventListener('skydream-owner-session-ready',() => {
+      installIntakePanel().catch(console.error);
     });
   });
 })();

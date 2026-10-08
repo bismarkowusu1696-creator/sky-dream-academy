@@ -26,6 +26,35 @@ jobs:
           done < <(find functions assets -type f -name '*.js' -print0)
           node --check pwa.js
           node --check service-worker.js
+      - name: Verify install button and PWA assets
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const install = fs.readFileSync('pwa.js','utf8');
+          const html = fs.readFileSync('index.html','utf8');
+          const manifest = JSON.parse(fs.readFileSync('manifest.webmanifest','utf8'));
+          const shell = fs.readFileSync('service-worker.js','utf8');
+          if (!install.includes("How to Install") || !install.includes('beforeinstallprompt') ||
+              !install.includes('showInstallHelp(serviceWorkerError') ||
+              !install.includes("isIOS()") || !install.includes("isAndroid()")) {
+            throw new Error('PWA button must support a native prompt and platform-specific guidance');
+          }
+          if (!html.includes('src="pwa.js"') || !html.includes('rel="manifest"') ||
+              !shell.includes("self.addEventListener('fetch'")) {
+            throw new Error('PWA startup, manifest or service worker are missing');
+          }
+          for (const size of [192,512]) {
+            const icon = (manifest.icons || []).find(item =>
+              item.sizes === size + 'x' + size && item.type === 'image/png');
+            if (!icon) throw new Error('PWA '+size+'px PNG icon is missing');
+            const filename = icon.src.split('?')[0].replace(/^\//,'');
+            const png = fs.readFileSync(filename);
+            if (png.toString('hex',0,8) !== '89504e470d0a1a0a' ||
+                png.readUInt32BE(16) !== size || png.readUInt32BE(20) !== size) {
+              throw new Error('PWA icon has invalid pixel dimensions: '+filename);
+            }
+          }
+          NODE
       - name: Verify production security entrypoint
         run: |
           node - <<'NODE'

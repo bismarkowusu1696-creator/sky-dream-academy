@@ -61,14 +61,14 @@ jobs:
             }
           }
           NODE
-      - name: Verify owner password and restricted staff PIN separation
+      - name: Verify owner PIN reset and restricted registration staff access
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const hardening = fs.readFileSync('functions/security-hardening-loader.js', 'utf8');
-          const html = fs.readFileSync('admin.html', 'utf8');
-          const staff = fs.readFileSync('assets/admin-registration.js', 'utf8');
-          const ownerUi = fs.readFileSync('assets/admin.js', 'utf8');
+          const hardening = fs.readFileSync('functions/security-hardening-loader.js','utf8');
+          const html = fs.readFileSync('admin.html','utf8');
+          const staff = fs.readFileSync('assets/admin-registration.js','utf8');
+          const ownerUi = fs.readFileSync('assets/admin.js','utf8');
           for (const required of [
             "const STAFF_PIN_VERSION = 'staff-pin-v1'",
             "const validStaffPin = value => /^[0-9]{4}$/.test",
@@ -78,19 +78,40 @@ jobs:
             "app.adminCreateAdmin = onCall",
             "app.adminChangePassword = onCall",
             "requireStrongAdminSession(request)",
-            "This administrator can only export registrations"
+            "!new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus']).has(name)",
+            "Staff PINs can only be changed by the main administrator."
           ]) {
-            if (!hardening.includes(required)) throw new Error('Staff PIN policy missing: ' + required);
+            if (!hardening.includes(required)) throw new Error('Security guard missing: ' + required);
           }
-          if (!html.includes('id="newAdminPin"') ||
-              !html.includes('id="staffPinModal"') ||
-              !html.includes('id="registrationStaffNewPassword"') ||
+          for (const required of [
+            'id="newAdminPin"', 'id="staffPinModal"',
+            'id="registrationStaffOverview"', 'id="registrationStaffKpis"',
+            'id="registrationStaffReports"', 'id="registrationStaffRecent"',
+            'id="registrationStaffDateFilter"', 'id="registrationStaffExportAll"'
+          ]) {
+            if (!html.includes(required)) throw new Error('Staff dashboard control missing: ' + required);
+          }
+          if (html.includes('id="registrationStaffPassword"') ||
+              html.includes('id="registrationStaffPasswordForm"') ||
               html.includes('id="newAdminPassword"')) {
-            throw new Error('Staff PIN forms must have four-digit controls, with no old creation form');
+            throw new Error('A forbidden staff credential-change control remains visible');
           }
-          if (!ownerUi.includes("data-set-admin-pin") ||
-              !staff.includes("newPassword !== $('registrationStaffConfirmPassword').value")) {
-            throw new Error('Owner PIN reset or staff self-PIN change is missing');
+          if (staff.includes("adminChangePassword") ||
+              staff.includes("registrationStaffPasswordForm") ||
+              staff.includes("registrationStaffCurrentPassword")) {
+            throw new Error('Restricted staff JS must not contain a PIN change flow');
+          }
+          for (const required of [
+            'registrationStaffOverview', 'registrationStaffReports',
+            'registrationStaffProgramBars', 'registrationStaffIntakeBars',
+            'registrationStaffStatusBars', 'registrationStaffRecent',
+            'registrationStaffExportAll', 'registrationStaffReportsExport'
+          ]) {
+            if (!staff.includes(required)) throw new Error('Staff dashboard wiring is missing: ' + required);
+          }
+          if (!ownerUi.includes('data-set-admin-pin') ||
+              !ownerUi.includes("adminSetStaffPin")) {
+            throw new Error('Owner staff-PIN reset control is missing');
           }
           NODE
       - name: Check HTML for duplicate IDs

@@ -78,7 +78,7 @@ jobs:
             "app.adminCreateAdmin = onCall",
             "app.adminChangePassword = onCall",
             "requireStrongAdminSession(request)",
-            "!new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator']).has(name)",
+            "!new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskSendApprovedTemplate']).has(name)",
             "Staff PINs can only be changed by the main administrator."
           ]) {
             if (!hardening.includes(required)) throw new Error('Security guard missing: ' + required);
@@ -147,7 +147,7 @@ jobs:
             'Edited student registration',
             'The selected program is full for this intake.',
             'The owner must handle program changes after attendance has been recorded.',
-            "'adminEditRegistration', 'adminDeskCreateFacilitator']).has(name)"
+            "'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskSendApprovedTemplate']).has(name)"
           ]) {
             if (!hardening.includes(text)) throw new Error('Registration editing guard missing: '+text);
           }
@@ -174,7 +174,7 @@ jobs:
             'requireStrongAdminSession(request)',
             "'SkyDream-Facilitator-' + pin + '-Aa9!'",
             "enforceRateLimit(request, 'registration-desk-create-facilitator'",
-            "'adminDeskCreateFacilitator']).has(name)",
+            "'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskSendApprovedTemplate']).has(name)",
             "Created facilitator from registration desk",
             "That facilitator username is already registered."
           ];
@@ -194,6 +194,46 @@ jobs:
           if (!frontend.includes("SkyDreamFirebase.call('adminDeskCreateFacilitator',payload)")) {
             throw new Error('Staff facilitator creation must call the restricted server endpoint');
           }
+          NODE
+      - name: Check eight Registration Desk workflows and approval controls
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          const backend=fs.readFileSync('functions/registration-desk-operations.js','utf8');
+          const security=fs.readFileSync('functions/security-hardening-loader.js','utf8');
+          const staff=fs.readFileSync('assets/admin-desk-operations.js','utf8');
+          const owner=fs.readFileSync('assets/admin-desk-owner.js','utf8');
+          const html=fs.readFileSync('admin.html','utf8');
+          const registration=fs.readFileSync('assets/admin-registration.js','utf8');
+          const handlers=[
+            'adminDeskGetInsights','adminDeskSaveTracking','adminDeskSetOnboarding',
+            'adminDeskAcknowledgeAlerts','adminDeskLogExport',
+            'adminOwnerGetDeskTemplates','adminOwnerSaveDeskTemplate','adminDeskSendApprovedTemplate'
+          ];
+          for(const action of handlers){
+            if(!backend.includes('app.'+action+'='))throw new Error('Missing secure action '+action);
+          }
+          for(const snippet of [
+            "require('./registration-desk-operations')(app",
+            "'adminDeskSendApprovedTemplate']).has(name)",
+            "Staff PINs can only be changed by the main administrator."
+          ])if(!security.includes(snippet))throw new Error('Security boundary missing '+snippet);
+          for(const id of ['deskWorkflow','deskCapacity','deskOnboarding','deskMessages',
+            'deskDaily','deskPendingTable','deskDailyDownload','deskAlertBadge',
+            'deskOwnActivity','deskMessagePreview','deskOnboardingCards']){
+            if(!html.includes('id="'+id+'"'))throw new Error('Missing staff feature '+id);
+          }
+          if(!html.includes('assets/admin-desk-owner.js') ||
+              !html.includes('assets/admin-desk-operations.js') ||
+              !owner.includes("skydream-owner-session-ready") ||
+              !staff.includes('adminDeskSendApprovedTemplate') ||
+              !registration.includes("adminDeskLogExport")) {
+            throw new Error('Registration operations are not fully wired');
+          }
+          if(!backend.includes("t.approved===true") &&
+              !backend.includes("t.approved === true")) throw new Error('Staff template approvals are not enforced');
+          if(!backend.includes("ownAudit") ||
+              !backend.includes("a.admin")) throw new Error('Staff audit history must be scoped to their own account');
           NODE
       - name: Check HTML for duplicate IDs
         run: |

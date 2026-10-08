@@ -36,6 +36,7 @@
 
   const functions = firebase.functions();
   const auth = firebase.auth ? firebase.auth() : null;
+  const messaging = firebase.messaging ? firebase.messaging() : null;
   let pendingCallableRequests = 0;
   let lastActionButton = null;
   let lastActionAt = 0;
@@ -123,6 +124,21 @@
     } catch (_) {}
   }
 
+  async function getPushToken(serviceWorkerRegistration) {
+    if (!messaging || typeof messaging.getToken !== 'function') {
+      throw new Error('Push notifications are not supported in this browser.');
+    }
+    const options = serviceWorkerRegistration ? { serviceWorkerRegistration } : {};
+    const token = await messaging.getToken(options);
+    if (!token) throw new Error('A notification token could not be created. Check your browser notification settings.');
+    return token;
+  }
+
+  function onPushMessage(handler) {
+    if (!messaging || typeof messaging.onMessage !== 'function') return () => {};
+    return messaging.onMessage(handler);
+  }
+
   async function call(name, data = {}) {
     // Public catalogue data changes relatively slowly. Reuse it briefly while
     // a visitor moves between pages so navigation does not repeatedly wait on
@@ -149,5 +165,5 @@
     }
   }
 
-  window.SkyDreamFirebase = { functions, auth, call, friendlyError, ensureAppCheckToken };
+  window.SkyDreamFirebase = { functions, auth, messaging, call, friendlyError, ensureAppCheckToken, getPushToken, onPushMessage };
 })();

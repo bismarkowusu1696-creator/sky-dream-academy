@@ -2,6 +2,8 @@
   let portal = null;
   let loadPromise = null;
   let qrHandled = false;
+  let serviceWorkerRegistration = null;
+  let pushStatus = { enabled:false, devices:0 };
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const friendlyDate = value => {const d=new Date((value||'').length===10?value+'T00:00:00':value||'');return Number.isNaN(d.getTime())?(value||''):d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});};
@@ -67,6 +69,45 @@
     $('portalNoticeList').innerHTML=(portal.notices||[]).length?(portal.notices||[]).map(n=>`<div class="card"><small class="hint">${esc(friendlyDate(n.date))}</small><p class="pre-wrap">${esc(n.message)}</p></div>`).join(''):'<p>No current announcements.</p>';
     setBadge('portalMessageBadge',Number(portal.unreadMessages)||0);
     setBadge('portalNotificationBadge',notifications.length);
+  }
+
+  function renderPushStatus(){
+    const status=$('portalPushStatus'),enable=$('portalEnablePush'),disable=$('portalDisablePush');
+    if(!status||!enable||!disable)return;
+    const supported=('Notification' in window)&&('serviceWorker' in navigator)&&SkyDreamFirebase&&SkyDreamFirebase.messaging;
+    if(!supported){status.textContent='Push notifications are not supported in this browser.';enable.classList.add('hidden');disable.classList.add('hidden');return;}
+    if(pushStatus.enabled){
+      status.textContent='Enabled on '+(pushStatus.devices||1)+' device(s).';
+      disable.classList.remove('hidden');
+      enable.classList.toggle('hidden',Notification.permission==='granted');
+    }else{
+      status.textContent=Notification.permission==='denied'?'Notifications are blocked in this browser. Allow them in site settings first.':'Notifications are not enabled for your account.';
+      enable.classList.remove('hidden');disable.classList.add('hidden');
+    }
+  }
+
+  async function loadPushStatus(){
+    if(!SkyDreamFirebase.auth.currentUser)return;
+    pushStatus=await SkyDreamFirebase.call('studentGetPushStatus');
+    renderPushStatus();
+  }
+
+  async function enablePush(){
+    if(!('Notification' in window)||!('serviceWorker' in navigator)||!SkyDreamFirebase.messaging)throw new Error('Push notifications are not supported in this browser.');
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted'){renderPushStatus();throw new Error('Notifications were not enabled. Allow them in your browser/site settings and try again.');}
+    const registration=(await ensurePortalServiceWorker())||await navigator.serviceWorker.ready;
+    const token=await SkyDreamFirebase.getPushToken(registration);
+    await SkyDreamFirebase.call('studentRegisterPushToken',{token});
+    await loadPushStatus();
+    alert('SkyDream message notifications are enabled.');
+  }
+
+  async function disablePush(){
+    if(!confirm('Disable SkyDream push notifications for all devices connected to your student account?'))return;
+    await SkyDreamFirebase.call('studentUnregisterPushToken',{});
+    pushStatus={enabled:false,devices:0};renderPushStatus();
+    alert('SkyDream push notifications are disabled.');
   }
 
   async function markMessagesRead(){

@@ -32,7 +32,7 @@
     <p class="hint mt-18">Use the registration desk to review records, apply filters, and export registration reports. Only the main administrator can set or reset staff PINs.</p>
   </section>
   <section id="registrationStaff" class="dashboard-panel">
-    <div class="dashboard-top"><div><h2>Student registrations</h2><p class="hint">Search, filter and export registration records.</p></div><div class="toolbar"><button id="registrationStaffExport" class="btn btn-primary btn-small" type="button">Export filtered CSV</button><button id="registrationStaffExportAll" class="btn btn-outline btn-small" type="button">Export all CSV</button></div></div>
+    <div class="dashboard-top"><div><h2>Student registrations</h2><p class="hint">Search, filter, export, and edit registration records. Use the Edit button beside a student.</p></div><div class="toolbar"><button id="registrationStaffExport" class="btn btn-primary btn-small" type="button">Export filtered CSV</button><button id="registrationStaffExportAll" class="btn btn-outline btn-small" type="button">Export all CSV</button></div></div>
     <div class="toolbar mt-14">
       <input id="registrationStaffSearch" type="search" aria-label="Search registrations" placeholder="Search name, registration no. or phone">
       <select id="registrationStaffCourse" aria-label="Filter by program"><option value="">All programs</option></select>
@@ -55,6 +55,26 @@
     <div class="card mt-18"><h3>Registration status breakdown</h3><div id="registrationStaffStatusBars"></div></div>
   </section>
 </main>
+</div>
+<div id="registrationStaffEditModal" class="modal hidden">
+  <div class="modal-card">
+    <div class="dashboard-top"><div><h2>Edit registration</h2><p id="registrationEditIdentity" class="hint"></p></div><button id="registrationEditClose" class="btn btn-outline btn-small" type="button">Close</button></div>
+    <form id="registrationStaffEditForm">
+      <input id="registrationEditId" type="hidden">
+      <input id="registrationEditVersion" type="hidden">
+      <div class="form-grid">
+        <div class="field full"><label for="registrationEditName">Full name</label><input id="registrationEditName" maxlength="120" required></div>
+        <div class="field"><label for="registrationEditMobile">Mobile number</label><input id="registrationEditMobile" inputmode="tel" autocomplete="off" pattern="0[0-9]{9}" maxlength="10" required></div>
+        <div class="field"><label for="registrationEditWhatsapp">WhatsApp (optional)</label><input id="registrationEditWhatsapp" inputmode="tel" autocomplete="off" pattern="(0[0-9]{9})?" maxlength="10"></div>
+        <div class="field"><label for="registrationEditEmail">Email (optional)</label><input id="registrationEditEmail" type="email" maxlength="160"></div>
+        <div class="field"><label for="registrationEditCourse">Program</label><select id="registrationEditCourse" required></select></div>
+        <div class="field full"><label for="registrationEditAddress">Address</label><input id="registrationEditAddress" maxlength="200"></div>
+        <div id="registrationEditStatusField" class="field"><label for="registrationEditStatus">Registration status</label><select id="registrationEditStatus"><option value="Registered">Registered</option><option value="Cancelled">Cancelled</option></select></div>
+      </div>
+      <p class="hint">Changing a mobile number changes the number used to sign in to the Student Portal. Changing a program may issue a new registration number. Payments, intake, identity documents and attendance cannot be edited here.</p>
+      <div class="modal-actions"><button id="registrationEditSubmit" class="btn btn-primary" type="submit">Save registration</button></div>
+    </form>
+  </div>
 </div>
 <div id="dashboardShell" class="dashboard-shell hidden"><aside class="dashboard-sidebar"><a class="brand sidebar-brand" href="/"><img src="logo.png" alt="SkyDream logo"><span>SkyDream Admin</span></a><nav><a href="#overview">Overview</a><a href="#students">Students</a><a href="#capacity">Capacity</a><a href="#facilitators">Facilitators</a><a href="#admins">Admins</a><a href="#messages">Messages</a><a href="#waitlist">Waitlist</a><a href="#account">Account</a><button id="logoutBtn">Sign out</button></nav></aside><main class="dashboard-main"><div class="dashboard-top"><div><h1 class="dashboard-heading">Administration</h1><div id="adminIdentity" class="hint"></div></div><a class="btn btn-outline btn-small" href="/" target="_blank">Open public site</a></div>
 <section id="overview" class="dashboard-panel"><h2>Overview</h2><p id="intakeSummary"></p><div id="adminStats" class="grid grid-4"></div></section>

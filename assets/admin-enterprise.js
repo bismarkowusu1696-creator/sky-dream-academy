@@ -3,6 +3,7 @@
   let importCsv = '';
   let recoveryStatus = null;
   let freshRecoveryCodes = [];
+  let bulkPreview = null;
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const date = v => { const d = new Date(v || ''); return Number.isNaN(d.getTime()) ? (v || '') : d.toLocaleString('en-GB'); };
@@ -41,6 +42,7 @@
   function inject(){
     nav('#enterpriseSecurity','Security & Devices');
     nav('#notificationsCenter','Notifications');
+    nav('#bulkStudentCommunication','Bulk Communication');
     nav('#studentRiskCenter','AI Risk Centre');
     nav('#smartNotificationRules','Smart Rules');
     nav('#adminAssistant','Admin Assistant');
@@ -59,6 +61,17 @@
       <div id="recoveryCodeCard" class="card mt-16 hidden"><div class="dashboard-top"><div><h3 class="m-0">Owner recovery codes</h3><p id="recoveryCodeStatus" class="hint">Loading…</p></div><button id="generateRecoveryCodes" class="btn btn-outline btn-small" type="button">Generate recovery codes</button></div><p class="hint">Recovery codes are one-time owner credentials for resetting a forgotten password. Generating a new set invalidates every previous code. Keep them offline and private. Password recovery does not disable authenticator 2-step verification.</p><div id="recoveryCodeOutput" class="hidden mt-12"></div></div>
       <div id="sessionList" class="grid mt-16"></div>`,'account');
     section('notificationsCenter','Notification Centre',`<p class="hint">New registrations, enquiries, capacity warnings, attendance warnings and deadlines appear here.</p><div id="notificationList" class="grid"></div>`,'account');
+    section('bulkStudentCommunication','Bulk Student Communication',`
+      <p class="hint">Send one private Student Portal message to a selected audience. Students who enabled phone notifications will also receive a generic “You have a new SkyDream message” push alert.</p>
+      <div id="webPushSetupCard" class="card hidden"><h3>Web Push setup</h3><p id="webPushSetupStatus" class="hint">Loading…</p><div class="form-grid"><div class="field full"><label>Firebase Web Push public key</label><input id="webPushVapidKey" autocomplete="off" spellcheck="false" placeholder="Paste the public VAPID key from Firebase Cloud Messaging"></div><div class="field full"><button id="saveWebPushVapidKey" class="btn btn-outline btn-small" type="button">Save Web Push Key</button></div></div></div>
+      <div class="card mt-14"><div class="form-grid">
+        <div class="field"><label>Audience</label><select id="bulkTarget"><option value="course">Whole program — current intake</option><option value="intake">Specific intake</option><option value="owing-fees">Students owing fees — current intake</option><option value="low-attendance">Low-attendance students — current intake</option></select></div>
+        <div id="bulkCourseField" class="field"><label>Program</label><select id="bulkCourse"></select></div>
+        <div id="bulkIntakeField" class="field hidden"><label>Intake</label><select id="bulkIntake"></select></div>
+        <div id="bulkAttendanceField" class="field hidden"><label>Attendance below</label><input id="bulkAttendanceThreshold" type="number" min="40" max="95" value="70"><span class="hint">Students need at least 3 recorded attendance sessions.</span></div>
+        <div class="field full"><label>Portal message</label><textarea id="bulkMessage" rows="4" maxlength="1500" placeholder="Type the message students should see in their portal."></textarea></div>
+      </div><div class="toolbar"><button id="previewBulkMessage" class="btn btn-outline" type="button">Preview Recipients</button><button id="sendBulkMessage" class="btn btn-primary" type="button" disabled>Send Message</button></div></div>
+      <div id="bulkPreviewResult" class="mt-14"></div>`,'account');
     section('studentRiskCenter','AI Student Risk Centre',`
       <p class="hint">Explainable risk scoring uses attendance, consecutive absences, inactivity and outstanding fees. It does not make final decisions for you.</p>
       <div id="riskSummary" class="admin-suite-grid"></div>
@@ -103,9 +116,11 @@
   async function refresh(){ data=await call('adminGetEnterpriseSnapshot'); render(); if(data.account&&data.account.role==='owner')loadRecoveryStatus().catch(e=>console.warn('Recovery status could not load',e)); }
   function queueRefresh(){setTimeout(()=>refresh().catch(e=>console.warn('Background enterprise refresh failed',e)),1600);}
   function queueRecycle(){setTimeout(()=>loadRecycle().catch(e=>console.warn('Background recycle refresh failed',e)),1600);}
-  function render(){ if(!data)return; renderSecurity();renderNotifications();renderRisk();renderSmartRules();renderCohorts();renderSessions();renderPerformance();renderNotes();renderHistory();populateSelectors(); }
+  function render(){ if(!data)return; renderSecurity();renderNotifications();renderRisk();renderSmartRules();renderWebPushSetup();renderCohorts();renderSessions();renderPerformance();renderNotes();renderHistory();populateSelectors(); }
   function populateSelectors(){
     if($('classCourse')) $('classCourse').innerHTML=Object.entries(data.courses||{}).map(([id,n])=>`<option value="${esc(id)}">${esc(n)}</option>`).join('');
+    if($('bulkCourse')) $('bulkCourse').innerHTML=Object.entries(data.courses||{}).map(([id,n])=>`<option value="${esc(id)}">${esc(n)}</option>`).join('');
+    if($('bulkIntake')) $('bulkIntake').innerHTML=(data.cohorts||[]).map(c=>`<option value="${esc(c.intakeStart)}">${esc(c.label||c.intakeStart)} (${Number(c.students)||0})</option>`).join('');
     if($('classFacilitator')) $('classFacilitator').innerHTML='<option value="">Any assigned facilitator</option>'+(data.facilitators||[]).map(f=>`<option value="${esc(f.id)}">${esc(f.name)}</option>`).join('');
     renderNoteTargets();
     if($('sessionEnforcement')) $('sessionEnforcement').checked=!!(data.settings&&data.settings.sessionEnforcement);
@@ -150,6 +165,69 @@
   }
 
   function renderNotifications(){ $('notificationList').innerHTML=(data.notifications||[]).map(n=>`<div class="card" data-notification-card="${esc(n.id)}"><div class="dashboard-top"><strong>${esc(n.title)}</strong><small>${esc(date(n.date))}</small></div><p>${esc(n.message)}</p><button class="btn btn-outline btn-small" data-dismiss-notification="${esc(n.id)}">Dismiss</button></div>`).join('')||'<p>No notifications need your attention.</p>'; }
+
+  function renderWebPushSetup(){
+    const card=$('webPushSetupCard'),status=$('webPushSetupStatus'),input=$('webPushVapidKey');
+    if(!card||!status||!input)return;
+    const owner=data&&data.account&&data.account.role==='owner';
+    card.classList.toggle('hidden',!owner);
+    if(!owner)return;
+    const key=data.settings&&data.settings.webPushVapidKey||'';
+    input.value=key;
+    status.textContent=key?'Configured — students can enable push notifications on supported browsers.':'Not configured — Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate Key Pair, then paste the public key here.';
+  }
+  async function saveWebPushVapidKey(){
+    const key=$('webPushVapidKey').value.trim();
+    if(!key){alert('Paste the public Web Push key first.');return;}
+    const b=$('saveWebPushVapidKey');await withBusy(b,'Saving…',async()=>{
+      await call('adminSetWebPushVapidKey',{vapidKey:key});
+      data.settings=data.settings||{};data.settings.webPushVapidKey=key;renderWebPushSetup();
+      alert('SkyDream Web Push is configured.');
+    });
+  }
+
+  function updateBulkTargetFields(){
+    if(!$('bulkTarget'))return;
+    const target=$('bulkTarget').value;
+    $('bulkCourseField').classList.toggle('hidden',target!=='course');
+    $('bulkIntakeField').classList.toggle('hidden',target!=='intake');
+    $('bulkAttendanceField').classList.toggle('hidden',target!=='low-attendance');
+    bulkPreview=null;$('sendBulkMessage').disabled=true;$('bulkPreviewResult').innerHTML='';
+  }
+  function bulkPayload(){
+    const target=$('bulkTarget').value;
+    return{
+      target,
+      value:target==='course'?$('bulkCourse').value:(target==='intake'?$('bulkIntake').value:''),
+      attendanceThreshold:Number($('bulkAttendanceThreshold').value)||70,
+      minAttendanceMarks:3
+    };
+  }
+  function renderBulkPreview(result){
+    bulkPreview={...bulkPayload(),count:Number(result.count)||0};
+    const sample=result.sample||[],host=$('bulkPreviewResult');
+    host.innerHTML=`<div class="card"><strong>${bulkPreview.count} student(s) selected</strong><p class="hint">Recipient selection is recalculated again when you press Send.</p></div>`+
+      (sample.length?`<div class="table-wrap"><table class="table"><thead><tr><th>Student</th><th>Reg no.</th><th>Program</th><th>Intake</th></tr></thead><tbody>${sample.map(s=>`<tr><td>${esc(s.fullName)}</td><td>${esc(s.regNumber)}</td><td>${esc(s.courseName)}</td><td>${esc(s.intakeStart||'')}</td></tr>`).join('')}</tbody></table></div>`:'');
+    $('sendBulkMessage').disabled=bulkPreview.count<1;
+  }
+  async function previewBulkMessage(){
+    const b=$('previewBulkMessage');await withBusy(b,'Checking…',async()=>{const result=await call('adminPreviewBulkStudentMessage',bulkPayload());renderBulkPreview(result);});
+  }
+  async function sendBulkMessage(){
+    const body=$('bulkMessage').value.trim();if(!body){alert('Enter the portal message first.');return;}
+    const preview=await call('adminPreviewBulkStudentMessage',bulkPayload());
+    if(!preview.count){renderBulkPreview(preview);alert('No students match this audience.');return;}
+    renderBulkPreview(preview);
+    if(!confirm(`Send this private portal message to ${preview.count} student(s)?`))return;
+    const b=$('sendBulkMessage');await withBusy(b,'Sending…',async()=>{
+      const result=await call('adminSendBulkStudentMessage',{...bulkPayload(),message:body});
+      const pushed=result.push&&result.push.sent||0;
+      alert(`Message sent to ${result.recipients||0} student(s). Push notification delivered to ${pushed} subscribed device(s).`);
+      $('bulkMessage').value='';bulkPreview=null;$('sendBulkMessage').disabled=true;$('bulkPreviewResult').innerHTML='';
+      queueRefresh();
+    });
+  }
+
 
   function renderRisk(){
     if(!$('riskTableBody'))return;
@@ -217,6 +295,14 @@
     $('disable2fa').onclick=async()=>{const code=prompt('Enter your current 6-digit authenticator code to disable 2-step verification:');if(code===null)return;try{await call('adminDisableTwoFactor',{code});data.twoFactorEnabled=false;renderSecurity();alert('2-step verification disabled.');queueRefresh();}catch(e){alert(SkyDreamFirebase.friendlyError(e));}};
     $('signOutAllDevices').onclick=async()=>{if(!confirm('Sign out every session for your admin account?'))return;await call('adminRevokeAllSessions',{});await SkyDreamFirebase.auth.signOut();location.reload();};
     $('generateRecoveryCodes').onclick=()=>generateRecoveryCodes().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    $('saveWebPushVapidKey').onclick=()=>saveWebPushVapidKey().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    $('bulkTarget').onchange=updateBulkTargetFields;
+    $('bulkCourse').onchange=updateBulkTargetFields;
+    $('bulkIntake').onchange=updateBulkTargetFields;
+    $('bulkAttendanceThreshold').oninput=updateBulkTargetFields;
+    $('previewBulkMessage').onclick=()=>previewBulkMessage().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    $('sendBulkMessage').onclick=()=>sendBulkMessage().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    updateBulkTargetFields();
     $('csvFile').onchange=e=>{const f=e.target.files&&e.target.files[0];importCsv='';$('commitImport').disabled=true;if(!f)return;const rd=new FileReader();rd.onload=()=>{importCsv=String(rd.result||'');$('importSummary').textContent=`Loaded ${f.name}. Click Preview.`;};rd.readAsText(f);};
     $('previewImport').onclick=()=>previewImport().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
     $('commitImport').onclick=async()=>{if(!confirm('Import all valid rows and skip detected duplicates?'))return;const b=$('commitImport');await withBusy(b,'Importing…',async()=>{const r=await call('adminCommitStudentImport',{csv:importCsv,skipDuplicates:true});alert(`${r.imported} imported; ${r.skipped} skipped.`);queueRefresh();});};

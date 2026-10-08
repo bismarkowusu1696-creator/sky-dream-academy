@@ -2,6 +2,8 @@
   let portal = null;
   let loadPromise = null;
   let qrHandled = false;
+  let serviceWorkerRegistration = null;
+  let pushStatus = { enabled:false, devices:0 };
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const friendlyDate = value => {const d=new Date((value||'').length===10?value+'T00:00:00':value||'');return Number.isNaN(d.getTime())?(value||''):d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});};
@@ -36,6 +38,7 @@
       try{
         portal=await SkyDreamFirebase.call('getStudentPortalDashboard');
         render();
+        loadPushStatus().catch(err=>console.warn('Push status could not load.',err));
         if(location.hash==='#portalMessages')await markMessagesRead();
         await processQrCheckIn();
       }catch(err){
@@ -69,6 +72,47 @@
     setBadge('portalNotificationBadge',notifications.length);
   }
 
+  function renderPushStatus(){
+    const status=$('portalPushStatus'),enable=$('portalEnablePush'),disable=$('portalDisablePush');
+    if(!status||!enable||!disable)return;
+    const supported=('Notification' in window)&&('serviceWorker' in navigator)&&SkyDreamFirebase&&SkyDreamFirebase.messaging;
+    if(!supported){status.textContent='Push notifications are not supported in this browser.';enable.classList.add('hidden');disable.classList.add('hidden');return;}
+    if(pushStatus.enabled){
+      status.textContent='Enabled on '+(pushStatus.devices||1)+' device(s).';
+      disable.classList.remove('hidden');
+      enable.classList.toggle('hidden',Notification.permission==='granted');
+    }else{
+      status.textContent=Notification.permission==='denied'?'Notifications are blocked in this browser. Allow them in site settings first.':'Notifications are not enabled for your account.';
+      enable.classList.remove('hidden');disable.classList.add('hidden');
+    }
+  }
+
+  async function loadPushStatus(){
+    if(!SkyDreamFirebase.auth.currentUser)return;
+    pushStatus=await SkyDreamFirebase.call('studentGetPushStatus');
+    renderPushStatus();
+  }
+
+  async function enablePush(){
+    if(!('Notification' in window)||!('serviceWorker' in navigator)||!SkyDreamFirebase.messaging)throw new Error('Push notifications are not supported in this browser.');
+    const permission=await Notification.requestPermission();
+    if(permission!=='granted'){renderPushStatus();throw new Error('Notifications were not enabled. Allow them in your browser/site settings and try again.');}
+    const config=await SkyDreamFirebase.call('studentGetPushConfig');
+    if(!config.configured||!config.vapidKey)throw new Error('SkyDream phone notifications are not configured yet. Please contact the academy administrator.');
+    const registration=(await ensurePortalServiceWorker())||await navigator.serviceWorker.ready;
+    const token=await SkyDreamFirebase.getPushToken(registration,config.vapidKey);
+    await SkyDreamFirebase.call('studentRegisterPushToken',{token});
+    await loadPushStatus();
+    alert('SkyDream message notifications are enabled.');
+  }
+
+  async function disablePush(){
+    if(!confirm('Disable SkyDream push notifications for all devices connected to your student account?'))return;
+    await SkyDreamFirebase.call('studentUnregisterPushToken',{});
+    pushStatus={enabled:false,devices:0};renderPushStatus();
+    alert('SkyDream push notifications are disabled.');
+  }
+
   async function markMessagesRead(){
     if(!portal)return;
     const ids=(portal.messages||[]).filter(m=>!m.readAt).map(m=>m.id).filter(Boolean);
@@ -98,19 +142,33 @@
     }
   }
 
-  function ensurePortalServiceWorker(){
-    if(!('serviceWorker' in navigator))return;
-    navigator.serviceWorker.register('/service-worker.js',{scope:'/'})
-      .then(reg=>reg.update().catch(()=>{}))
-      .catch(err=>console.warn('Portal service worker registration failed',err));
+  async function ensurePortalServiceWorker(){
+    if(!('serviceWorker' in navigator))return null;
+    if(serviceWorkerRegistration)return serviceWorkerRegistration;
+    try{
+      serviceWorkerRegistration=await navigator.serviceWorker.register('/service-worker.js',{scope:'/'});
+      serviceWorkerRegistration.update().catch(()=>{});
+      return serviceWorkerRegistration;
+    }catch(err){
+      console.warn('Portal service worker registration failed',err);
+      return null;
+    }
   }
 
   document.addEventListener('DOMContentLoaded',()=>{
     ensurePortalServiceWorker();
     $('portalLoginForm').addEventListener('submit',login);
     $('portalLogout').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
+    $('portalEnablePush').addEventListener('click',()=>enablePush().catch(err=>alert(SkyDreamFirebase.friendlyError(err))));
+    $('portalDisablePush').addEventListener('click',()=>disablePush().catch(err=>alert(SkyDreamFirebase.friendlyError(err))));
     document.addEventListener('click',event=>{if(event.target.closest('a[href="#portalMessages"]'))markMessagesRead();});
     window.addEventListener('hashchange',()=>{if(location.hash==='#portalMessages')markMessagesRead();});
+    if(SkyDreamFirebase.onPushMessage){
+      SkyDreamFirebase.onPushMessage(async()=>{
+        message('You have a new SkyDream message.','info');
+        try{portal=await SkyDreamFirebase.call('getStudentPortalDashboard');render();}catch(_){}
+      });
+    }
     SkyDreamFirebase.auth.onAuthStateChanged(async user=>{
       if(!user)return;
       try{const token=await user.getIdTokenResult();if(token.claims.role==='student')await load();else await SkyDreamFirebase.auth.signOut();}catch(_){await SkyDreamFirebase.auth.signOut();}

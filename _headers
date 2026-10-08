@@ -40,6 +40,9 @@
 /assets/admin-enterprise.js
   Cache-Control: no-store, max-age=0
 
+/assets/admin-recovery.js
+  Cache-Control: no-store, max-age=0
+
 /assets/student-portal.js
   Cache-Control: no-cache, max-age=0, must-revalidate
 

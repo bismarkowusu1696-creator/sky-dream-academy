@@ -5,6 +5,7 @@
   const today=()=>new Date().toISOString().slice(0,10);
   const date=v=>{const d=new Date(v||'');return Number.isNaN(d.getTime())?'—':d.toLocaleString('en-GB',{timeZone:'Africa/Accra'});};
   let desk=null,info=null,prevUnread=null,busy=null;
+  let dirtyTracking=false, trackingStudentId='';
   const students=()=>desk&&Array.isArray(desk.students)?desk.students:[];
   const courses=()=>desk&&desk.courses||{};
   const msg=(t,type='info')=>{const el=$('deskOperationsNotice');el.textContent=t;el.className='notice notice-'+type;};
@@ -15,10 +16,14 @@
     const selected=$('deskStudentSelect').value;
     $('deskStudentSelect').innerHTML=studentOptions(rows);
     if(rows.some(s=>s.id===selected))$('deskStudentSelect').value=selected;
+    // Never reset an unsaved note just because a 90-second refresh arrived.
+    if(dirtyTracking && trackingStudentId===$('deskStudentSelect').value)return;
     showStudentTracking();
   }
   function showStudentTracking(){
-    const x=info&&info.workflow&&info.workflow[$('deskStudentSelect').value]||{};
+    trackingStudentId=$('deskStudentSelect').value;
+    dirtyTracking=false;
+    const x=info&&info.workflow&&info.workflow[trackingStudentId]||{};
     $('deskVerification').value=x.verification||'Pending review';
     $('deskFollowup').value=x.followUp||'Not contacted';
     $('deskFollowupDate').value=x.followUpDate||'';
@@ -51,7 +56,7 @@
     $('deskAlertBadge').textContent=String(info.unreadCount||0);
     $('deskAlertBadge').classList.toggle('hidden',!info.unreadCount);
     $('deskNewRegistrations').innerHTML=fresh.length?
-      '<table class="table"><thead><tr><th>Received</th><th>Student</th><th>Program</th></tr></thead><tbody>'+
+      '<p class="hint">Showing the latest '+fresh.length+' of '+Number(info.unreadCount||0)+' unseen registrations.</p><table class="table"><thead><tr><th>Received</th><th>Student</th><th>Program</th></tr></thead><tbody>'+
       fresh.map(s=>'<tr><td>'+esc(date(s.date))+'</td><td>'+esc(s.fullName)+'</td><td>'+
         esc(courses()[s.course]||s.course)+'</td></tr>').join('')+'</tbody></table>':
       '<p>No unread registration alerts.</p>';
@@ -96,28 +101,20 @@
       audits.map(a=>'<tr><td>'+esc(date(a.date))+'</td><td>'+esc(a.action)+'</td><td>'+
         esc(a.target||'—')+'</td></tr>').join('')+'</tbody></table>':'<p>No recorded staff activity yet.</p>';
   }
-  function dailyData(){
-    const day=$('deskDailyDate').value||today(),selected=students().filter(s=>String(s.regDate||'').slice(0,10)===day),
-      workflow=info&&info.workflow||{},perProgram={};
-    for(const s of selected){
-      const id=s.course||'Unspecified';
-      const item=perProgram[id]||(perProgram[id]={total:0,registered:0,cancelled:0,verified:0,corrections:0,callbacks:0});
-      const tracking=workflow[s.id]||{};
-      item.total++;
-      if(s.status==='Cancelled')item.cancelled++;else item.registered++;
-      if(tracking.verification==='Verified')item.verified++;
-      if(tracking.verification==='Needs correction')item.corrections++;
-      if(tracking.followUp==='Callback needed')item.callbacks++;
-    }
-    return{day,selected,perProgram};
-  }
-  function renderDaily(){
-    const result=dailyData();
-    $('deskDailyPreview').innerHTML='<p><strong>'+result.selected.length+'</strong> registrations received on '+esc(result.day)+
-      ' (other statuses are current, not historical).</p>'+
-      (Object.keys(result.perProgram).length?'<table class="table"><thead><tr><th>Program</th><th>New</th><th>Verified</th><th>Needs correction</th><th>Callbacks</th></tr></thead><tbody>'+
-        Object.entries(result.perProgram).map(([id,v])=>'<tr><td>'+esc(courses()[id]||id)+'</td><td>'+v.total+
-          '</td><td>'+v.verified+'</td><td>'+v.corrections+'</td><td>'+v.callbacks+'</td></tr>').join('')+
+  let dailyReport=null;
+  async function renderDaily(){
+    const day=$('deskDailyDate').value||today();
+    const data=await call('adminDeskGetDailyReport',{day});
+    if(($('deskDailyDate').value||today())!==day)return;
+    dailyReport=data;
+    const report=data.report,grouped=report.perProgram||{};
+    const count=Object.values(grouped).reduce((sum,x)=>sum+(Number(x.total)||0),0);
+    $('deskDailyPreview').innerHTML='<p><strong>'+count+'</strong> new registrations received '+esc(day)+
+      '. <strong>'+(data.frozen?'Frozen snapshot':'Live draft')+'</strong>, statuses captured '+esc(date(report.capturedAt))+
+      '. Past dates are frozen on first report access; earlier historical status changes cannot be reconstructed.</p>'+
+      (Object.keys(grouped).length?'<table class="table"><thead><tr><th>Program</th><th>New</th><th>Verified</th><th>Corrections</th><th>Callbacks</th></tr></thead><tbody>'+
+      Object.entries(grouped).map(([id,v])=>'<tr><td>'+esc(courses()[id]||id)+'</td><td>'+Number(v.total||0)+
+        '</td><td>'+Number(v.verified||0)+'</td><td>'+Number(v.corrections||0)+'</td><td>'+Number(v.callbacks||0)+'</td></tr>').join('')+
         '</tbody></table>':'<p>No registrations on this date.</p>');
   }
   const csvCell=value=>{let s=String(value==null?'':value).replace(/^\s+/,'');if(/^[=+\-@\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"';};
@@ -136,7 +133,7 @@
         msg('New registrations have arrived. Open Capacity & Alerts to review them.','info');
       }
       prevUnread=latest.unreadCount;info=latest;
-      renderTracking();renderCapacity();renderOnboarding();renderMessages();renderDaily();
+      renderTracking();renderCapacity();renderOnboarding();renderMessages();await renderDaily();
     })();
     try{return await busy;}finally{busy=null;}
   }
@@ -144,7 +141,17 @@
   function bind(){
     $('deskDailyDate').value=today();
     $('deskStudentSearch').addEventListener('input',filterStudents);
-    $('deskStudentSelect').addEventListener('change',showStudentTracking);
+    $('deskStudentSelect').addEventListener('change',()=>{
+      if(dirtyTracking && !confirm('Discard unsaved verification or follow-up changes?')){
+        $('deskStudentSelect').value=trackingStudentId;
+        return;
+      }
+      showStudentTracking();
+    });
+    for(const id of ['deskVerification','deskFollowup','deskFollowupDate','deskFollowupNote']){
+      $(id).addEventListener('input',()=>{dirtyTracking=true;});
+      $(id).addEventListener('change',()=>{dirtyTracking=true;});
+    }
     $('deskTrackingForm').addEventListener('submit',async event=>{
       event.preventDefault();
       if(!$('deskStudentSelect').value)return;
@@ -153,11 +160,13 @@
         await call('adminDeskSaveTracking',{studentId:$('deskStudentSelect').value,
           verification:$('deskVerification').value,followUp:$('deskFollowup').value,
           followUpDate:$('deskFollowupDate').value,note:$('deskFollowupNote').value});
+        dirtyTracking=false;
         await refresh();msg('Verification and follow-up saved.','success');
       }catch(e){msg(SkyDreamFirebase.friendlyError(e),'error');}finally{button.disabled=false;}
     });
     $('deskPendingTable').addEventListener('click',event=>{
       const b=event.target.closest('[data-workflow-focus]');if(!b)return;
+      if(dirtyTracking && !confirm('Discard unsaved verification or follow-up changes?'))return;
       $('deskStudentSearch').value='';filterStudents();
       $('deskStudentSelect').value=b.dataset.workflowFocus;showStudentTracking();
       location.hash='deskWorkflow';$('deskVerification').focus();
@@ -191,16 +200,20 @@
         await refresh();msg('Approved message delivered to the Student Portal.','success');
       }catch(e){msg(SkyDreamFirebase.friendlyError(e),'error');}finally{button.disabled=false;}
     });
-    $('deskDailyDate').addEventListener('change',renderDaily);
+    $('deskDailyDate').addEventListener('change',()=>renderDaily().catch(error=>msg(SkyDreamFirebase.friendlyError(error),'error')));
     $('deskDailyDownload').addEventListener('click',async()=>{
       if(!info)return;
-      const {day,perProgram}=dailyData(),button=$('deskDailyDownload');
-      const rows=[['Registration date','Program','New','Not cancelled (current)',
-        'Cancelled (current)','Verified (current)','Needs correction (current)','Callbacks (current)']];
-      for(const [id,v] of Object.entries(perProgram))rows.push([day,courses()[id]||id,v.total,
-        v.registered,v.cancelled,v.verified,v.corrections,v.callbacks]);
+      const day=$('deskDailyDate').value||today(),button=$('deskDailyDownload');
+      const rows=[['Registration date','Snapshot captured at','Program','New','Not cancelled (captured)',
+        'Cancelled (captured)','Verified (captured)','Needs correction (captured)','Callbacks (captured)']];
       button.disabled=true;
       try{
+        const current=await call('adminDeskGetDailyReport',{day});
+        const snap=current.report;
+        for(const [id,v] of Object.entries(snap.perProgram||{})){
+          rows.push([day,snap.capturedAt,courses()[id]||id,v.total,
+            v.registered,v.cancelled,v.verified,v.corrections,v.callbacks]);
+        }
         await call('adminDeskLogExport',{kind:'daily'});
         csvDownload('SkyDream-Daily-Registration-'+day+'.csv',rows);
         await refresh();msg('Daily report exported.','success');

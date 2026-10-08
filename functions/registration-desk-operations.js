@@ -22,6 +22,17 @@ module.exports = function installRegistrationDeskOperations(app, env) {
   };
   const readTx = (snapshot, fallback) =>
     snapshot.exists ? parse((snapshot.data() || {}).value, fallback) : fallback;
+  // New tracking entries are stored per student/facilitator to avoid
+  // continually expanding one shared 1 MiB-limited Firestore document.
+  // Older map-based entries remain readable until explicitly migrated.
+  async function readTrackingRows(legacyKey, collectionName){
+    const [legacy,snapshot]=await Promise.all([
+      readStorage(legacyKey,{}),db.collection(collectionName).get()
+    ]);
+    const rows=legacy&&typeof legacy==='object'&&!Array.isArray(legacy)?{...legacy}:{};
+    for(const document of snapshot.docs)rows[document.id]=document.data();
+    return rows;
+  }
   const nowIso = () => new Date().toISOString();
   const trim = (value, max) => clean(value, max);
   const VERIFICATION = ['Pending review', 'Verified', 'Needs correction'];
@@ -44,7 +55,10 @@ module.exports = function installRegistrationDeskOperations(app, env) {
   const recordAudit = (tx, ref, snapshot, entry) => {
     const values = readTx(snapshot, []);
     if (!Array.isArray(values)) throw new HttpsError('internal','Audit records are unavailable.');
+    // Preserve legacy recent activity while also retaining an immutable
+    // per-entry audit document that does not disappear at 1,000 actions.
     tx.set(ref,{ value: JSON.stringify([...values, entry].slice(-1000)) });
+    tx.create(db.collection('sdta_admin_audit_archive').doc(entry.id), entry);
   };
   const validDate = value => value === '' || (/^\d{4}-\d{2}-\d{2}$/.test(value) &&
     !Number.isNaN(Date.parse(value+'T00:00:00Z')) &&
@@ -60,7 +74,7 @@ module.exports = function installRegistrationDeskOperations(app, env) {
   function formatTemplate(template, student, intake) {
     const replacements = {
       student: String(student.fullName || ''),
-      program: String(student.course || '').replace(/-/g,' '),
+      program: String(env.registrationCourses[student.course] || student.course || ''),
       registration: String(student.regNumber || ''),
       orientation_date: String(intake && intake.startDate || '')
     };
@@ -73,7 +87,8 @@ module.exports = function installRegistrationDeskOperations(app, env) {
     const [students, facilitators, workflow, onboarding, capacity, templates, cursorMap, audit, intake] =
       await Promise.all([
         readStorage(keys.students,[]),readStorage(keys.facilitators,[]),
-        readStorage(keys.workflow,{}),readStorage(keys.onboarding,{}),
+        readTrackingRows(keys.workflow,'sdta_registration_workflow_rows'),
+        readTrackingRows(keys.onboarding,'sdta_facilitator_onboarding_rows'),
         readStorage(keys.capacities,{}),readStorage(keys.templates,[]),
         readStorage(keys.alertCursors,{}),readStorage(keys.audit,[]),
         readStorage(keys.intake,{})
@@ -90,12 +105,16 @@ module.exports = function installRegistrationDeskOperations(app, env) {
       capacities[course]={limit,used,available:Math.max(0,limit-used)};
     }
     const cursor=String(cursorMap && cursorMap[account.username] || '');
-    // A first-time desk user sees only very recent registrations as unread.
-    const since=dateStamp(cursor) || (Date.now() - 60*60*1000);
-    const fresh=safeStudents.filter(s=>dateStamp(s.regDate)>since)
-      .sort((a,b)=>dateStamp(b.regDate)-dateStamp(a.regDate)).slice(0,20)
-      .map(s=>({id:s.id,regNumber:s.regNumber,fullName:s.fullName,course:s.course,
-        date:s.regDate}));
+    // New accounts see registrations from the current intake (or previous
+    // 30 days if an intake date is unavailable), never an arbitrary 1-hour cut.
+    const since=dateStamp(cursor) ||
+      (dateStamp(current) || (Date.now() - 30*24*60*60*1000));
+    const unread=safeStudents.filter(s=>dateStamp(s.regDate)>=since &&
+      (!current || String(s.intakeStart||'')===current || !!cursor))
+      .sort((a,b)=>dateStamp(b.regDate)-dateStamp(a.regDate));
+    const fresh=unread.slice(0,20).map(s=>({
+      id:s.id,regNumber:s.regNumber,fullName:s.fullName,course:s.course,date:s.regDate
+    }));
     const ownAudit=(Array.isArray(audit)?audit:[])
       .filter(a=>String(a.admin || '').toLowerCase()===String(account.username).toLowerCase())
       .slice(-60).reverse().map(a=>({
@@ -105,7 +124,7 @@ module.exports = function installRegistrationDeskOperations(app, env) {
       serverTime:nowIso(), currentIntake:current,
       workflow:workflow && typeof workflow==='object' && !Array.isArray(workflow)?workflow:{},
       onboarding:onboarding && typeof onboarding==='object' && !Array.isArray(onboarding)?onboarding:{},
-      capacity:capacities, newRegistrations:fresh, unreadCount:fresh.length,
+      capacity:capacities, newRegistrations:fresh, unreadCount:unread.length,
       facilitators:safeFacilitators.length,
       templates:(Array.isArray(templates)?templates:[]).filter(t=>t.approved===true).map(publicTemplate),
       ownAudit
@@ -120,21 +139,18 @@ module.exports = function installRegistrationDeskOperations(app, env) {
     const due=trim(d.followUpDate,10),note=trim(d.note,500);
     if (!studentId || !validDate(due) || String(d.note || '').trim().length>500)
       throw new HttpsError('invalid-argument','Check the student, note and follow-up date.');
-    const studRef=col.doc(keys.students),workRef=col.doc(keys.workflow),auditRef=col.doc(keys.audit);
+    const studRef=col.doc(keys.students),workRef=db.collection('sdta_registration_workflow_rows').doc(studentId),auditRef=col.doc(keys.audit);
     await db.runTransaction(async tx=>{
-      const [studSnap,workSnap,auditSnap]=await Promise.all([
-        tx.get(studRef),tx.get(workRef),tx.get(auditRef)
+      const [studSnap,auditSnap]=await Promise.all([
+        tx.get(studRef),tx.get(auditRef)
       ]);
       const students=readTx(studSnap,[]);
       const student=Array.isArray(students) && students.find(s=>s.id===studentId);
       if (!student) throw new HttpsError('not-found','Registration no longer exists.');
-      const records=readTx(workSnap,{});
-      const state=records && typeof records==='object' && !Array.isArray(records)?records:{};
-      state[studentId]={
+      tx.set(workRef,{
         verification,followUp,followUpDate:due,note,
         updatedAt:nowIso(),updatedBy:account.username
-      };
-      tx.set(workRef,{value:JSON.stringify(state)});
+      });
       recordAudit(tx,auditRef,auditSnap,auditEntry(account,
         'Updated registration verification and follow-up',String(student.regNumber||studentId),
         verification+'; '+followUp+'; due '+(due||'none')));
@@ -151,16 +167,13 @@ module.exports = function installRegistrationDeskOperations(app, env) {
       Object.keys(flags).some(k=>!allowed.includes(k) || typeof flags[k]!=='boolean')) {
       throw new HttpsError('invalid-argument','Complete the three facilitator onboarding checks.');
     }
-    const facRef=col.doc(keys.facilitators),onRef=col.doc(keys.onboarding),auditRef=col.doc(keys.audit);
+    const facRef=col.doc(keys.facilitators),onRef=db.collection('sdta_facilitator_onboarding_rows').doc(id),auditRef=col.doc(keys.audit);
     await db.runTransaction(async tx=>{
-      const [facSnap,onSnap,auditSnap]=await Promise.all([tx.get(facRef),tx.get(onRef),tx.get(auditRef)]);
+      const [facSnap,auditSnap]=await Promise.all([tx.get(facRef),tx.get(auditRef)]);
       const list=readTx(facSnap,[]);
       const fac=Array.isArray(list) && list.find(f=>f.id===id);
       if(!fac)throw new HttpsError('not-found','Facilitator was not found.');
-      const current=readTx(onSnap,{});
-      const state=current && typeof current==='object'&&!Array.isArray(current)?current:{};
-      state[id]={...flags,updatedAt:nowIso(),updatedBy:account.username};
-      tx.set(onRef,{value:JSON.stringify(state)});
+      tx.set(onRef,{...flags,updatedAt:nowIso(),updatedBy:account.username});
       recordAudit(tx,auditRef,auditSnap,auditEntry(account,'Updated facilitator onboarding',
         String(fac.username||id),allowed.filter(k=>flags[k]).join(', ')||'No checks completed'));
     });
@@ -177,6 +190,55 @@ module.exports = function installRegistrationDeskOperations(app, env) {
       tx.set(ref,{value:JSON.stringify(rows)});
     });
     return{ok:true};
+  });
+
+  // A daily CSV is reproducible after its first post-day export. Prior
+  // periods cannot be reconstructed exactly without historic status events,
+  // so reports prominently include their actual capture timestamp.
+  app.adminDeskGetDailyReport=onCall({enforceAppCheck:true},async request=>{
+    await requireAccount(request);
+    const day=trim(request.data&&request.data.day,10);
+    if(!validDate(day)||!day)throw new HttpsError('invalid-argument','Choose a valid registration date.');
+    const today=nowIso().slice(0,10);
+    if(day>today)throw new HttpsError('invalid-argument','Reports cannot be generated for future dates.');
+    const ref=db.collection('sdta_desk_daily_reports').doc(day);
+    if(day<today){
+      const existing=await ref.get();
+      if(existing.exists)return {report:existing.data(),frozen:true};
+    }
+    const [students,workflow]=await Promise.all([
+      readStorage(keys.students,[]),readTrackingRows(keys.workflow,'sdta_registration_workflow_rows')
+    ]);
+    const grouped={};
+    const rows=Array.isArray(students)?students:[];
+    for(const st of rows){
+      if(String(st.regDate||'').slice(0,10)!==day)continue;
+      const course=String(st.course||'Unspecified');
+      const entry=grouped[course]||(grouped[course]={
+        total:0,registered:0,cancelled:0,verified:0,corrections:0,callbacks:0
+      });
+      entry.total++;
+      if(st.status==='Cancelled')entry.cancelled++;else entry.registered++;
+      const tracked=workflow&&workflow[st.id]||{};
+      if(tracked.verification==='Verified')entry.verified++;
+      if(tracked.verification==='Needs correction')entry.corrections++;
+      if(tracked.followUp==='Callback needed')entry.callbacks++;
+    }
+    const report={
+      date:day,capturedAt:nowIso(),
+      statusNote:'Status totals are captured as of capturedAt, not as of the registration date.',
+      perProgram:grouped
+    };
+    if(day===today)return {report,frozen:false};
+    try{
+      await ref.create(report);
+      return {report,frozen:true};
+    }catch(error){
+      if(error.code!==6 && error.code!=='already-exists')throw error;
+      const saved=await ref.get();
+      if(!saved.exists)throw error;
+      return {report:saved.data(),frozen:true};
+    }
   });
 
   app.adminDeskLogExport=onCall({enforceAppCheck:true},async request=>{

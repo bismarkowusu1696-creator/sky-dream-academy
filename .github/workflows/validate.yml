@@ -42,6 +42,25 @@ jobs:
             throw new Error('Legacy administrator PIN sign-in is not explicitly disabled');
           }
           NODE
+      - name: Verify owner dashboard modules use owner shell
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('admin.html', 'utf8');
+          if (!html.includes('id="registrationStaffShell"') || !html.includes('id="dashboardShell"')) {
+            throw new Error('The two admin dashboard shells must exist for role separation');
+          }
+          for (const path of ['assets/admin-suite.js', 'assets/admin-enterprise.js']) {
+            const code = fs.readFileSync(path, 'utf8');
+            if (!code.includes("document.querySelector('#dashboardShell .dashboard-sidebar nav')") ||
+                !code.includes("document.querySelector('#dashboardShell .dashboard-main')")) {
+              throw new Error(path + ': owner dashboard selectors are not correctly scoped');
+            }
+            if (/document\.querySelector\('\.dashboard-(?:sidebar|main)/.test(code)) {
+              throw new Error(path + ': ambiguous selector may target the hidden staff dashboard');
+            }
+          }
+          NODE
       - name: Check HTML for duplicate IDs
         run: |
           python - <<'PY'

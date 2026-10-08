@@ -31,12 +31,12 @@
   }
 
   function nav(href,label,before='#account'){
-    const host=document.querySelector('.dashboard-sidebar nav'); if(!host||host.querySelector(`a[href="${href}"]`))return;
+    const host=document.querySelector('#dashboardShell .dashboard-sidebar nav'); if(!host||host.querySelector(`a[href="${href}"]`))return;
     const a=document.createElement('a');a.href=href;a.textContent=label;host.insertBefore(a,host.querySelector(`a[href="${before}"]`)||host.querySelector('button')||null);
   }
   function section(id,title,html,before='account'){
     if($(id))return $(id); const s=document.createElement('section');s.id=id;s.className='dashboard-panel';s.innerHTML=`<h2>${title}</h2>${html}`;
-    const main=document.querySelector('.dashboard-main'),b=$(before);main.insertBefore(s,b||null);return s;
+    const main=document.querySelector('#dashboardShell .dashboard-main'),b=$(before);main.insertBefore(s,b||null);return s;
   }
 
   function inject(){

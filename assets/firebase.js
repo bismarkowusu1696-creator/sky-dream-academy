@@ -124,11 +124,13 @@
     } catch (_) {}
   }
 
-  async function getPushToken(serviceWorkerRegistration) {
+  async function getPushToken(serviceWorkerRegistration, vapidKey) {
     if (!messaging || typeof messaging.getToken !== 'function') {
       throw new Error('Push notifications are not supported in this browser.');
     }
-    const options = serviceWorkerRegistration ? { serviceWorkerRegistration } : {};
+    if (!vapidKey) throw new Error('SkyDream web push is not configured yet.');
+    const options = { vapidKey };
+    if (serviceWorkerRegistration) options.serviceWorkerRegistration = serviceWorkerRegistration;
     const token = await messaging.getToken(options);
     if (!token) throw new Error('A notification token could not be created. Check your browser notification settings.');
     return token;

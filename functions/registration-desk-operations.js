@@ -22,6 +22,17 @@ module.exports = function installRegistrationDeskOperations(app, env) {
   };
   const readTx = (snapshot, fallback) =>
     snapshot.exists ? parse((snapshot.data() || {}).value, fallback) : fallback;
+  // New tracking entries are stored per student/facilitator to avoid
+  // continually expanding one shared 1 MiB-limited Firestore document.
+  // Older map-based entries remain readable until explicitly migrated.
+  async function readTrackingRows(legacyKey, collectionName){
+    const [legacy,snapshot]=await Promise.all([
+      readStorage(legacyKey,{}),db.collection(collectionName).get()
+    ]);
+    const rows=legacy&&typeof legacy==='object'&&!Array.isArray(legacy)?{...legacy}:{};
+    for(const document of snapshot.docs)rows[document.id]=document.data();
+    return rows;
+  }
   const nowIso = () => new Date().toISOString();
   const trim = (value, max) => clean(value, max);
   const VERIFICATION = ['Pending review', 'Verified', 'Needs correction'];
@@ -76,7 +87,8 @@ module.exports = function installRegistrationDeskOperations(app, env) {
     const [students, facilitators, workflow, onboarding, capacity, templates, cursorMap, audit, intake] =
       await Promise.all([
         readStorage(keys.students,[]),readStorage(keys.facilitators,[]),
-        readStorage(keys.workflow,{}),readStorage(keys.onboarding,{}),
+        readTrackingRows(keys.workflow,'sdta_registration_workflow_rows'),
+        readTrackingRows(keys.onboarding,'sdta_facilitator_onboarding_rows'),
         readStorage(keys.capacities,{}),readStorage(keys.templates,[]),
         readStorage(keys.alertCursors,{}),readStorage(keys.audit,[]),
         readStorage(keys.intake,{})
@@ -127,21 +139,18 @@ module.exports = function installRegistrationDeskOperations(app, env) {
     const due=trim(d.followUpDate,10),note=trim(d.note,500);
     if (!studentId || !validDate(due) || String(d.note || '').trim().length>500)
       throw new HttpsError('invalid-argument','Check the student, note and follow-up date.');
-    const studRef=col.doc(keys.students),workRef=col.doc(keys.workflow),auditRef=col.doc(keys.audit);
+    const studRef=col.doc(keys.students),workRef=db.collection('sdta_registration_workflow_rows').doc(studentId),auditRef=col.doc(keys.audit);
     await db.runTransaction(async tx=>{
-      const [studSnap,workSnap,auditSnap]=await Promise.all([
-        tx.get(studRef),tx.get(workRef),tx.get(auditRef)
+      const [studSnap,auditSnap]=await Promise.all([
+        tx.get(studRef),tx.get(auditRef)
       ]);
       const students=readTx(studSnap,[]);
       const student=Array.isArray(students) && students.find(s=>s.id===studentId);
       if (!student) throw new HttpsError('not-found','Registration no longer exists.');
-      const records=readTx(workSnap,{});
-      const state=records && typeof records==='object' && !Array.isArray(records)?records:{};
-      state[studentId]={
+      tx.set(workRef,{
         verification,followUp,followUpDate:due,note,
         updatedAt:nowIso(),updatedBy:account.username
-      };
-      tx.set(workRef,{value:JSON.stringify(state)});
+      });
       recordAudit(tx,auditRef,auditSnap,auditEntry(account,
         'Updated registration verification and follow-up',String(student.regNumber||studentId),
         verification+'; '+followUp+'; due '+(due||'none')));
@@ -158,16 +167,13 @@ module.exports = function installRegistrationDeskOperations(app, env) {
       Object.keys(flags).some(k=>!allowed.includes(k) || typeof flags[k]!=='boolean')) {
       throw new HttpsError('invalid-argument','Complete the three facilitator onboarding checks.');
     }
-    const facRef=col.doc(keys.facilitators),onRef=col.doc(keys.onboarding),auditRef=col.doc(keys.audit);
+    const facRef=col.doc(keys.facilitators),onRef=db.collection('sdta_facilitator_onboarding_rows').doc(id),auditRef=col.doc(keys.audit);
     await db.runTransaction(async tx=>{
-      const [facSnap,onSnap,auditSnap]=await Promise.all([tx.get(facRef),tx.get(onRef),tx.get(auditRef)]);
+      const [facSnap,auditSnap]=await Promise.all([tx.get(facRef),tx.get(auditRef)]);
       const list=readTx(facSnap,[]);
       const fac=Array.isArray(list) && list.find(f=>f.id===id);
       if(!fac)throw new HttpsError('not-found','Facilitator was not found.');
-      const current=readTx(onSnap,{});
-      const state=current && typeof current==='object'&&!Array.isArray(current)?current:{};
-      state[id]={...flags,updatedAt:nowIso(),updatedBy:account.username};
-      tx.set(onRef,{value:JSON.stringify(state)});
+      tx.set(onRef,{...flags,updatedAt:nowIso(),updatedBy:account.username});
       recordAudit(tx,auditRef,auditSnap,auditEntry(account,'Updated facilitator onboarding',
         String(fac.username||id),allowed.filter(k=>flags[k]).join(', ')||'No checks completed'));
     });
@@ -201,7 +207,7 @@ module.exports = function installRegistrationDeskOperations(app, env) {
       if(existing.exists)return {report:existing.data(),frozen:true};
     }
     const [students,workflow]=await Promise.all([
-      readStorage(keys.students,[]),readStorage(keys.workflow,{})
+      readStorage(keys.students,[]),readTrackingRows(keys.workflow,'sdta_registration_workflow_rows')
     ]);
     const grouped={};
     const rows=Array.isArray(students)?students:[];

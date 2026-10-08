@@ -1,6 +1,7 @@
 (() => {
   let data = null;
   let account = null;
+  let dashboardPromise = null;
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const courseName = id => data && data.courses && data.courses[id] ? data.courses[id] : id;
@@ -49,24 +50,47 @@
   }
 
   async function loadDashboard(){
-    clearMessage();
-    try{
-      const token=await SkyDreamFirebase.auth.currentUser.getIdTokenResult();
-      account={username:token.claims.username,role:token.claims.adminRole||'staff'};
-      if(account.role!=='owner'){
-        if(!window.SkyDreamRegistrationWorkspace)throw new Error('The registration workspace is still loading. Refresh and try again.');
-        await window.SkyDreamRegistrationWorkspace.open();
-        return;
+    if (dashboardPromise) return dashboardPromise;
+    dashboardPromise = (async () => {
+      clearMessage();
+      try {
+        // Authoritative role is read from Firebase's stored admin account,
+        // never from a potentially stale browser ID-token claim.
+        const workspace = await SkyDreamFirebase.call('adminGetRegistrationWorkspace');
+        if (!workspace || !workspace.account || !workspace.account.username) {
+          throw new Error('Administrator role verification failed. Please sign in again.');
+        }
+        account = {
+          username: workspace.account.username,
+          role: workspace.account.role || 'staff'
+        };
+        window.SkyDreamAdminOwnerVerified = account.role === 'owner';
+        if (!window.SkyDreamAdminOwnerVerified) {
+          if (!window.SkyDreamRegistrationWorkspace) {
+            throw new Error('Registration dashboard is not ready. Refresh the page and try again.');
+          }
+          await window.SkyDreamRegistrationWorkspace.open(workspace);
+          return;
+        }
+        data = await SkyDreamFirebase.call('getAdminSnapshot');
+        $('registrationStaffShell').classList.add('hidden');
+        $('loginShell').classList.add('hidden');
+        $('dashboardShell').classList.remove('hidden');
+        $('adminIdentity').textContent = '@' + account.username + ' · Main administrator';
+        renderAll();
+        window.dispatchEvent(new Event('skydream-owner-session-ready'));
+      } catch(err) {
+        window.SkyDreamAdminOwnerVerified = false;
+        await SkyDreamFirebase.auth.signOut();
+        $('dashboardShell').classList.add('hidden');
+        $('registrationStaffShell').classList.add('hidden');
+        $('loginShell').classList.remove('hidden');
+        $('adminLoginPanel').classList.remove('hidden');
+        message(errText(err),'error');
       }
-      data=await SkyDreamFirebase.call('getAdminSnapshot');
-      $('loginShell').classList.add('hidden'); $('dashboardShell').classList.remove('hidden');
-      $('adminIdentity').textContent=`@${account.username} · ${account.role==='owner'?'Main administrator':'Staff administrator'}`;
-      renderAll();
-    }catch(err){
-      await SkyDreamFirebase.auth.signOut();
-      $('dashboardShell').classList.add('hidden'); $('registrationStaffShell').classList.add('hidden'); $('loginShell').classList.remove('hidden'); $('adminLoginPanel').classList.remove('hidden');
-      message(errText(err),'error');
-    }
+    })();
+    try { return await dashboardPromise; }
+    finally { dashboardPromise = null; }
   }
 
   function renderAll(){ renderStats(); renderStudents(); renderCapacities(); renderFacilitators(); renderAdmins(); renderContacts(); renderWaitlist(); }

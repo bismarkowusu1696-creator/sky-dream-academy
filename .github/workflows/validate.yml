@@ -132,6 +132,36 @@ jobs:
             throw new Error('Staff registration action buttons or handlers must not be rendered');
           }
           NODE
+      - name: Verify restricted staff registration editor
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const hardening = fs.readFileSync('functions/security-hardening-loader.js','utf8');
+          const frontend = fs.readFileSync('assets/admin-registration.js','utf8');
+          const html = fs.readFileSync('admin.html','utf8');
+          const staff = html.split('id="registrationStaffShell"',2)[1].split('id="dashboardShell"',1)[0];
+          for (const text of [
+            'app.adminEditRegistration = onCall',
+            'REGISTRATION_EDIT_FIELDS.includes(key)',
+            'registrationVersion(student)!==version',
+            'Edited student registration',
+            'The selected program is full for this intake.',
+            'The owner must handle program changes after attendance has been recorded.',
+            "'adminEditRegistration']).has(name)"
+          ]) {
+            if (!hardening.includes(text)) throw new Error('Registration editing guard missing: '+text);
+          }
+          for (const id of ['registrationStaffEditModal','registrationStaffEditForm','registrationEditName','registrationEditMobile',
+            'registrationEditWhatsapp','registrationEditEmail','registrationEditAddress','registrationEditCourse','registrationEditStatus']) {
+            if (!html.includes('id="'+id+'"')) throw new Error('Registration editor input missing: '+id);
+          }
+          if (!frontend.includes("SkyDreamFirebase.call('adminEditRegistration'") ||
+              !frontend.includes('data-edit-registration') ||
+              !frontend.includes('registrationStaffExportAll') ||
+              staff.includes('<th>Registration actions</th>')) {
+            throw new Error('Staff editor / export UI is missing or the removed action column returned');
+          }
+          NODE
       - name: Check HTML for duplicate IDs
         run: |
           python - <<'PY'

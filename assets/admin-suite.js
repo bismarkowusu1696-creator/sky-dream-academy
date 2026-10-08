@@ -237,6 +237,8 @@
 
   document.addEventListener('DOMContentLoaded',()=>{
     injectUi();
-    SkyDreamFirebase.auth.onAuthStateChanged(async user=>{if(!user)return;try{const token=await user.getIdTokenResult();if(token.claims.role==='admin'&&token.claims.adminRole==='owner')await loadSuite();}catch(err){console.warn('Admin suite failed to load',err);}});
+    window.addEventListener('skydream-owner-session-ready',()=>{
+      loadSuite().catch(err=>console.warn('Admin suite failed to load',err));
+    });
   });
 })();

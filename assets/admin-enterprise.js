@@ -174,7 +174,7 @@
     if(!owner)return;
     const key=data.settings&&data.settings.webPushVapidKey||'';
     input.value=key;
-    status.textContent=key?'Configured — students can enable push notifications on supported browsers.':'Not configured — generate a Web Push key in Firebase Console, then paste the public key here.';
+    status.textContent=key?'Configured — students can enable push notifications on supported browsers.':'Not configured — Firebase Console → Project Settings → Cloud Messaging → Web Push certificates → Generate Key Pair, then paste the public key here.';
   }
   async function saveWebPushVapidKey(){
     const key=$('webPushVapidKey').value.trim();

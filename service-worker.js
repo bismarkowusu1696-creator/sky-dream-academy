@@ -119,7 +119,7 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
 
   // Always fetch layout bootstrap fresh so header/responsive fixes take effect immediately.
-  if (url.pathname === '/pwa.js') {
+  if (url.pathname === '/pwa.js' || url.pathname === '/firebase-messaging-sw.js') {
     event.respondWith(fetch(request, { cache: 'no-store' }));
     return;
   }

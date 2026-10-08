@@ -9,6 +9,11 @@
     <a href="#registrationStaff">Registrations</a>
     <a href="#registrationStaffReports">Reports</a>
     <a href="#registrationStaffFacilitators">Facilitators</a>
+    <a href="#deskWorkflow">Verification & Follow-ups</a>
+    <a href="#deskCapacity">Capacity & Alerts</a>
+    <a href="#deskOnboarding">Onboarding</a>
+    <a href="#deskMessages">Messages & Activity</a>
+    <a href="#deskDaily">Daily Report</a>
     <button id="registrationStaffLogout" type="button">Sign out</button>
   </nav>
 </aside>
@@ -73,6 +78,47 @@
     </div>
     <div class="card mt-18"><div class="dashboard-top"><div><h3>Existing facilitators</h3><p id="registrationFacilitatorCount" class="hint">Loading…</p></div></div><div id="registrationFacilitatorList" class="grid grid-2"></div></div>
   </section>
+  <section id="deskWorkflow" class="dashboard-panel">
+    <h2>Registration verification & follow-ups</h2>
+    <p class="hint">Review information without changing enrollment or payments.</p>
+    <div class="card">
+      <label for="deskStudentSearch">Search students</label><input id="deskStudentSearch" placeholder="Name, registration number or mobile">
+      <label for="deskStudentSelect">Student registration</label><select id="deskStudentSelect"></select>
+      <form id="deskTrackingForm" class="mt-14"><div class="form-grid">
+        <div class="field"><label for="deskVerification">Verification</label><select id="deskVerification"><option>Pending review</option><option>Verified</option><option>Needs correction</option></select></div>
+        <div class="field"><label for="deskFollowup">Follow-up</label><select id="deskFollowup"><option>Not contacted</option><option>Contacted</option><option>Callback needed</option><option>Orientation confirmed</option></select></div>
+        <div class="field"><label for="deskFollowupDate">Follow-up date</label><input id="deskFollowupDate" type="date"></div>
+        <div class="field full"><label for="deskFollowupNote">Internal notes</label><textarea id="deskFollowupNote" rows="3" maxlength="500"></textarea></div>
+      </div><button class="btn btn-primary" id="deskTrackingSave" type="submit">Save verification & follow-up</button></form>
+    </div>
+    <div class="card mt-18"><h3>Needing attention</h3><div id="deskPendingTable" class="table-wrap"></div></div>
+  </section>
+  <section id="deskCapacity" class="dashboard-panel">
+    <div class="dashboard-top"><div><h2>Program capacity & registration alerts <span id="deskAlertBadge" class="badge hidden"></span></h2><p class="hint">Read-only capacity and new registrations, refreshed while the dashboard is open.</p></div><button id="deskAlertRefresh" class="btn btn-outline btn-small" type="button">Refresh</button></div>
+    <div class="card"><h3>New registration alerts</h3><div id="deskNewRegistrations"></div><button id="deskAcknowledgeAlerts" type="button" class="btn btn-outline btn-small mt-14">Mark alerts as seen</button></div>
+    <div class="card mt-18"><h3>Spaces by program</h3><div id="deskCapacityTable" class="table-wrap"></div></div>
+  </section>
+  <section id="deskOnboarding" class="dashboard-panel">
+    <h2>Facilitator onboarding</h2><p class="hint">Mark login instructions, availability, and orientation. Only the owner can change facilitator login credentials or assigned programs after creation.</p>
+    <div id="deskOnboardingCards" class="grid grid-2"></div>
+  </section>
+  <section id="deskMessages" class="dashboard-panel">
+    <h2>Approved messages & activity</h2>
+    <div class="card"><h3>Send an owner-approved Student Portal message</h3><p class="hint">No free-text messaging is allowed in this staff account.</p>
+      <form id="deskTemplateForm"><div class="form-grid">
+        <div class="field"><label for="deskMessageStudent">Student</label><select id="deskMessageStudent" required></select></div>
+        <div class="field"><label for="deskMessageTemplate">Approved template</label><select id="deskMessageTemplate" required></select></div>
+        <div class="field full"><label>Preview</label><div id="deskMessagePreview" class="card" aria-live="polite"></div></div>
+      </div><button id="deskTemplateSend" type="submit" class="btn btn-primary">Send approved message</button></form>
+    </div>
+    <div class="card mt-18"><h3>My activity history</h3><div id="deskOwnActivity" class="table-wrap"></div></div>
+  </section>
+  <section id="deskDaily" class="dashboard-panel">
+    <h2>Daily registration report</h2><p class="hint">Generate a report by registration date. Verification and registration statuses are shown as their current values.</p>
+    <div class="card"><div class="toolbar"><label for="deskDailyDate">Date</label><input type="date" id="deskDailyDate"><button id="deskDailyDownload" type="button" class="btn btn-primary">Export daily CSV</button></div>
+    <div id="deskDailyPreview" class="mt-18"></div></div>
+  </section>
+  <div id="deskOperationsNotice" class="notice hidden" role="status"></div>
 </main>
 </div>
 <div id="registrationStaffEditModal" class="modal hidden">
@@ -107,4 +153,4 @@
 </main></div>
 <div id="staffPinModal" class="modal hidden"><div class="modal-card"><div class="dashboard-top"><div><h2>Set staff administrator PIN</h2><p class="hint" id="staffPinTarget"></p></div><button id="closeStaffPinModal" class="btn btn-outline btn-small" type="button">Close</button></div><form id="staffPinForm"><input id="staffPinAdminId" type="hidden"><div class="form-grid"><div class="field full"><label for="staffPinInput">New 4-digit PIN</label><input id="staffPinInput" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4}" minlength="4" maxlength="4" required><span class="hint">Avoid easily guessed PINs. Existing sessions for this administrator will be signed out.</span></div><div class="field full"><label for="staffPinConfirm">Confirm new PIN</label><input id="staffPinConfirm" type="password" inputmode="numeric" autocomplete="new-password" pattern="[0-9]{4}" minlength="4" maxlength="4" required></div></div><div class="modal-actions"><button class="btn btn-primary" type="submit">Save staff PIN</button></div></form></div></div>
 <div id="studentModal" class="modal hidden"><div class="modal-card"><div class="dashboard-top"><h2>Edit student</h2><button id="closeStudentModal" class="btn btn-outline btn-small">Close</button></div><form id="editStudentForm"><input id="editStudentId" type="hidden"><div class="form-grid"><div class="field full"><label for="editFullName">Full name</label><input id="editFullName" required></div><div class="field"><label for="editMobile">Mobile</label><input id="editMobile"></div><div class="field"><label for="editWhatsapp">WhatsApp</label><input id="editWhatsapp"></div><div class="field"><label for="editEmail">Email</label><input id="editEmail" type="email"></div><div class="field"><label for="editStatus">Status</label><select id="editStatus"><option>Registered</option><option>Active</option><option>Completed</option><option>Deferred</option><option>Cancelled</option></select></div><div class="field full"><label for="editCourse">Program</label><select id="editCourse"></select></div><div class="field full"><label for="editAddress">Address</label><input id="editAddress"></div></div><div class="modal-actions"><button class="btn btn-primary" type="submit">Save Changes</button></div></form></div></div>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script><script src="assets/firebase.js"></script><script src="assets/admin-enterprise-login.js"></script><script src="assets/admin-recovery.js"></script><script src="assets/admin-registration.js"></script><script src="assets/admin.js"></script><script src="assets/admin-pin.js"></script><script src="assets/admin-suite.js"></script><script src="assets/admin-extra-actions.js"></script><script src="assets/admin-enterprise.js"></script><script src="assets/admin-intake.js"></script><script src="assets/admin-dob.js"></script></body></html>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script><script src="assets/firebase.js"></script><script src="assets/admin-enterprise-login.js"></script><script src="assets/admin-recovery.js"></script><script src="assets/admin-registration.js"></script><script src="assets/admin-desk-operations.js"></script><script src="assets/admin-desk-owner.js"></script><script src="assets/admin.js"></script><script src="assets/admin-pin.js"></script><script src="assets/admin-suite.js"></script><script src="assets/admin-extra-actions.js"></script><script src="assets/admin-enterprise.js"></script><script src="assets/admin-intake.js"></script><script src="assets/admin-dob.js"></script></body></html>

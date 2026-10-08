@@ -776,6 +776,13 @@ app.adminDeskCreateFacilitator = onCall({ enforceAppCheck: true }, async request
   return { ok: true, facilitator: { id: facilitator.id, name, username, phone, courses, active: true } };
 });
 
+// Install scoped Registration Desk operations before applying the final
+// stored-account authorization boundary to all administrator callables.
+require('./registration-desk-operations')(app, {
+  onCall, HttpsError, db, crypto, admin, STORAGE_COLLECTION, clean, readStorage,
+  requireStrongAdminSession, enforceRateLimit, registrationCourses: REGISTRATION_COURSES
+});
+
 // Apply one final session check to every exported administrator callable, even
 // if a future feature forgets to add its own authorization wrapper.
 const PRE_AUTH_ADMIN_CALLS = new Set(['adminLogin', 'adminVerifyTwoFactorLogin', 'adminRecoverWithCode']);
@@ -790,7 +797,7 @@ for (const name of Object.keys(app)) {
     // Deny by default for all subordinate admins, including existing manager,
     // staff, registration, finance, and viewer accounts.
     if ((account.role || 'staff') !== 'owner' &&
-        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator']).has(name)) {
+        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskSendApprovedTemplate']).has(name)) {
       throw new HttpsError('permission-denied', 'Staff administrators can only manage approved registration fields and create facilitator accounts.');
     }
     return base.run(delegatedRequest(request, auth));

@@ -8,7 +8,7 @@
   const can = permission => !suite || !Array.isArray(suite.permissions) || suite.permissions.includes('*') || suite.permissions.includes(permission);
 
   function addNavLink(href, label, beforeHref) {
-    const nav = document.querySelector('.dashboard-sidebar nav');
+    const nav = document.querySelector('#dashboardShell .dashboard-sidebar nav');
     if (!nav || nav.querySelector(`a[href="${href}"]`)) return;
     const a = document.createElement('a'); a.href = href; a.textContent = label;
     const before = beforeHref ? nav.querySelector(`a[href="${beforeHref}"]`) : null;
@@ -16,7 +16,7 @@
   }
 
   function injectUi() {
-    const main = document.querySelector('.dashboard-main');
+    const main = document.querySelector('#dashboardShell .dashboard-main');
     if (!main || $('adminAnalytics')) return;
     addNavLink('#adminAnalytics', 'Analytics', '#students');
     addNavLink('#studentProfiles', 'Student Profiles', '#capacity');

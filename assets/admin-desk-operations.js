@@ -5,6 +5,7 @@
   const today=()=>new Date().toISOString().slice(0,10);
   const date=v=>{const d=new Date(v||'');return Number.isNaN(d.getTime())?'—':d.toLocaleString('en-GB',{timeZone:'Africa/Accra'});};
   let desk=null,info=null,prevUnread=null,busy=null;
+  let dirtyTracking=false, trackingStudentId='';
   const students=()=>desk&&Array.isArray(desk.students)?desk.students:[];
   const courses=()=>desk&&desk.courses||{};
   const msg=(t,type='info')=>{const el=$('deskOperationsNotice');el.textContent=t;el.className='notice notice-'+type;};
@@ -15,10 +16,14 @@
     const selected=$('deskStudentSelect').value;
     $('deskStudentSelect').innerHTML=studentOptions(rows);
     if(rows.some(s=>s.id===selected))$('deskStudentSelect').value=selected;
+    // Never reset an unsaved note just because a 90-second refresh arrived.
+    if(dirtyTracking && trackingStudentId===$('deskStudentSelect').value)return;
     showStudentTracking();
   }
   function showStudentTracking(){
-    const x=info&&info.workflow&&info.workflow[$('deskStudentSelect').value]||{};
+    trackingStudentId=$('deskStudentSelect').value;
+    dirtyTracking=false;
+    const x=info&&info.workflow&&info.workflow[trackingStudentId]||{};
     $('deskVerification').value=x.verification||'Pending review';
     $('deskFollowup').value=x.followUp||'Not contacted';
     $('deskFollowupDate').value=x.followUpDate||'';
@@ -51,7 +56,7 @@
     $('deskAlertBadge').textContent=String(info.unreadCount||0);
     $('deskAlertBadge').classList.toggle('hidden',!info.unreadCount);
     $('deskNewRegistrations').innerHTML=fresh.length?
-      '<table class="table"><thead><tr><th>Received</th><th>Student</th><th>Program</th></tr></thead><tbody>'+
+      '<p class="hint">Showing the latest '+fresh.length+' of '+Number(info.unreadCount||0)+' unseen registrations.</p><table class="table"><thead><tr><th>Received</th><th>Student</th><th>Program</th></tr></thead><tbody>'+
       fresh.map(s=>'<tr><td>'+esc(date(s.date))+'</td><td>'+esc(s.fullName)+'</td><td>'+
         esc(courses()[s.course]||s.course)+'</td></tr>').join('')+'</tbody></table>':
       '<p>No unread registration alerts.</p>';
@@ -144,7 +149,17 @@
   function bind(){
     $('deskDailyDate').value=today();
     $('deskStudentSearch').addEventListener('input',filterStudents);
-    $('deskStudentSelect').addEventListener('change',showStudentTracking);
+    $('deskStudentSelect').addEventListener('change',()=>{
+      if(dirtyTracking && !confirm('Discard unsaved verification or follow-up changes?')){
+        $('deskStudentSelect').value=trackingStudentId;
+        return;
+      }
+      showStudentTracking();
+    });
+    for(const id of ['deskVerification','deskFollowup','deskFollowupDate','deskFollowupNote']){
+      $(id).addEventListener('input',()=>{dirtyTracking=true;});
+      $(id).addEventListener('change',()=>{dirtyTracking=true;});
+    }
     $('deskTrackingForm').addEventListener('submit',async event=>{
       event.preventDefault();
       if(!$('deskStudentSelect').value)return;
@@ -153,11 +168,13 @@
         await call('adminDeskSaveTracking',{studentId:$('deskStudentSelect').value,
           verification:$('deskVerification').value,followUp:$('deskFollowup').value,
           followUpDate:$('deskFollowupDate').value,note:$('deskFollowupNote').value});
+        dirtyTracking=false;
         await refresh();msg('Verification and follow-up saved.','success');
       }catch(e){msg(SkyDreamFirebase.friendlyError(e),'error');}finally{button.disabled=false;}
     });
     $('deskPendingTable').addEventListener('click',event=>{
       const b=event.target.closest('[data-workflow-focus]');if(!b)return;
+      if(dirtyTracking && !confirm('Discard unsaved verification or follow-up changes?'))return;
       $('deskStudentSearch').value='';filterStudents();
       $('deskStudentSelect').value=b.dataset.workflowFocus;showStudentTracking();
       location.hash='deskWorkflow';$('deskVerification').focus();

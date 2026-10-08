@@ -36,7 +36,13 @@
 
   const functions = firebase.functions();
   const auth = firebase.auth ? firebase.auth() : null;
-  const messaging = firebase.messaging ? firebase.messaging() : null;
+  const messagingSupported = !!firebase.messaging;
+  let messaging = null;
+
+  function getMessagingInstance() {
+    if (!messaging && messagingSupported) messaging = firebase.messaging();
+    return messaging;
+  }
   let pendingCallableRequests = 0;
   let lastActionButton = null;
   let lastActionAt = 0;
@@ -125,20 +131,23 @@
   }
 
   async function getPushToken(serviceWorkerRegistration, vapidKey) {
-    if (!messaging || typeof messaging.getToken !== 'function') {
+    const instance = getMessagingInstance();
+    if (!instance || typeof instance.getToken !== 'function') {
       throw new Error('Push notifications are not supported in this browser.');
     }
     if (!vapidKey) throw new Error('SkyDream web push is not configured yet.');
     const options = { vapidKey };
     if (serviceWorkerRegistration) options.serviceWorkerRegistration = serviceWorkerRegistration;
-    const token = await messaging.getToken(options);
+    const token = await instance.getToken(options);
     if (!token) throw new Error('A notification token could not be created. Check your browser notification settings.');
     return token;
   }
 
   function onPushMessage(handler) {
-    if (!messaging || typeof messaging.onMessage !== 'function') return () => {};
-    return messaging.onMessage(handler);
+    if (!messagingSupported || !('Notification' in window) || Notification.permission !== 'granted') return () => {};
+    const instance = getMessagingInstance();
+    if (!instance || typeof instance.onMessage !== 'function') return () => {};
+    return instance.onMessage(handler);
   }
 
   async function call(name, data = {}) {
@@ -167,5 +176,5 @@
     }
   }
 
-  window.SkyDreamFirebase = { functions, auth, messaging, call, friendlyError, ensureAppCheckToken, getPushToken, onPushMessage };
+  window.SkyDreamFirebase = { functions, auth, messaging: messagingSupported, call, friendlyError, ensureAppCheckToken, getPushToken, onPushMessage };
 })();

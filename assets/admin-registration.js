@@ -293,6 +293,7 @@
       populateFilters();
       populateFacilitatorPrograms();
       render();
+      window.dispatchEvent(new CustomEvent('skydream-registration-workspace-ready', {detail: workspace}));
       if (location.hash === '#registrationStaffPassword') location.hash = 'registrationStaffOverview';
     })();
     try { return await loading; } finally { loading = null; }
@@ -311,15 +312,16 @@
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
-  function exportCsv(all = false) {
+  async function exportCsv(all = false) {
     if (!workspace) return;
     const selected = all ? workspace.students : filtered();
+    await SkyDreamFirebase.call('adminDeskLogExport', {kind:all ? 'all' : 'filtered'});
     downloadCsv(all ? 'SkyDream-All-Registrations.csv' : 'SkyDream-Filtered-Registrations.csv', [
       ['Registration Number','Student','Program','Mobile','Email','Status','Intake','Registration Date'],
       ...selected.map(s => [s.regNumber,s.fullName,labelCourse(s.course),s.mobile,s.email,s.status,s.intakeStart,s.regDate])
     ]);
   }
-  function exportSummaryCsv() {
+  async function exportSummaryCsv() {
     if (!workspace) return;
     const summary = overviewStats();
     const rows = [['Category', 'Name', 'Count']];
@@ -332,14 +334,16 @@
         rows.push([category, labeler ? labeler(key) : key, count]);
       }
     }
+    await SkyDreamFirebase.call('adminDeskLogExport', {kind:'summary'});
     downloadCsv('SkyDream-Registration-Summary.csv', rows);
   }
   document.addEventListener('DOMContentLoaded', () => {
     ['registrationStaffSearch','registrationStaffCourse','registrationStaffIntake','registrationStaffStatus','registrationStaffDateFilter']
       .forEach(id => $(id).addEventListener(id === 'registrationStaffSearch' ? 'input' : 'change', render));
-    $('registrationStaffExport').addEventListener('click', () => exportCsv(false));
-    $('registrationStaffExportAll').addEventListener('click', () => exportCsv(true));
-    $('registrationStaffReportsExport').addEventListener('click', exportSummaryCsv);
+    const exportError = error => notice(SkyDreamFirebase.friendlyError(error),'error');
+    $('registrationStaffExport').addEventListener('click', () => exportCsv(false).catch(exportError));
+    $('registrationStaffExportAll').addEventListener('click', () => exportCsv(true).catch(exportError));
+    $('registrationStaffReportsExport').addEventListener('click', () => exportSummaryCsv().catch(exportError));
     $('registrationStaffClearFilters').addEventListener('click', clearFilters);
     const reload = () => refresh().catch(err => notice(SkyDreamFirebase.friendlyError(err), 'error'));
     $('registrationStaffRefresh').addEventListener('click', reload);

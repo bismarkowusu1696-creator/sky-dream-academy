@@ -177,18 +177,38 @@
     $('adminCreatePanel').classList.toggle('hidden',account.role!=='owner');
   }
   async function createAdmin(e){e.preventDefault();const btn=e.target.querySelector('button[type=submit]');btn.disabled=true;try{await SkyDreamFirebase.call('adminCreateAdmin',{name:$('newAdminName').value,username:$('newAdminUsername').value,pin:$('newAdminPin').value});e.target.reset();await refresh('Administrator created.');}catch(err){alert(errText(err));}finally{btn.disabled=false;}}
-  async function setStaffPin(id,button){
+  function openStaffPinModal(id){
     if(account.role!=='owner')return;
     const member=data.admins.find(a=>a.id===id);
     if(!member||member.role==='owner')return;
-    const pin=prompt('Set a NEW 4-digit PIN for @'+member.username+':');
-    if(pin===null)return;
-    if(!/^[0-9]{4}$/.test(pin)){alert('Staff PINs must contain exactly four digits.');return;}
-    if(!confirm('Replace the PIN for @'+member.username+' and sign out all of their active sessions?'))return;
+    $('staffPinForm').reset();
+    $('staffPinAdminId').value=id;
+    $('staffPinTarget').textContent='@'+member.username+' · restricted administrator';
+    $('staffPinModal').classList.remove('hidden');
+    $('staffPinInput').focus();
+  }
+  function closeStaffPinModal(){
+    $('staffPinForm').reset();
+    $('staffPinModal').classList.add('hidden');
+  }
+  async function submitStaffPin(e){
+    e.preventDefault();
+    if(account.role!=='owner')return;
+    const id=$('staffPinAdminId').value;
+    const member=data.admins.find(a=>a.id===id);
+    if(!member||member.role==='owner')return;
+    const pin=$('staffPinInput').value;
+    if(!/^[0-9]{4}$/.test(pin)||pin!==$('staffPinConfirm').value){
+      alert('Enter and confirm exactly four matching PIN digits.');
+      return;
+    }
+    if(!confirm('Replace the PIN for @'+member.username+' and sign out all their active sessions?'))return;
+    const button=e.currentTarget.querySelector('button[type=submit]');
     try{
       await withBusy(button,'Saving…',async()=>{
         await SkyDreamFirebase.call('adminSetStaffPin',{id,pin});
-        alert('Staff PIN updated. The administrator must sign in using their new 4-digit PIN.');
+        closeStaffPinModal();
+        alert('Staff PIN updated. They must sign in using their new 4-digit PIN.');
       });
     }catch(err){alert(errText(err));}
   }
@@ -212,10 +232,10 @@
   async function refresh(msg){if(msg)message(msg,'success');data=await SkyDreamFirebase.call('getAdminSnapshot');renderAll();}
 
   function bindEvents(){
-    $('adminLoginForm').addEventListener('submit',handleLogin); $('editStudentForm').addEventListener('submit',saveStudent); $('createFacilitatorForm').addEventListener('submit',createFacilitator); $('createAdminForm').addEventListener('submit',createAdmin); $('changePasswordForm').addEventListener('submit',changePassword);
+    $('adminLoginForm').addEventListener('submit',handleLogin); $('editStudentForm').addEventListener('submit',saveStudent); $('createFacilitatorForm').addEventListener('submit',createFacilitator); $('createAdminForm').addEventListener('submit',createAdmin); $('staffPinForm').addEventListener('submit',submitStaffPin); $('closeStaffPinModal').addEventListener('click',closeStaffPinModal); $('changePasswordForm').addEventListener('submit',changePassword);
     $('studentSearch').addEventListener('input',renderStudents);$('studentCourseFilter').addEventListener('change',renderStudents);$('exportStudents').addEventListener('click',exportCsv);$('closeStudentModal').addEventListener('click',()=>$('studentModal').classList.add('hidden'));
     $('logoutBtn').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
-    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay,b);if(b.dataset.portalMessage)sendPortalMessage(b.dataset.portalMessage,b);if(b.dataset.delete)deleteStudent(b.dataset.delete,b);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity,b);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac,b);if(b.dataset.setAdminPin)setStaffPin(b.dataset.setAdminPin,b);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin,b);});
+    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay,b);if(b.dataset.portalMessage)sendPortalMessage(b.dataset.portalMessage,b);if(b.dataset.delete)deleteStudent(b.dataset.delete,b);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity,b);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac,b);if(b.dataset.setAdminPin)openStaffPinModal(b.dataset.setAdminPin);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin,b);});
   }
 
   document.addEventListener('DOMContentLoaded',()=>{

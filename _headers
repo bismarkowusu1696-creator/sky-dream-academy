@@ -16,6 +16,9 @@
 /service-worker.js
   Cache-Control: no-cache, max-age=0, must-revalidate
 
+/firebase-messaging-sw.js
+  Cache-Control: no-cache, max-age=0, must-revalidate
+
 /assets/site.css
   Cache-Control: no-cache, max-age=0, must-revalidate
 

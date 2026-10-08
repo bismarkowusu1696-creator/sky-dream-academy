@@ -217,7 +217,7 @@ async function latestStudentMessages(studentId){
     if(snap)for(const doc of snap.docs)merged.set(doc.id,doc);
   }
   return [...merged.values()].map(publicMessage).filter(m=>m.message)
-    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')).slice(0,50);
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,50);
 }
 
 async function sendPushToStudents(studentIds){

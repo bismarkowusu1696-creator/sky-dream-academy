@@ -331,6 +331,25 @@ app.adminSendBulkStudentMessage=onCall({enforceAppCheck:true},async request=>{
   return{ok:true,bulkId,recipients:selected.recipients.length,push};
 });
 
+app.adminSetWebPushVapidKey=onCall({enforceAppCheck:true},async request=>{
+  const account=await requireAdmin(request,'settings');
+  if((account.role||'staff')!=='owner')throw new HttpsError('permission-denied','Only the main administrator can configure web push.');
+  const vapidKey=clean(request.data&&request.data.vapidKey,300);
+  if(!/^[A-Za-z0-9_-]{60,300}$/.test(vapidKey))throw new HttpsError('invalid-argument','Paste the public Web Push certificate key from Firebase Cloud Messaging.');
+  const settings=await readValue(KEYS.settings,{});
+  settings.webPushVapidKey=vapidKey;
+  await refFor(KEYS.settings).set({value:JSON.stringify(settings)});
+  await appendAudit(account,'Configured student web push','Firebase Web Push public key updated','');
+  return{ok:true,configured:true};
+});
+
+app.studentGetPushConfig=onCall({enforceAppCheck:true},async request=>{
+  requireStudent(request);
+  const settings=await readValue(KEYS.settings,{});
+  const vapidKey=clean(settings&&settings.webPushVapidKey,300);
+  return{configured:!!vapidKey,vapidKey};
+});
+
 app.studentGetPushStatus=onCall({enforceAppCheck:true},async request=>{
   const token=requireStudent(request);
   const snap=await db.collection(COL.studentPushTokens).where('studentId','==',token.studentId).limit(20).get();

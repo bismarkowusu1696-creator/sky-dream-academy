@@ -154,6 +154,7 @@
     const s = workspace && workspace.students.find(row => row.id === id);
     if (!s) return;
     $('registrationStaffEditForm').reset();
+    $('registrationEditError').classList.add('hidden');
     $('registrationEditId').value = s.id;
     $('registrationEditVersion').value = s.registrationVersion || '';
     $('registrationEditIdentity').textContent = s.fullName + ' · ' + s.regNumber;
@@ -211,10 +212,9 @@
         : '';
       notice((response && response.changed ? 'Registration updated successfully.' : 'No registration changes were needed.') + updated,'success');
     } catch (err) {
-      notice(SkyDreamFirebase.friendlyError(err),'error');
-      if (/changed|Refresh/i.test(String(err.message || ''))) {
-        await refresh().catch(() => {});
-      }
+      const node = $('registrationEditError');
+      node.textContent = SkyDreamFirebase.friendlyError(err);
+      node.className = 'notice notice-error';
     } finally {
       button.disabled = false;
       button.textContent = 'Save registration';

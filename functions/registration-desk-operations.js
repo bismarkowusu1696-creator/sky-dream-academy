@@ -186,6 +186,55 @@ module.exports = function installRegistrationDeskOperations(app, env) {
     return{ok:true};
   });
 
+  // A daily CSV is reproducible after its first post-day export. Prior
+  // periods cannot be reconstructed exactly without historic status events,
+  // so reports prominently include their actual capture timestamp.
+  app.adminDeskGetDailyReport=onCall({enforceAppCheck:true},async request=>{
+    await requireAccount(request);
+    const day=trim(request.data&&request.data.day,10);
+    if(!validDate(day)||!day)throw new HttpsError('invalid-argument','Choose a valid registration date.');
+    const today=nowIso().slice(0,10);
+    if(day>today)throw new HttpsError('invalid-argument','Reports cannot be generated for future dates.');
+    const ref=db.collection('sdta_desk_daily_reports').doc(day);
+    if(day<today){
+      const existing=await ref.get();
+      if(existing.exists)return {report:existing.data(),frozen:true};
+    }
+    const [students,workflow]=await Promise.all([
+      readStorage(keys.students,[]),readStorage(keys.workflow,{})
+    ]);
+    const grouped={};
+    const rows=Array.isArray(students)?students:[];
+    for(const st of rows){
+      if(String(st.regDate||'').slice(0,10)!==day)continue;
+      const course=String(st.course||'Unspecified');
+      const entry=grouped[course]||(grouped[course]={
+        total:0,registered:0,cancelled:0,verified:0,corrections:0,callbacks:0
+      });
+      entry.total++;
+      if(st.status==='Cancelled')entry.cancelled++;else entry.registered++;
+      const tracked=workflow&&workflow[st.id]||{};
+      if(tracked.verification==='Verified')entry.verified++;
+      if(tracked.verification==='Needs correction')entry.corrections++;
+      if(tracked.followUp==='Callback needed')entry.callbacks++;
+    }
+    const report={
+      date:day,capturedAt:nowIso(),
+      statusNote:'Status totals are captured as of capturedAt, not as of the registration date.',
+      perProgram:grouped
+    };
+    if(day===today)return {report,frozen:false};
+    try{
+      await ref.create(report);
+      return {report,frozen:true};
+    }catch(error){
+      if(error.code!==6 && error.code!=='already-exists')throw error;
+      const saved=await ref.get();
+      if(!saved.exists)throw error;
+      return {report:saved.data(),frozen:true};
+    }
+  });
+
   app.adminDeskLogExport=onCall({enforceAppCheck:true},async request=>{
     const account=await requireAccount(request);
     await enforceRateLimit(request,'desk-export-log',account.username,120,60*60*1000);

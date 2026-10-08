@@ -8,6 +8,7 @@
     <a href="#registrationStaffOverview">Overview</a>
     <a href="#registrationStaff">Registrations</a>
     <a href="#registrationStaffReports">Reports</a>
+    <a href="#registrationStaffFacilitators">Facilitators</a>
     <button id="registrationStaffLogout" type="button">Sign out</button>
   </nav>
 </aside>
@@ -53,6 +54,24 @@
       <div class="card"><h3>Registrations by intake</h3><div id="registrationStaffIntakeBars"></div></div>
     </div>
     <div class="card mt-18"><h3>Registration status breakdown</h3><div id="registrationStaffStatusBars"></div></div>
+  </section>
+  <section id="registrationStaffFacilitators" class="dashboard-panel">
+    <div class="dashboard-top"><div><h2>Facilitators</h2><p class="hint">Create facilitator accounts and assign teaching programs. Only the main administrator can edit or delete facilitator accounts or reset their PINs.</p></div><button id="registrationFacilitatorRefresh" class="btn btn-outline btn-small" type="button">Refresh list</button></div>
+    <div class="card mt-18">
+      <h3>Add facilitator</h3>
+      <form id="registrationFacilitatorForm">
+        <div class="form-grid">
+          <div class="field"><label for="registrationFacilitatorName">Full name</label><input id="registrationFacilitatorName" autocomplete="name" maxlength="120" required></div>
+          <div class="field"><label for="registrationFacilitatorUsername">Username</label><input id="registrationFacilitatorUsername" autocomplete="off" pattern="[A-Za-z0-9._-]{3,80}" maxlength="80" minlength="3" required></div>
+          <div class="field"><label for="registrationFacilitatorPhone">Mobile number</label><input id="registrationFacilitatorPhone" type="tel" autocomplete="off" inputmode="tel" pattern="0[0-9]{9}" maxlength="10" required></div>
+          <div class="field"><label for="registrationFacilitatorPin">4-digit PIN</label><input id="registrationFacilitatorPin" type="password" autocomplete="new-password" inputmode="numeric" pattern="[0-9]{4}" minlength="4" maxlength="4" required></div>
+          <div class="field full"><label>Assigned programs (select at least one)</label><div id="registrationFacilitatorCourses" class="grid grid-3"></div></div>
+          <div class="field full"><button id="registrationFacilitatorSubmit" class="btn btn-primary" type="submit">Create facilitator</button></div>
+        </div>
+      </form>
+      <div id="registrationFacilitatorMessage" class="notice hidden mt-14" role="status"></div>
+    </div>
+    <div class="card mt-18"><div class="dashboard-top"><div><h3>Existing facilitators</h3><p id="registrationFacilitatorCount" class="hint">Loading…</p></div></div><div id="registrationFacilitatorList" class="grid grid-2"></div></div>
   </section>
 </main>
 </div>

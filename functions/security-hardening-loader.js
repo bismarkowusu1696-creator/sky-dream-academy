@@ -797,7 +797,7 @@ for (const name of Object.keys(app)) {
     // Deny by default for all subordinate admins, including existing manager,
     // staff, registration, finance, and viewer accounts.
     if ((account.role || 'staff') !== 'owner' &&
-        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskSendApprovedTemplate']).has(name)) {
+        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskGetDailyReport', 'adminDeskSendApprovedTemplate']).has(name)) {
       throw new HttpsError('permission-denied', 'Staff administrators can only manage approved registration fields and create facilitator accounts.');
     }
     return base.run(delegatedRequest(request, auth));

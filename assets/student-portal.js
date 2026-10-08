@@ -38,6 +38,7 @@
       try{
         portal=await SkyDreamFirebase.call('getStudentPortalDashboard');
         render();
+        loadPushStatus().catch(err=>console.warn('Push status could not load.',err));
         if(location.hash==='#portalMessages')await markMessagesRead();
         await processQrCheckIn();
       }catch(err){
@@ -139,11 +140,17 @@
     }
   }
 
-  function ensurePortalServiceWorker(){
-    if(!('serviceWorker' in navigator))return;
-    navigator.serviceWorker.register('/service-worker.js',{scope:'/'})
-      .then(reg=>reg.update().catch(()=>{}))
-      .catch(err=>console.warn('Portal service worker registration failed',err));
+  async function ensurePortalServiceWorker(){
+    if(!('serviceWorker' in navigator))return null;
+    if(serviceWorkerRegistration)return serviceWorkerRegistration;
+    try{
+      serviceWorkerRegistration=await navigator.serviceWorker.register('/service-worker.js',{scope:'/'});
+      serviceWorkerRegistration.update().catch(()=>{});
+      return serviceWorkerRegistration;
+    }catch(err){
+      console.warn('Portal service worker registration failed',err);
+      return null;
+    }
   }
 
   document.addEventListener('DOMContentLoaded',()=>{

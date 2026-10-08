@@ -629,10 +629,11 @@ app.adminEditRegistration = onCall({ enforceAppCheck: true }, async request => {
   const studentsRef = db.collection(STORAGE_COLLECTION).doc('sdta_students');
   const auditRef = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
   const capacityRef = db.collection(STORAGE_COLLECTION).doc('sdta_capacities');
+  const attendanceRef = db.collection(STORAGE_COLLECTION).doc('sdta_attendance');
   let result;
   await db.runTransaction(async tx => {
-    const [studentSnap,auditSnap,capacitySnap] = await Promise.all([
-      tx.get(studentsRef),tx.get(auditRef),tx.get(capacityRef)
+    const [studentSnap,auditSnap,capacitySnap,attendanceSnap] = await Promise.all([
+      tx.get(studentsRef),tx.get(auditRef),tx.get(capacityRef),tx.get(attendanceRef)
     ]);
     const list = studentSnap.exists ? parseJson(studentSnap.data().value,[]) : [];
     if (!Array.isArray(list)) throw new HttpsError('internal','Registration records unavailable.');
@@ -656,16 +657,24 @@ app.adminEditRegistration = onCall({ enforceAppCheck: true }, async request => {
       }
     }
     if (student.course !== oldCourse) {
+      if (!['Registered','Cancelled'].includes(oldStatus)) {
+        throw new HttpsError('failed-precondition','The owner must handle program changes for active or completed students.');
+      }
+      const attendance = attendanceSnap.exists ? parseJson(attendanceSnap.data().value,[]) : [];
+      if (Array.isArray(attendance) && attendance.some(mark => mark.studentId === id)) {
+        throw new HttpsError('failed-precondition','The owner must handle program changes after attendance has been recorded.');
+      }
       student.regNumber = registrationNumberFor(student.course,list.filter(s=>s.id!==id),student.intakeStart);
-      if (student.status !== 'Cancelled') {
-        const capacityMap = capacitySnap.exists ? parseJson(capacitySnap.data().value,{}) : {};
-        const rawCapacity = Number(capacityMap[student.course]);
-        const capacity = rawCapacity > 0 ? rawCapacity : 25;
-        const assigned = list.filter(s=>s.id!==id && s.course===student.course &&
-          s.status !== 'Cancelled' && (s.intakeStart || '') === (student.intakeStart || '')).length;
-        if (assigned >= capacity) {
-          throw new HttpsError('failed-precondition','The selected program is full for this intake.');
-        }
+    }
+    if (student.status !== 'Cancelled' &&
+        (student.course !== oldCourse || (oldStatus === 'Cancelled' && student.status !== 'Cancelled'))) {
+      const capacityMap = capacitySnap.exists ? parseJson(capacitySnap.data().value,{}) : {};
+      const rawCapacity = Number(capacityMap[student.course]);
+      const capacity = rawCapacity > 0 ? rawCapacity : 25;
+      const assigned = list.filter(s=>s.id!==id && s.course===student.course &&
+        s.status !== 'Cancelled' && (s.intakeStart || '') === (student.intakeStart || '')).length;
+      if (assigned >= capacity) {
+        throw new HttpsError('failed-precondition','The selected program is full for this intake.');
       }
     }
     if (student.status !== 'Cancelled') {

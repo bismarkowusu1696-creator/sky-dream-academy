@@ -71,6 +71,64 @@ function makePasswordRecord(password) {
   return { passwordHash: hash, passwordSalt: salt, passwordVersion: 1 };
 }
 
+
+// Staff PINs are still stored with salted scrypt records. This purpose-
+// specific input prevents a 4-digit PIN from being interpreted as an owner's
+// password, but it does not increase the PIN's 10,000 possible combinations.
+// Persistent lockouts and rate limits therefore remain mandatory.
+const STAFF_PIN_VERSION = 'staff-pin-v1';
+const validStaffPin = value => /^[0-9]{4}$/.test(String(value || ''));
+const staffPinSecret = pin => 'SkyDream-Registration-Staff-' + String(pin) + '-Aa9!';
+function verifyStoredSecret(secret, account) {
+  if (!account || !account.passwordHash || !account.passwordSalt) return false;
+  try {
+    const expected = Buffer.from(account.passwordHash, 'hex');
+    if (expected.length !== 64) return false;
+    const actual = crypto.scryptSync(String(secret), account.passwordSalt, expected.length);
+    return crypto.timingSafeEqual(actual, expected);
+  } catch (_) { return false; }
+}
+
+async function appendCredentialAudit(username, action, target, role = 'owner') {
+  const ref = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
+  try {
+    await db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      const raw = snap.exists ? parseJson(snap.data().value, []) : [];
+      const records = Array.isArray(raw) ? raw : [];
+      records.push({
+        id: 'audit_' + crypto.randomUUID(),
+        date: new Date().toISOString(),
+        admin: clean(username, 80),
+        role: clean(role, 40),
+        action: clean(action, 100),
+        target: clean(target, 100),
+        detail: 'Credential changed; no PIN recorded.'
+      });
+      tx.set(ref, { value: JSON.stringify(records.slice(-1000)) });
+    });
+  } catch (err) { console.warn('Admin credential audit failed.', err); }
+}
+
+async function revokeAccountSessions(username, id) {
+  const ref = db.collection(STORAGE_COLLECTION).doc('sdta_admin_sessions');
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const list = snap.exists ? parseJson(snap.data().value, []) : [];
+    if (!Array.isArray(list)) return;
+    const now = new Date().toISOString();
+    let changed = false;
+    for (const s of list) {
+      if (String(s.username || '').toLowerCase() === String(username).toLowerCase() && !s.revoked) {
+        s.revoked = true; s.revokedAt = now; s.revokedBy = 'staff-pin-change'; changed = true;
+      }
+    }
+    if (changed) tx.set(ref, { value: JSON.stringify(list) });
+  });
+  try { await admin.auth().revokeRefreshTokens('admin-' + id); }
+  catch (err) { console.warn('Could not revoke Firebase refresh tokens.', err); }
+}
+
 function normalizeRecoveryCode(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
@@ -314,33 +372,43 @@ app.adminRecoverWithCode = onCall({ enforceAppCheck: true }, async request => {
   return { ok: true, remainingCodes: recoveredAccount ? recoveredAccount.remaining : 0 };
 });
 
-// Administrator sign-in now requires the modern password format. Old numeric
-// PIN authentication is deliberately disabled instead of remaining as a weak
-// fallback credential.
+// Administrator PIN sign-in has been disabled for the main owner account.
+// The owner must use a strong password; only restricted staff can use the
+// 4-digit PIN format provisioned by the owner.
 const baseAdminLogin = app.adminLogin;
 app.adminLogin = onCall({ enforceAppCheck: true }, async request => {
   const username = clean(request.data && request.data.username, 80);
-  const password = String(request.data && request.data.password || '');
-  await enforceRateLimit(request, 'admin-login-user', username || 'blank', 12, 15 * 60 * 1000);
+  const entered = String(request.data && request.data.password || '');
+  await enforceRateLimit(request, 'admin-login-user', username || 'blank', 5, 15 * 60 * 1000);
   await enforceRateLimit(request, 'admin-login-ip', 'all-admin-users', 50, 15 * 60 * 1000);
-
-  if (!username || !strongAdminPassword(password)) {
-    throw new HttpsError(
-      'failed-precondition',
-      'Administrator PIN sign-in has been disabled. Use your strong administrator password (at least 12 characters with uppercase, lowercase and a number).'
-    );
+  if (!username || !baseAdminLogin || typeof baseAdminLogin.run !== 'function') {
+    throw new HttpsError('permission-denied', 'Invalid username or credential.');
   }
-  if (!baseAdminLogin || typeof baseAdminLogin.run !== 'function') {
-    throw new HttpsError('internal', 'Administrator login is unavailable.');
-  }
+  const admins = await readStorage('sdta_admins', []);
+  const account = Array.isArray(admins)
+    ? admins.find(a => String(a.username || '').toLowerCase() === username.toLowerCase())
+    : null;
+  if (!account) throw new HttpsError('permission-denied', 'Invalid username or credential.');
 
-  const result = await baseAdminLogin.run(request);
+  let credential = entered;
+  if ((account.role || 'staff') === 'owner') {
+    if (!strongAdminPassword(entered)) {
+      throw new HttpsError('permission-denied', 'Invalid username or credential.');
+    }
+  } else {
+    if (!validStaffPin(entered) || account.credentialType !== STAFF_PIN_VERSION) {
+      throw new HttpsError('permission-denied', 'Invalid username or PIN. Ask the owner to set a staff PIN if this account is not yet configured.');
+    }
+    credential = staffPinSecret(entered);
+  }
+  const result = await baseAdminLogin.run({
+    ...request,
+    data: { ...(request.data || {}), password: credential }
+  });
   if (result && result.upgradeRequired) {
-    throw new HttpsError('failed-precondition', 'Legacy administrator PIN accounts are disabled. A modern password must be provisioned by an authenticated owner.');
+    throw new HttpsError('failed-precondition', 'An authenticated owner must set a modern account credential.');
   }
-  if (result && result.account) {
-    await removeLegacyRecoveryMaterial();
-  }
+  if (result && result.account) await removeLegacyRecoveryMaterial();
   return result;
 });
 
@@ -472,6 +540,99 @@ for (const name of Object.keys(app)) {
     return base.run(delegatedRequest(request, auth));
   });
 }
+
+
+// Explicit restricted staff credential management. Owner creation/reset is
+// enforced against the stored role, not an ID token claim.
+app.adminCreateAdmin = onCall({ enforceAppCheck: true }, async request => {
+  const { account: owner } = await requireStrongAdminSession(request);
+  if ((owner.role || 'staff') !== 'owner') throw new HttpsError('permission-denied', 'Main administrator only.');
+  const d = request.data || {};
+  const name = clean(d.name, 120);
+  const username = clean(d.username, 80);
+  const pin = String(d.pin == null ? d.password || '' : d.pin);
+  if (!name || !/^[a-zA-Z0-9._-]{3,80}$/.test(username) || !validStaffPin(pin)) {
+    throw new HttpsError('invalid-argument', 'Enter a name, a username and exactly 4 PIN digits.');
+  }
+  const ref = db.collection(STORAGE_COLLECTION).doc('sdta_admins');
+  const id = 'adm_' + crypto.randomUUID();
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const list = snap.exists ? parseJson(snap.data().value, []) : [];
+    if (!Array.isArray(list)) throw new HttpsError('internal', 'Administrator records unavailable.');
+    if (list.some(a => String(a.username || '').toLowerCase() === username.toLowerCase()))
+      throw new HttpsError('already-exists', 'This administrator username is already used.');
+    list.push({
+      id, name, username, role: 'staff',
+      credentialType: STAFF_PIN_VERSION,
+      ...makePasswordRecord(staffPinSecret(pin))
+    });
+    tx.set(ref, { value: JSON.stringify(list) });
+  });
+  await appendCredentialAudit(owner.username, 'Created staff administrator with PIN', username);
+  return { ok: true };
+});
+
+app.adminSetStaffPin = onCall({ enforceAppCheck: true }, async request => {
+  const { account: owner } = await requireStrongAdminSession(request);
+  if ((owner.role || 'staff') !== 'owner') throw new HttpsError('permission-denied', 'Main administrator only.');
+  const id = clean(request.data && request.data.id, 120);
+  const pin = String(request.data && request.data.pin || '');
+  if (!id || !validStaffPin(pin)) throw new HttpsError('invalid-argument', 'Select a staff administrator and enter exactly 4 digits.');
+  const ref = db.collection(STORAGE_COLLECTION).doc('sdta_admins');
+  let username = '';
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const list = snap.exists ? parseJson(snap.data().value, []) : [];
+    if (!Array.isArray(list)) throw new HttpsError('internal', 'Administrator records unavailable.');
+    const target = list.find(a => a.id === id);
+    if (!target) throw new HttpsError('not-found', 'Staff administrator not found.');
+    if ((target.role || 'staff') === 'owner') throw new HttpsError('permission-denied', 'The owner password cannot be replaced by a PIN.');
+    username = target.username;
+    Object.assign(target, makePasswordRecord(staffPinSecret(pin)));
+    target.credentialType = STAFF_PIN_VERSION;
+    delete target.pinHash; delete target.recoveryHash;
+    target.failedLogins = 0; delete target.lockedUntil;
+    tx.set(ref, { value: JSON.stringify(list) });
+  });
+  await revokeAccountSessions(username, id);
+  await appendCredentialAudit(owner.username, 'Reset staff administrator PIN', username);
+  return { ok: true };
+});
+
+// Keep the owner's existing 12+ character password-change flow. Staff
+// administrators change only their own PIN and must know the current PIN.
+const baseAdminChangePassword = app.adminChangePassword;
+app.adminChangePassword = onCall({ enforceAppCheck: true }, async request => {
+  const { account, auth } = await requireStrongAdminSession(request);
+  if ((account.role || 'staff') === 'owner') {
+    return baseAdminChangePassword.run(delegatedRequest(request, auth));
+  }
+  const currentPin = String(request.data && request.data.currentPassword || '');
+  const newPin = String(request.data && request.data.newPassword || '');
+  if (!validStaffPin(currentPin) || !validStaffPin(newPin) || account.credentialType !== STAFF_PIN_VERSION) {
+    throw new HttpsError('invalid-argument', 'Enter your current 4-digit PIN and a new 4-digit PIN.');
+  }
+  if (currentPin === newPin) throw new HttpsError('invalid-argument', 'Choose a different PIN.');
+  await enforceRateLimit(request, 'staff-change-pin', account.username, 5, 15 * 60 * 1000);
+  const ref = db.collection(STORAGE_COLLECTION).doc('sdta_admins');
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const list = snap.exists ? parseJson(snap.data().value, []) : [];
+    const target = Array.isArray(list) ? list.find(a => a.id === account.id) : null;
+    if (!target || (target.role || 'staff') === 'owner' ||
+        target.credentialType !== STAFF_PIN_VERSION ||
+        !verifyStoredSecret(staffPinSecret(currentPin), target))
+      throw new HttpsError('permission-denied', 'Current PIN is incorrect.');
+    Object.assign(target, makePasswordRecord(staffPinSecret(newPin)));
+    target.credentialType = STAFF_PIN_VERSION;
+    target.failedLogins = 0; delete target.lockedUntil;
+    tx.set(ref, { value: JSON.stringify(list) });
+  });
+  await revokeAccountSessions(account.username, account.id);
+  await appendCredentialAudit(account.username, 'Changed own staff PIN', account.username, account.role || 'staff');
+  return { ok: true, signOutRequired: true };
+});
 
 // Current production no longer exposes first-admin creation or anonymous
 // account reset. Keep explicit blockers for legacy callable names so an old

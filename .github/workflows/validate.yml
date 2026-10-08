@@ -61,6 +61,38 @@ jobs:
             }
           }
           NODE
+      - name: Verify owner password and restricted staff PIN separation
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const hardening = fs.readFileSync('functions/security-hardening-loader.js', 'utf8');
+          const html = fs.readFileSync('admin.html', 'utf8');
+          const staff = fs.readFileSync('assets/admin-registration.js', 'utf8');
+          const ownerUi = fs.readFileSync('assets/admin.js', 'utf8');
+          for (const required of [
+            "const STAFF_PIN_VERSION = 'staff-pin-v1'",
+            "const validStaffPin = value => /^[0-9]{4}$/.test",
+            "if (!strongAdminPassword(entered))",
+            "account.credentialType !== STAFF_PIN_VERSION",
+            "app.adminSetStaffPin = onCall",
+            "app.adminCreateAdmin = onCall",
+            "app.adminChangePassword = onCall",
+            "requireStrongAdminSession(request)",
+            "This administrator can only export registrations"
+          ]) {
+            if (!hardening.includes(required)) throw new Error('Staff PIN policy missing: ' + required);
+          }
+          if (!html.includes('id="newAdminPin"') ||
+              !html.includes('id="staffPinModal"') ||
+              !html.includes('id="registrationStaffNewPassword"') ||
+              html.includes('id="newAdminPassword"')) {
+            throw new Error('Staff PIN forms must have four-digit controls, with no old creation form');
+          }
+          if (!ownerUi.includes("data-set-admin-pin") ||
+              !staff.includes("newPassword !== $('registrationStaffConfirmPassword').value")) {
+            throw new Error('Owner PIN reset or staff self-PIN change is missing');
+          }
+          NODE
       - name: Check HTML for duplicate IDs
         run: |
           python - <<'PY'

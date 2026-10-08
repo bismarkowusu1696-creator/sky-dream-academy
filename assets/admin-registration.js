@@ -107,10 +107,10 @@
     event.preventDefault();
     const currentPassword = $('registrationStaffCurrentPassword').value;
     const newPassword = $('registrationStaffNewPassword').value;
-    if (newPassword !== $('registrationStaffConfirmPassword').value ||
-        newPassword.length < 12 || !/[a-z]/.test(newPassword) ||
-        !/[A-Z]/.test(newPassword) || !/\d/.test(newPassword)) {
-      notice('New passwords must match and contain 12+ characters with uppercase, lowercase and a number.', 'error');
+    if (!/^[0-9]{4}$/.test(currentPassword) ||
+        !/^[0-9]{4}$/.test(newPassword) ||
+        newPassword !== $('registrationStaffConfirmPassword').value) {
+      notice('Enter your current 4-digit PIN and confirm a new 4-digit PIN.', 'error');
       return;
     }
     const button = event.currentTarget.querySelector('button[type="submit"]');
@@ -118,7 +118,9 @@
     try {
       await SkyDreamFirebase.call('adminChangePassword', { currentPassword, newPassword });
       event.currentTarget.reset();
-      notice('Your own password was updated.', 'success');
+      alert('Your PIN has been changed. Please sign in again with your new 4-digit PIN.');
+      await SkyDreamFirebase.auth.signOut();
+      location.reload();
     } catch(err) { notice(SkyDreamFirebase.friendlyError(err), 'error'); }
     finally { button.disabled = false; }
   }

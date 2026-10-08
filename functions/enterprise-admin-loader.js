@@ -162,6 +162,41 @@ wrapHistory('adminUpdateFacilitator','facilitators','facilitator');
 wrapHistory('adminSetAdminRole','settings','admin');
 
 
+const STUDENT_PUSH_COLLECTION='sdta_student_push_tokens';
+async function sendSmartRulePush(studentIds){
+  const ids=new Set((studentIds||[]).filter(Boolean));
+  if(!ids.size)return{devices:0,sent:0,failed:0};
+  try{
+    const snap=await db.collection(STUDENT_PUSH_COLLECTION).limit(5000).get();
+    const docs=snap.docs.filter(doc=>ids.has((doc.data()||{}).studentId));
+    let sent=0,failed=0;
+    for(let offset=0;offset<docs.length;offset+=500){
+      const chunk=docs.slice(offset,offset+500),tokens=chunk.map(doc=>String((doc.data()||{}).token||'')).filter(Boolean);
+      if(!tokens.length)continue;
+      const result=await admin.messaging().sendEachForMulticast({
+        tokens,
+        data:{title:'SkyDream Skills Training Academy',body:'You have a new SkyDream message.',url:'https://skydream.academy/student-portal#portalMessages'},
+        webpush:{headers:{Urgency:'high'}}
+      });
+      sent+=result.successCount;failed+=result.failureCount;
+      const deletes=[];
+      result.responses.forEach((response,index)=>{
+        if(response.success)return;
+        const code=response.error&&response.error.code||'';
+        if(code==='messaging/registration-token-not-registered'||code==='messaging/invalid-registration-token'){
+          const token=tokens[index],doc=chunk.find(x=>String((x.data()||{}).token||'')===token);
+          if(doc)deletes.push(doc.ref.delete().catch(()=>null));
+        }
+      });
+      if(deletes.length)await Promise.all(deletes);
+    }
+    return{devices:docs.length,sent,failed};
+  }catch(err){
+    console.warn('Smart-rule push delivery failed.',err);
+    return{devices:0,sent:0,failed:0};
+  }
+}
+
 const DEFAULT_SMART_RULES={
   enabled:false,
   attendance:{enabled:true,threshold:70,minMarks:3},
@@ -254,7 +289,8 @@ async function evaluateSmartNotifications({send=false,rulesOverride=null}={}){
   }
   if(ops)await batch.commit();
   state.sent=sent;state.updatedAt=nowIso();await writeValue(KEYS.smartRuleState,state);await writeValue(KEYS.smartRuleLog,log.slice(-1000));
-  return{rules,risks,alerts,eligible,sent:sentCount,disabled:false};
+  const push=await sendSmartRulePush([...new Set(eligible.slice(0,200).map(a=>a.studentId))]);
+  return{rules,risks,alerts,eligible,sent:sentCount,push,disabled:false};
 }
 function findCourseInQuestion(q){
   const text=String(q||'').toLowerCase();
@@ -331,7 +367,7 @@ app.adminPreviewSmartNotificationRules=onCall({enforceAppCheck:true},async reque
   await requirePermission(request,'reports');const result=await evaluateSmartNotifications({send:false,rulesOverride:request.data&&request.data.rules});return{rules:result.rules,total:result.alerts.length,eligible:result.eligible.length,alerts:result.eligible.slice(0,100)};
 });
 app.adminRunSmartNotificationRules=onCall({enforceAppCheck:true},async request=>{
-  const a=await requirePermission(request,'settings');const result=await evaluateSmartNotifications({send:true});await appendAudit(a,'Ran smart notification rules',result.disabled?'Automation is disabled':`${result.sent||0} portal alert(s) sent`);return{ok:true,disabled:!!result.disabled,sent:result.sent||0,eligible:(result.eligible||[]).length};
+  const a=await requirePermission(request,'settings');const result=await evaluateSmartNotifications({send:true});await appendAudit(a,'Ran smart notification rules',result.disabled?'Automation is disabled':`${result.sent||0} portal alert(s) sent`);return{ok:true,disabled:!!result.disabled,sent:result.sent||0,eligible:(result.eligible||[]).length,push:result.push||{devices:0,sent:0,failed:0}};
 });
 app.adminAskAssistant=onCall({enforceAppCheck:true},async request=>{
   const a=await requirePermission(request,'reports');const question=clean(request.data&&request.data.question,400);if(question.length<2)throw new HttpsError('invalid-argument','Ask a question about SkyDream data.');const base=await baseSuite.run(request);const risks=buildRiskAnalysis(base.students||[],base.attendance||[],base.settings||{},base.intake||{});const result=assistantAnswer(question,base,risks);await appendAudit(a,'Used Admin Assistant','',question.slice(0,80));return{...result,asOf:nowIso()};

@@ -79,16 +79,6 @@ function makePasswordRecord(password) {
 const STAFF_PIN_VERSION = 'staff-pin-v1';
 const validStaffPin = value => /^[0-9]{4}$/.test(String(value || ''));
 const staffPinSecret = pin => 'SkyDream-Registration-Staff-' + String(pin) + '-Aa9!';
-function verifyStoredSecret(secret, account) {
-  if (!account || !account.passwordHash || !account.passwordSalt) return false;
-  try {
-    const expected = Buffer.from(account.passwordHash, 'hex');
-    if (expected.length !== 64) return false;
-    const actual = crypto.scryptSync(String(secret), account.passwordSalt, expected.length);
-    return crypto.timingSafeEqual(actual, expected);
-  } catch (_) { return false; }
-}
-
 async function appendCredentialAudit(username, action, target, role = 'owner') {
   const ref = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
   try {
@@ -534,8 +524,8 @@ for (const name of Object.keys(app)) {
     // Deny by default for all subordinate admins, including existing manager,
     // staff, registration, finance, and viewer accounts.
     if ((account.role || 'staff') !== 'owner' &&
-        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminChangePassword']).has(name)) {
-      throw new HttpsError('permission-denied', 'This administrator can only export registrations and change registration status.');
+        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus']).has(name)) {
+      throw new HttpsError('permission-denied', 'Staff administrators can only view or export registrations and change registration status.');
     }
     return base.run(delegatedRequest(request, auth));
   });
@@ -600,38 +590,16 @@ app.adminSetStaffPin = onCall({ enforceAppCheck: true }, async request => {
   return { ok: true };
 });
 
-// Keep the owner's existing 12+ character password-change flow. Staff
-// administrators change only their own PIN and must know the current PIN.
+// Only the owner may change an admin login credential. Subordinate
+// administrators cannot change their own PIN or any other password.
+// The owner can reset staff PINs through adminSetStaffPin.
 const baseAdminChangePassword = app.adminChangePassword;
 app.adminChangePassword = onCall({ enforceAppCheck: true }, async request => {
   const { account, auth } = await requireStrongAdminSession(request);
-  if ((account.role || 'staff') === 'owner') {
-    return baseAdminChangePassword.run(delegatedRequest(request, auth));
+  if ((account.role || 'staff') !== 'owner') {
+    throw new HttpsError('permission-denied', 'Staff PINs can only be changed by the main administrator.');
   }
-  const currentPin = String(request.data && request.data.currentPassword || '');
-  const newPin = String(request.data && request.data.newPassword || '');
-  if (!validStaffPin(currentPin) || !validStaffPin(newPin) || account.credentialType !== STAFF_PIN_VERSION) {
-    throw new HttpsError('invalid-argument', 'Enter your current 4-digit PIN and a new 4-digit PIN.');
-  }
-  if (currentPin === newPin) throw new HttpsError('invalid-argument', 'Choose a different PIN.');
-  await enforceRateLimit(request, 'staff-change-pin', account.username, 5, 15 * 60 * 1000);
-  const ref = db.collection(STORAGE_COLLECTION).doc('sdta_admins');
-  await db.runTransaction(async tx => {
-    const snap = await tx.get(ref);
-    const list = snap.exists ? parseJson(snap.data().value, []) : [];
-    const target = Array.isArray(list) ? list.find(a => a.id === account.id) : null;
-    if (!target || (target.role || 'staff') === 'owner' ||
-        target.credentialType !== STAFF_PIN_VERSION ||
-        !verifyStoredSecret(staffPinSecret(currentPin), target))
-      throw new HttpsError('permission-denied', 'Current PIN is incorrect.');
-    Object.assign(target, makePasswordRecord(staffPinSecret(newPin)));
-    target.credentialType = STAFF_PIN_VERSION;
-    target.failedLogins = 0; delete target.lockedUntil;
-    tx.set(ref, { value: JSON.stringify(list) });
-  });
-  await revokeAccountSessions(account.username, account.id);
-  await appendCredentialAudit(account.username, 'Changed own staff PIN', account.username, account.role || 'staff');
-  return { ok: true, signOutRequired: true };
+  return baseAdminChangePassword.run(delegatedRequest(request, auth));
 });
 
 // Current production no longer exposes first-admin creation or anonymous

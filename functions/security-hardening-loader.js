@@ -14,6 +14,8 @@ const db = admin.firestore();
 const STORAGE_COLLECTION = 'sdta_storage';
 const RATE_LIMIT_COLLECTION = 'sdta_security_rate_limits';
 const ADMIN_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const RECOVERY_COLLECTION = 'sdta_admin_recovery_codes';
+const RECOVERY_CODE_COUNT = 10;
 
 const parseJson = (raw, fallback) => {
   try { return raw ? JSON.parse(raw) : fallback; } catch (_) { return fallback; }
@@ -61,6 +63,35 @@ async function enforceRateLimit(request, kind, subject, maxRequests, windowMs) {
       expiresAt: admin.firestore.Timestamp.fromMillis(windowStart + (windowMs * 2))
     }, { merge: true });
   });
+}
+
+function makePasswordRecord(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+  return { passwordHash: hash, passwordSalt: salt, passwordVersion: 1 };
+}
+
+function normalizeRecoveryCode(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
+function recoveryHash(salt, code) {
+  return crypto.createHash('sha256').update(String(salt) + '|' + normalizeRecoveryCode(code)).digest('hex');
+}
+
+function generateRecoveryCode() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let body = '';
+  for (let i = 0; i < 16; i++) body += alphabet[crypto.randomInt(0, alphabet.length)];
+  return 'SKY-' + body.slice(0, 4) + '-' + body.slice(4, 8) + '-' + body.slice(8, 12) + '-' + body.slice(12, 16);
+}
+
+async function ownerAccountFromRequest(request) {
+  const { account } = await requireStrongAdminSession(request);
+  if ((account.role || 'staff') !== 'owner') {
+    throw new HttpsError('permission-denied', 'Only the main administrator can manage recovery codes.');
+  }
+  return account;
 }
 
 function strongAdminPassword(value) {
@@ -158,6 +189,131 @@ async function removeLegacyRecoveryMaterial() {
   });
 }
 
+// Secure owner recovery. Recovery codes are generated only from an authenticated
+// owner session, stored only as salted hashes, and each code can be used once.
+app.adminGetRecoveryCodeStatus = onCall({ enforceAppCheck: true }, async request => {
+  const account = await ownerAccountFromRequest(request);
+  const snap = await db.collection(RECOVERY_COLLECTION).doc(account.id).get();
+  if (!snap.exists) return { configured: false, remaining: 0, generatedAt: '', lastUsedAt: '' };
+  const d = snap.data() || {};
+  const hashes = Array.isArray(d.hashes) ? d.hashes : [];
+  return {
+    configured: hashes.length > 0,
+    remaining: hashes.length,
+    generatedAt: clean(d.generatedAt, 80),
+    lastUsedAt: clean(d.lastUsedAt, 80)
+  };
+});
+
+app.adminGenerateRecoveryCodes = onCall({ enforceAppCheck: true }, async request => {
+  const account = await ownerAccountFromRequest(request);
+  const codes = Array.from({ length: RECOVERY_CODE_COUNT }, () => generateRecoveryCode());
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hashes = codes.map(code => recoveryHash(salt, code));
+  await db.collection(RECOVERY_COLLECTION).doc(account.id).set({
+    username: account.username,
+    salt,
+    hashes,
+    generatedAt: new Date().toISOString(),
+    lastUsedAt: ''
+  });
+  return { codes, remaining: codes.length, generatedAt: new Date().toISOString() };
+});
+
+app.adminRecoverWithCode = onCall({ enforceAppCheck: true }, async request => {
+  const username = clean(request.data && request.data.username, 80);
+  const code = normalizeRecoveryCode(request.data && request.data.recoveryCode);
+  const newPassword = String(request.data && request.data.newPassword || '');
+
+  await enforceRateLimit(request, 'admin-recovery-user', username || 'blank', 5, 30 * 60 * 1000);
+  await enforceRateLimit(request, 'admin-recovery-ip', 'all-admin-recovery', 15, 30 * 60 * 1000);
+
+  if (!username || code.length < 12 || !strongAdminPassword(newPassword)) {
+    throw new HttpsError(
+      'failed-precondition',
+      'Enter your owner username, a valid recovery code, and a new password of at least 12 characters with uppercase, lowercase and a number.'
+    );
+  }
+
+  const adminsRef = db.collection(STORAGE_COLLECTION).doc('sdta_admins');
+  const sessionsRef = db.collection(STORAGE_COLLECTION).doc('sdta_admin_sessions');
+  let recoveredAccount = null;
+
+  await db.runTransaction(async tx => {
+    const adminsSnap = await tx.get(adminsRef);
+    const admins = adminsSnap.exists ? parseJson(adminsSnap.data().value, []) : [];
+    const account = Array.isArray(admins)
+      ? admins.find(a => String(a.username || '').toLowerCase() === username.toLowerCase() && (a.role || 'staff') === 'owner')
+      : null;
+
+    // Use one generic failure path to avoid revealing whether an owner username exists.
+    if (!account || !account.id) throw new HttpsError('permission-denied', 'Recovery details are not valid.');
+
+    const recoveryRef = db.collection(RECOVERY_COLLECTION).doc(account.id);
+    const auditRef = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
+    const [recoverySnap, sessionsSnap, auditSnap] = await Promise.all([
+      tx.get(recoveryRef),
+      tx.get(sessionsRef),
+      tx.get(auditRef)
+    ]);
+    const recovery = recoverySnap.exists ? recoverySnap.data() : null;
+    const hashes = recovery && Array.isArray(recovery.hashes) ? recovery.hashes : [];
+    const candidate = recovery ? recoveryHash(recovery.salt, code) : '';
+    const index = hashes.findIndex(h => h === candidate);
+    if (!recovery || index < 0) throw new HttpsError('permission-denied', 'Recovery details are not valid.');
+
+    const nextHashes = hashes.slice();
+    nextHashes.splice(index, 1);
+    Object.assign(account, makePasswordRecord(newPassword));
+    delete account.pinHash;
+    delete account.recoveryHash;
+    delete account.lockedUntil;
+    account.failedLogins = 0;
+    account.passwordRecoveredAt = new Date().toISOString();
+
+    const sessions = sessionsSnap.exists ? parseJson(sessionsSnap.data().value, []) : [];
+    if (Array.isArray(sessions)) {
+      sessions.forEach(s => {
+        if (String(s.username || '').toLowerCase() === username.toLowerCase() && !s.revoked) {
+          s.revoked = true;
+          s.revokedAt = new Date().toISOString();
+          s.revokedBy = 'recovery';
+        }
+      });
+    }
+
+    let audit = auditSnap.exists ? parseJson(auditSnap.data().value, []) : [];
+    if (!Array.isArray(audit)) audit = [];
+    audit.push({
+      id: 'audit_' + crypto.randomUUID(),
+      date: new Date().toISOString(),
+      admin: account.username,
+      role: 'owner',
+      action: 'Recovered owner password with one-time code',
+      target: account.username,
+      detail: 'All existing admin sessions were revoked.'
+    });
+    if (audit.length > 1000) audit = audit.slice(-1000);
+
+    tx.set(adminsRef, { value: JSON.stringify(admins) });
+    tx.set(recoveryRef, {
+      ...recovery,
+      hashes: nextHashes,
+      lastUsedAt: new Date().toISOString()
+    });
+    tx.set(sessionsRef, { value: JSON.stringify(Array.isArray(sessions) ? sessions : []) });
+    tx.set(auditRef, { value: JSON.stringify(audit) });
+
+    recoveredAccount = { id: account.id, username: account.username, remaining: nextHashes.length };
+  });
+
+  if (recoveredAccount) {
+    try { await admin.auth().revokeRefreshTokens('admin-' + recoveredAccount.id); } catch (_) {}
+  }
+
+  return { ok: true, remainingCodes: recoveredAccount ? recoveredAccount.remaining : 0 };
+});
+
 // Administrator sign-in now requires the modern password format. Old numeric
 // PIN authentication is deliberately disabled instead of remaining as a weak
 // fallback credential.
@@ -221,7 +377,7 @@ if (baseFacilitatorLogin && typeof baseFacilitatorLogin.run === 'function') {
 
 // Apply one final session check to every exported administrator callable, even
 // if a future feature forgets to add its own authorization wrapper.
-const PRE_AUTH_ADMIN_CALLS = new Set(['adminLogin', 'adminVerifyTwoFactorLogin']);
+const PRE_AUTH_ADMIN_CALLS = new Set(['adminLogin', 'adminVerifyTwoFactorLogin', 'adminRecoverWithCode']);
 for (const name of Object.keys(app)) {
   const isAdminCallable = name === 'getAdminSnapshot' || name === 'sendCustomSms' || name.startsWith('admin');
   if (!isAdminCallable || PRE_AUTH_ADMIN_CALLS.has(name)) continue;

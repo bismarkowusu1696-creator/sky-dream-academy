@@ -1,6 +1,8 @@
 (() => {
   let data = null;
   let importCsv = '';
+  let recoveryStatus = null;
+  let freshRecoveryCodes = [];
   const $ = id => document.getElementById(id);
   const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
   const date = v => { const d = new Date(v || ''); return Number.isNaN(d.getTime()) ? (v || '') : d.toLocaleString('en-GB'); };
@@ -53,7 +55,9 @@
 
     section('enterpriseSecurity','Security & Devices',`
       <div class="grid grid-2"><div class="card"><h3>2-step verification</h3><p id="twoFactorStatus" class="hint">Loading…</p><div class="toolbar"><button id="enable2fa" class="btn btn-primary btn-small" type="button">Set up authenticator</button><button id="disable2fa" class="btn btn-outline btn-small" type="button">Disable</button></div><div id="twoFactorSetup" class="hidden mt-12"></div></div>
-      <div class="card"><h3>Admin sessions</h3><p class="hint">Review signed-in devices and revoke access.</p><button id="signOutAllDevices" class="btn btn-outline btn-small" type="button">Sign out all my devices</button></div></div><div id="sessionList" class="grid mt-16"></div>`,'account');
+      <div class="card"><h3>Admin sessions</h3><p class="hint">Review signed-in devices and revoke access.</p><button id="signOutAllDevices" class="btn btn-outline btn-small" type="button">Sign out all my devices</button></div></div>
+      <div id="recoveryCodeCard" class="card mt-16 hidden"><div class="dashboard-top"><div><h3 class="m-0">Owner recovery codes</h3><p id="recoveryCodeStatus" class="hint">Loading…</p></div><button id="generateRecoveryCodes" class="btn btn-outline btn-small" type="button">Generate recovery codes</button></div><p class="hint">Recovery codes are one-time owner credentials for resetting a forgotten password. Generating a new set invalidates every previous code. Keep them offline and private. Password recovery does not disable authenticator 2-step verification.</p><div id="recoveryCodeOutput" class="hidden mt-12"></div></div>
+      <div id="sessionList" class="grid mt-16"></div>`,'account');
     section('notificationsCenter','Notification Centre',`<p class="hint">New registrations, enquiries, capacity warnings, attendance warnings and deadlines appear here.</p><div id="notificationList" class="grid"></div>`,'account');
     section('studentRiskCenter','AI Student Risk Centre',`
       <p class="hint">Explainable risk scoring uses attendance, consecutive absences, inactivity and outstanding fees. It does not make final decisions for you.</p>
@@ -96,7 +100,7 @@
     bind();
   }
 
-  async function refresh(){ data=await call('adminGetEnterpriseSnapshot'); render(); }
+  async function refresh(){ data=await call('adminGetEnterpriseSnapshot'); render(); if(data.account&&data.account.role==='owner')loadRecoveryStatus().catch(e=>console.warn('Recovery status could not load',e)); }
   function queueRefresh(){setTimeout(()=>refresh().catch(e=>console.warn('Background enterprise refresh failed',e)),1600);}
   function queueRecycle(){setTimeout(()=>loadRecycle().catch(e=>console.warn('Background recycle refresh failed',e)),1600);}
   function render(){ if(!data)return; renderSecurity();renderNotifications();renderRisk();renderSmartRules();renderCohorts();renderSessions();renderPerformance();renderNotes();renderHistory();populateSelectors(); }
@@ -111,6 +115,40 @@
     $('enable2fa').classList.toggle('hidden',data.twoFactorEnabled);$('disable2fa').classList.toggle('hidden',!data.twoFactorEnabled);
     $('sessionList').innerHTML=(data.sessions||[]).map(s=>`<div class="card"><div class="dashboard-top"><strong>${esc(s.username)}</strong><span class="badge">${s.revoked?'Revoked':'Active'}</span></div><p><small>${esc(date(s.createdAt))}</small></p><p class="hint">${esc(s.userAgent||'Unknown device')}<br>${esc(s.ip||'IP unavailable')}</p>${!s.revoked?`<button class="btn btn-outline btn-small" data-revoke-session="${esc(s.id)}">Revoke</button>`:''}</div>`).join('')||'<p>No recorded sessions yet. Sign out and sign in again to create a device-bound session.</p>';
   }
+
+  function renderRecoveryStatus(){
+    const card=$('recoveryCodeCard'),status=$('recoveryCodeStatus');if(!card||!status)return;
+    const owner=data&&data.account&&data.account.role==='owner';card.classList.toggle('hidden',!owner);if(!owner)return;
+    if(!recoveryStatus){status.textContent='No recovery codes configured yet.';return;}
+    status.textContent=recoveryStatus.configured
+      ? `${Number(recoveryStatus.remaining)||0} unused recovery code(s) remaining${recoveryStatus.generatedAt?' · generated '+date(recoveryStatus.generatedAt):''}.`
+      : 'No recovery codes configured yet.';
+  }
+  async function loadRecoveryStatus(){
+    if(!(data&&data.account&&data.account.role==='owner'))return;
+    recoveryStatus=await call('adminGetRecoveryCodeStatus');
+    renderRecoveryStatus();
+  }
+  function recoveryCodesText(){
+    return ['SkyDream Skills Training Academy — OWNER RECOVERY CODES','Generated: '+new Date().toLocaleString('en-GB'),'','Store these codes offline. Each code works once. Generating a new set invalidates this set.','',...freshRecoveryCodes].join('\n');
+  }
+  function showRecoveryCodes(codes){
+    freshRecoveryCodes=Array.isArray(codes)?codes:[];
+    const host=$('recoveryCodeOutput');if(!host)return;
+    host.classList.remove('hidden');
+    host.innerHTML=`<div class="notice notice-info"><strong>Save these codes now.</strong> They will not be shown again after you leave or refresh this page.</div><pre class="pre-wrap-overflow">${esc(freshRecoveryCodes.join('\n'))}</pre><div class="toolbar"><button id="copyRecoveryCodes" class="btn btn-outline btn-small" type="button">Copy codes</button><button id="downloadRecoveryCodes" class="btn btn-primary btn-small" type="button">Download .txt</button></div>`;
+    $('copyRecoveryCodes').onclick=async()=>{try{await navigator.clipboard.writeText(recoveryCodesText());alert('Recovery codes copied.');}catch(_){alert('Copy failed. Use the Download button instead.');}};
+    $('downloadRecoveryCodes').onclick=()=>{const blob=new Blob([recoveryCodesText()],{type:'text/plain;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='SkyDream-owner-recovery-codes.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+  }
+  async function generateRecoveryCodes(){
+    if(!confirm('Generate a new set of owner recovery codes? Any older recovery codes will stop working immediately.'))return;
+    const b=$('generateRecoveryCodes');await withBusy(b,'Generating…',async()=>{
+      const result=await call('adminGenerateRecoveryCodes');
+      recoveryStatus={configured:true,remaining:result.remaining,generatedAt:result.generatedAt,lastUsedAt:''};
+      renderRecoveryStatus();showRecoveryCodes(result.codes||[]);
+    });
+  }
+
   function renderNotifications(){ $('notificationList').innerHTML=(data.notifications||[]).map(n=>`<div class="card" data-notification-card="${esc(n.id)}"><div class="dashboard-top"><strong>${esc(n.title)}</strong><small>${esc(date(n.date))}</small></div><p>${esc(n.message)}</p><button class="btn btn-outline btn-small" data-dismiss-notification="${esc(n.id)}">Dismiss</button></div>`).join('')||'<p>No notifications need your attention.</p>'; }
 
   function renderRisk(){
@@ -178,6 +216,7 @@
     $('enable2fa').onclick=async()=>{try{const r=await call('adminBeginTwoFactorSetup');$('twoFactorSetup').classList.remove('hidden');$('twoFactorSetup').innerHTML=`<p>Open Google Authenticator, Microsoft Authenticator or another TOTP app and choose <strong>Enter setup key</strong>.</p><p><strong>Account:</strong> SkyDream:${esc(data.account.username)}</p><p><strong>Setup key:</strong><br><code class="break-all">${esc(r.secret)}</code></p><div class="field"><label>6-digit code</label><input id="twoFactorCode" inputmode="numeric" maxlength="6"></div><button id="confirm2fa" class="btn btn-primary btn-small" type="button">Confirm & Enable</button>`;$('confirm2fa').onclick=async()=>{await call('adminConfirmTwoFactorSetup',{code:$('twoFactorCode').value});data.twoFactorEnabled=true;renderSecurity();alert('2-step verification enabled.');queueRefresh();};}catch(e){alert(SkyDreamFirebase.friendlyError(e));}};
     $('disable2fa').onclick=async()=>{const code=prompt('Enter your current 6-digit authenticator code to disable 2-step verification:');if(code===null)return;try{await call('adminDisableTwoFactor',{code});data.twoFactorEnabled=false;renderSecurity();alert('2-step verification disabled.');queueRefresh();}catch(e){alert(SkyDreamFirebase.friendlyError(e));}};
     $('signOutAllDevices').onclick=async()=>{if(!confirm('Sign out every session for your admin account?'))return;await call('adminRevokeAllSessions',{});await SkyDreamFirebase.auth.signOut();location.reload();};
+    $('generateRecoveryCodes').onclick=()=>generateRecoveryCodes().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
     $('csvFile').onchange=e=>{const f=e.target.files&&e.target.files[0];importCsv='';$('commitImport').disabled=true;if(!f)return;const rd=new FileReader();rd.onload=()=>{importCsv=String(rd.result||'');$('importSummary').textContent=`Loaded ${f.name}. Click Preview.`;};rd.readAsText(f);};
     $('previewImport').onclick=()=>previewImport().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
     $('commitImport').onclick=async()=>{if(!confirm('Import all valid rows and skip detected duplicates?'))return;const b=$('commitImport');await withBusy(b,'Importing…',async()=>{const r=await call('adminCommitStudentImport',{csv:importCsv,skipDuplicates:true});alert(`${r.imported} imported; ${r.skipped} skipped.`);queueRefresh();});};

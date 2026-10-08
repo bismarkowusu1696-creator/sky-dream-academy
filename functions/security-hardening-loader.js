@@ -433,6 +433,51 @@ if (baseFacilitatorLogin && typeof baseFacilitatorLogin.run === 'function') {
   });
 }
 
+
+const REGISTRATION_COURSES = Object.freeze({
+  'household-chemicals': 'Household Chemicals Production',
+  'hair-dressing': 'Hair Dressing',
+  cosmetology: 'Cosmetology',
+  electricals: 'Electricals',
+  'floral-decor': 'Floral Decor',
+  'fashion-design': 'Fashion Design',
+  beading: 'Beading',
+  french: 'French Language',
+  korean: 'Korean Language',
+  pastries: 'Pastries & Baking',
+  'graphic-design': 'Graphic Design',
+  barbering: 'Barbering',
+  accounting: 'Accounting'
+});
+const REGISTRATION_COURSE_CODES = Object.freeze({
+  'household-chemicals':'HC','hair-dressing':'HD',cosmetology:'CO',
+  electricals:'EE','floral-decor':'FD','fashion-design':'FS',beading:'BE',
+  french:'FL',korean:'KL',pastries:'PA','graphic-design':'GD',
+  barbering:'BA',accounting:'AC'
+});
+const REGISTRATION_EDIT_FIELDS = Object.freeze(['fullName','mobile','whatsapp','email','address','course','status']);
+const registrationVersion = student => crypto.createHash('sha256')
+  .update(JSON.stringify(REGISTRATION_EDIT_FIELDS.map(key => String(student[key] == null ? '' : student[key]))))
+  .digest('hex');
+function normalizeGhanaPhone(value) {
+  const digits = String(value || '').replace(/\D/g,'');
+  return digits.startsWith('233') && digits.length === 12 ? '0' + digits.slice(3) : digits;
+}
+function normalizeIdentityCard(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g,'');
+}
+function registrationNumberFor(course, list, intakeStart) {
+  const prefix = 'SD' + REGISTRATION_COURSE_CODES[course];
+  const used = new Set((list || []).filter(s=>s.course===course).map(s=>{
+    const match = String(s.regNumber || '').match(new RegExp('^'+prefix+'(\\d{3})/'));
+    return match ? Number(match[1]) : null;
+  }).filter(Number.isInteger));
+  let index = 1;while (used.has(index)) index++;
+  const date = new Date((intakeStart || '2026-10-03')+'T00:00:00Z');
+  if (Number.isNaN(date.getTime())) throw new HttpsError('failed-precondition','The intake date is invalid.');
+  return prefix+String(index).padStart(3,'0')+'/'+String(date.getUTCMonth()+1).padStart(2,'0')+'/'+date.getUTCFullYear();
+}
+
 // Registration-only workspaces are the sole operational privilege of every
 // non-owner administrator, regardless of historical role name. Access is
 // evaluated against the stored account on every request, never token role.
@@ -447,15 +492,19 @@ app.adminGetRegistrationWorkspace = onCall({ enforceAppCheck: true }, async requ
     regNumber: clean(s.regNumber, 80),
     fullName: clean(s.fullName, 160),
     mobile: clean(s.mobile, 30),
+    whatsapp: clean(s.whatsapp, 30),
     email: clean(s.email, 160),
+    address: clean(s.address, 200),
     course: clean(s.course, 80),
     status: clean(s.status || 'Registered', 30),
     intakeStart: clean(s.intakeStart, 30),
-    regDate: clean(s.regDate, 50)
+    regDate: clean(s.regDate, 50),
+    registrationVersion: registrationVersion(s)
   }));
   return {
     account: { username: account.username, role: account.role || 'staff' },
     intakeStart: clean(intake && intake.startDate, 30),
+    courses: REGISTRATION_COURSES,
     students
   };
 });
@@ -510,6 +559,148 @@ app.adminSetRegistrationStatus = onCall({ enforceAppCheck: true }, async request
   return result;
 });
 
+// A restricted, audited registration editor. Staff can only change this
+// explicit allowlist; never accept payments, IDs, intake, fees, account roles
+// or other administrative record fields as part of a patch.
+app.adminEditRegistration = onCall({ enforceAppCheck: true }, async request => {
+  const { account } = await requireStrongAdminSession(request);
+  const data = request.data || {};
+  const id = clean(data.id, 120);
+  const patch = data.patch;
+  const version = clean(data.registrationVersion, 64);
+  if (!id || !version || !/^[a-f0-9]{64}$/.test(version) ||
+      !patch || Array.isArray(patch) || typeof patch !== 'object') {
+    throw new HttpsError('invalid-argument', 'Choose a registration and enter its details.');
+  }
+  const keys = Object.keys(patch);
+  if (!keys.length || keys.some(key => !REGISTRATION_EDIT_FIELDS.includes(key))) {
+    throw new HttpsError('permission-denied', 'Only approved registration fields may be edited.');
+  }
+  const changes = {};
+  if (Object.prototype.hasOwnProperty.call(patch,'fullName')) {
+    const name = clean(patch.fullName, 120);
+    if (name.length < 2 || String(patch.fullName || '').trim().length > 120) {
+      throw new HttpsError('invalid-argument','Enter a valid student name (2–120 characters).');
+    }
+    changes.fullName = name;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch,'mobile')) {
+    const phone = normalizeGhanaPhone(patch.mobile);
+    if (!/^0\d{9}$/.test(phone)) {
+      throw new HttpsError('invalid-argument','Enter a valid 10-digit Ghana mobile number.');
+    }
+    changes.mobile = phone;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch,'whatsapp')) {
+    const phone = normalizeGhanaPhone(patch.whatsapp);
+    if (phone && !/^0\d{9}$/.test(phone)) {
+      throw new HttpsError('invalid-argument','Enter a valid WhatsApp number.');
+    }
+    changes.whatsapp = phone;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch,'email')) {
+    const email = clean(patch.email, 160).toLowerCase();
+    if (String(patch.email || '').trim().length > 160 ||
+        (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
+      throw new HttpsError('invalid-argument','Enter a valid email address.');
+    }
+    changes.email = email;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch,'address')) {
+    if (String(patch.address || '').trim().length > 200) {
+      throw new HttpsError('invalid-argument','Address must be 200 characters or fewer.');
+    }
+    changes.address = clean(patch.address, 200);
+  }
+  if (Object.prototype.hasOwnProperty.call(patch,'course')) {
+    const course = clean(patch.course, 80);
+    if (!Object.prototype.hasOwnProperty.call(REGISTRATION_COURSES,course)) {
+      throw new HttpsError('invalid-argument','Choose a valid program.');
+    }
+    changes.course = course;
+  }
+  if (Object.prototype.hasOwnProperty.call(patch,'status')) {
+    const status = clean(patch.status, 30);
+    if (!['Registered','Cancelled'].includes(status)) {
+      throw new HttpsError('invalid-argument','Staff can select only Registered or Cancelled.');
+    }
+    changes.status = status;
+  }
+  const studentsRef = db.collection(STORAGE_COLLECTION).doc('sdta_students');
+  const auditRef = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
+  const capacityRef = db.collection(STORAGE_COLLECTION).doc('sdta_capacities');
+  let result;
+  await db.runTransaction(async tx => {
+    const [studentSnap,auditSnap,capacitySnap] = await Promise.all([
+      tx.get(studentsRef),tx.get(auditRef),tx.get(capacityRef)
+    ]);
+    const list = studentSnap.exists ? parseJson(studentSnap.data().value,[]) : [];
+    if (!Array.isArray(list)) throw new HttpsError('internal','Registration records unavailable.');
+    const student = list.find(s=>s.id===id);
+    if (!student) throw new HttpsError('not-found','Student registration no longer exists.');
+    if (registrationVersion(student)!==version) {
+      throw new HttpsError('aborted','This registration has changed. Refresh before editing again.');
+    }
+    const oldReg = clean(student.regNumber, 80);
+    const oldCourse = student.course;
+    const oldStatus = student.status || 'Registered';
+    if (!['Registered','Cancelled'].includes(oldStatus) && changes.status &&
+        changes.status !== oldStatus) {
+      throw new HttpsError('failed-precondition','Only the owner can change an Active, Completed or Deferred status.');
+    }
+    const changedFields = [];
+    for (const [key,value] of Object.entries(changes)) {
+      if (String(student[key] == null ? '' : student[key]) !== String(value)) {
+        student[key]=value;
+        changedFields.push(key);
+      }
+    }
+    if (student.course !== oldCourse) {
+      student.regNumber = registrationNumberFor(student.course,list.filter(s=>s.id!==id),student.intakeStart);
+      if (student.status !== 'Cancelled') {
+        const capacityMap = capacitySnap.exists ? parseJson(capacitySnap.data().value,{}) : {};
+        const rawCapacity = Number(capacityMap[student.course]);
+        const capacity = rawCapacity > 0 ? rawCapacity : 25;
+        const assigned = list.filter(s=>s.id!==id && s.course===student.course &&
+          s.status !== 'Cancelled' && (s.intakeStart || '') === (student.intakeStart || '')).length;
+        if (assigned >= capacity) {
+          throw new HttpsError('failed-precondition','The selected program is full for this intake.');
+        }
+      }
+    }
+    if (student.status !== 'Cancelled') {
+      const phone = normalizeGhanaPhone(student.mobile);
+      const card = normalizeIdentityCard(student.ghanaCard);
+      const conflict = list.some(s=>s.id!==id && s.status !== 'Cancelled' &&
+        (s.intakeStart || '') === (student.intakeStart || '') &&
+        ((phone && normalizeGhanaPhone(s.mobile)===phone) ||
+         (card && normalizeIdentityCard(s.ghanaCard)===card)));
+      if (conflict) throw new HttpsError('already-exists','Another registration in this intake uses that mobile number or Ghana Card.');
+    }
+    if (!changedFields.length) {
+      result = {ok:true,changed:false,regNumber:oldReg};
+      return;
+    }
+    const history = auditSnap.exists ? parseJson(auditSnap.data().value,[]) : [];
+    if (!Array.isArray(history)) throw new HttpsError('internal','Audit log unavailable.');
+    history.push({
+      id:'audit_'+crypto.randomUUID(),
+      date:new Date().toISOString(),
+      admin:account.username,
+      role:account.role || 'staff',
+      action:'Edited student registration',
+      target:oldReg,
+      detail:changedFields.join(', ') + (oldReg !== student.regNumber ?
+        ' · Registration number reissued to '+student.regNumber : '')
+    });
+    tx.set(studentsRef,{value:JSON.stringify(list)});
+    tx.set(auditRef,{value:JSON.stringify(history.slice(-1000))});
+    result={ok:true,changed:true,regNumber:student.regNumber,
+      registrationNumberChanged:oldReg!==student.regNumber};
+  });
+  return result;
+});
+
 // Apply one final session check to every exported administrator callable, even
 // if a future feature forgets to add its own authorization wrapper.
 const PRE_AUTH_ADMIN_CALLS = new Set(['adminLogin', 'adminVerifyTwoFactorLogin', 'adminRecoverWithCode']);
@@ -524,8 +715,8 @@ for (const name of Object.keys(app)) {
     // Deny by default for all subordinate admins, including existing manager,
     // staff, registration, finance, and viewer accounts.
     if ((account.role || 'staff') !== 'owner' &&
-        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus']).has(name)) {
-      throw new HttpsError('permission-denied', 'Staff administrators can only view or export registrations and change registration status.');
+        !new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration']).has(name)) {
+      throw new HttpsError('permission-denied', 'Staff administrators can only view, export or edit approved registration fields.');
     }
     return base.run(delegatedRequest(request, auth));
   });

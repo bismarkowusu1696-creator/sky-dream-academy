@@ -200,6 +200,26 @@ function publicMessage(doc){
   };
 }
 
+// Retrieve recent messages in Firestore ordering instead of taking the
+// first arbitrary 100 documents and sorting them only in memory. The
+// compatibility query also includes older records without createdAt.
+async function latestStudentMessages(studentId){
+  const base=db.collection(COL.studentMessages).where('studentId','==',studentId);
+  const legacy=base.limit(100).get();
+  const recent=base.orderBy('createdAt','desc').limit(100).get()
+    .catch(error=>{
+      console.warn('Recent message index unavailable; deploy firestore indexes.',error);
+      return null;
+    });
+  const [legacySnap,recentSnap]=await Promise.all([legacy,recent]);
+  const merged=new Map();
+  for(const snap of [legacySnap,recentSnap]){
+    if(snap)for(const doc of snap.docs)merged.set(doc.id,doc);
+  }
+  return [...merged.values()].map(publicMessage).filter(m=>m.message)
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')).slice(0,50);
+}
+
 async function sendPushToStudents(studentIds){
   const ids=new Set((studentIds||[]).filter(Boolean));
   if(!ids.size)return{devices:0,sent:0,failed:0};
@@ -302,8 +322,7 @@ app.adminGetStudentMessages=onCall({enforceAppCheck:true},async request=>{
   const studentId=clean(request.data&&request.data.studentId,120);
   const students=await readValue(KEYS.students,[]);
   if(!(students||[]).some(s=>s.id===studentId))throw new HttpsError('not-found','Student not found.');
-  const snap=await db.collection(COL.studentMessages).where('studentId','==',studentId).limit(100).get();
-  const messages=snap.docs.map(publicMessage).filter(m=>m.message).sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,50);
+  const messages=await latestStudentMessages(studentId);
   return{messages,unread:messages.filter(m=>!m.readAt).length};
 });
 
@@ -451,7 +470,7 @@ app.getStudentPortalDashboard=onCall({enforceAppCheck:true},async request=>{
   const token=requireStudent(request);
   const [students,attendance,broadcasts,settings,intake,intakeHistory,messageSnap]=await Promise.all([
     readValue(KEYS.students,[]),readValue(KEYS.attendance,[]),readValue(KEYS.broadcasts,[]),readValue(KEYS.settings,{}),
-    readValue(KEYS.intake,{}),readValue(KEYS.intakeHistory,[]),db.collection(COL.studentMessages).where('studentId','==',token.studentId).limit(100).get()
+    readValue(KEYS.intake,{}),readValue(KEYS.intakeHistory,[]),latestStudentMessages(token.studentId)
   ]);
   const student=students.find(s=>s.id===token.studentId);if(!student)throw new HttpsError('permission-denied','Student record is no longer available.');
   const currentIntake=student.intakeStart||intake.startDate||'';
@@ -461,7 +480,7 @@ app.getStudentPortalDashboard=onCall({enforceAppCheck:true},async request=>{
   const present=marks.filter(a=>a.status==='Present').length,absent=marks.filter(a=>a.status==='Absent').length,marked=present+absent;
   const attendancePct=marked?Math.round(present/marked*100):0;
   const now=Date.now(),notices=(broadcasts||[]).filter(n=>n&&n.active!==false&&(!n.startsAt||new Date(n.startsAt).getTime()<=now)&&(!n.expiresAt||new Date(n.expiresAt).getTime()>now)).slice(-10).reverse().map(n=>({id:n.id,message:n.message,date:n.date||''}));
-  const messages=messageSnap.docs.map(publicMessage).filter(m=>m.message).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,50);
+  const messages=messageSnap;
   const fee=Number.isFinite(Number(settings.registrationFee))?Number(settings.registrationFee):50,paid=Math.max(0,Number(student.feePaid)||0),balance=Math.max(0,fee-paid);
   const coursePct=timeProgress(relevantIntake),feePct=fee>0?clampPct(paid/fee*100):100,attendanceComponent=marked?attendancePct:coursePct,overall=clampPct((coursePct+feePct+attendanceComponent)/3);
   const notifications=[];

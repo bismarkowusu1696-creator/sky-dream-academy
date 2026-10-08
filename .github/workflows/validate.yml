@@ -78,7 +78,7 @@ jobs:
             "app.adminCreateAdmin = onCall",
             "app.adminChangePassword = onCall",
             "requireStrongAdminSession(request)",
-            "!new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus']).has(name)",
+            "!new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator']).has(name)",
             "Staff PINs can only be changed by the main administrator."
           ]) {
             if (!hardening.includes(required)) throw new Error('Security guard missing: ' + required);
@@ -147,7 +147,7 @@ jobs:
             'Edited student registration',
             'The selected program is full for this intake.',
             'The owner must handle program changes after attendance has been recorded.',
-            "'adminEditRegistration']).has(name)"
+            "'adminEditRegistration', 'adminDeskCreateFacilitator']).has(name)"
           ]) {
             if (!hardening.includes(text)) throw new Error('Registration editing guard missing: '+text);
           }
@@ -160,6 +160,39 @@ jobs:
               !frontend.includes('registrationStaffExportAll') ||
               staff.includes('<th>Registration actions</th>')) {
             throw new Error('Staff editor / export UI is missing or the removed action column returned');
+          }
+          NODE
+      - name: Verify registration-staff facilitator creation stays restricted
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const security = fs.readFileSync('functions/security-hardening-loader.js','utf8');
+          const html = fs.readFileSync('admin.html','utf8');
+          const frontend = fs.readFileSync('assets/admin-registration.js','utf8');
+          const required = [
+            'app.adminDeskCreateFacilitator = onCall',
+            'requireStrongAdminSession(request)',
+            "'SkyDream-Facilitator-' + pin + '-Aa9!'",
+            "enforceRateLimit(request, 'registration-desk-create-facilitator'",
+            "'adminDeskCreateFacilitator']).has(name)",
+            "Created facilitator from registration desk",
+            "That facilitator username is already registered."
+          ];
+          for (const value of required) {
+            if (!security.includes(value)) throw new Error('Facilitator security requirement missing: '+value);
+          }
+          const ids = ['registrationStaffFacilitators','registrationFacilitatorForm',
+            'registrationFacilitatorName','registrationFacilitatorUsername','registrationFacilitatorPhone',
+            'registrationFacilitatorPin','registrationFacilitatorCourses','registrationFacilitatorList'];
+          for (const id of ids) {
+            if (!html.includes('id="'+id+'"')) throw new Error('Facilitator UI is missing: '+id);
+          }
+          const staffShell = html.split('id="registrationStaffShell"',2)[1].split('id="dashboardShell"',1)[0];
+          if (staffShell.includes('data-delete-facilitator') || staffShell.includes('data-reset-facilitator-pin')) {
+            throw new Error('Staff cannot delete facilitators or reset facilitator PINs');
+          }
+          if (!frontend.includes("SkyDreamFirebase.call('adminDeskCreateFacilitator',payload)")) {
+            throw new Error('Staff facilitator creation must call the restricted server endpoint');
           }
           NODE
       - name: Check HTML for duplicate IDs

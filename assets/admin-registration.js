@@ -145,11 +145,82 @@
     $('registrationStaffCount').textContent = rows.length + ' registration(s) shown · ' + workspace.students.length + ' total';
     $('registrationStaffBody').innerHTML = rows.length ? rows.map(s =>
       '<tr><td>' + esc(s.regNumber) + '</td><td><strong>' + esc(s.fullName) +
-      '</strong><br><small>' + esc(s.mobile) + '</small></td><td>' + esc(labelCourse(s.course)) +
+      '</strong><br><small>' + esc(s.mobile) + '</small><br><button type="button" class="btn btn-outline btn-small" data-edit-registration="' + esc(s.id) + '">Edit</button></td><td>' + esc(labelCourse(s.course)) +
       '</td><td>' + esc(s.intakeStart || '—') + '</td><td><span class="badge">' +
       esc(s.status) + '</span></td></tr>'
     ).join('') : '<tr><td colspan="5">No matching registrations.</td></tr>';
   }
+  function openRegistrationEditor(id) {
+    const s = workspace && workspace.students.find(row => row.id === id);
+    if (!s) return;
+    $('registrationStaffEditForm').reset();
+    $('registrationEditError').classList.add('hidden');
+    $('registrationEditId').value = s.id;
+    $('registrationEditVersion').value = s.registrationVersion || '';
+    $('registrationEditIdentity').textContent = s.fullName + ' · ' + s.regNumber;
+    $('registrationEditName').value = s.fullName || '';
+    $('registrationEditMobile').value = s.mobile || '';
+    $('registrationEditWhatsapp').value = s.whatsapp || '';
+    $('registrationEditEmail').value = s.email || '';
+    $('registrationEditAddress').value = s.address || '';
+    const courseNames = workspace.courses || {};
+    const available = { ...courseNames };
+    if (s.course && !available[s.course]) available[s.course] = labelCourse(s.course);
+    $('registrationEditCourse').innerHTML = Object.entries(available)
+      .map(([course,name]) => '<option value="' + esc(course) + '">' + esc(name) + '</option>').join('');
+    $('registrationEditCourse').value = s.course;
+    const statusEditable = ['Registered','Cancelled'].includes(s.status || 'Registered');
+    $('registrationEditStatusField').classList.toggle('hidden',!statusEditable);
+    $('registrationEditStatus').disabled = !statusEditable;
+    if (statusEditable) $('registrationEditStatus').value = s.status || 'Registered';
+    $('registrationStaffEditModal').classList.remove('hidden');
+    $('registrationEditName').focus();
+  }
+  function closeRegistrationEditor() {
+    $('registrationStaffEditForm').reset();
+    $('registrationStaffEditModal').classList.add('hidden');
+  }
+  async function saveRegistrationEdit(event) {
+    event.preventDefault();
+    const id = $('registrationEditId').value;
+    const original = workspace && workspace.students.find(row => row.id === id);
+    if (!original) return;
+    const patch = {
+      fullName: $('registrationEditName').value.trim(),
+      mobile: $('registrationEditMobile').value.trim(),
+      whatsapp: $('registrationEditWhatsapp').value.trim(),
+      email: $('registrationEditEmail').value.trim(),
+      address: $('registrationEditAddress').value.trim(),
+      course: $('registrationEditCourse').value
+    };
+    if (!$('registrationEditStatus').disabled) patch.status = $('registrationEditStatus').value;
+    if (patch.course !== original.course &&
+        !confirm('Changing the program may issue a NEW registration number for this student. Continue?')) return;
+    const button = $('registrationEditSubmit');
+    button.disabled = true;
+    button.textContent = 'Saving…';
+    try {
+      const response = await SkyDreamFirebase.call('adminEditRegistration', {
+        id,
+        registrationVersion: $('registrationEditVersion').value,
+        patch
+      });
+      closeRegistrationEditor();
+      await refresh();
+      const updated = response && response.registrationNumberChanged
+        ? ' Notify the student of their NEW registration number: ' + response.regNumber + '.'
+        : '';
+      notice((response && response.changed ? 'Registration updated successfully.' : 'No registration changes were needed.') + updated,'success');
+    } catch (err) {
+      const node = $('registrationEditError');
+      node.textContent = SkyDreamFirebase.friendlyError(err);
+      node.className = 'notice notice-error';
+    } finally {
+      button.disabled = false;
+      button.textContent = 'Save registration';
+    }
+  }
+
   async function refresh(verifiedWorkspace = null) {
     if (loading) return loading;
     loading = (async () => {
@@ -217,6 +288,15 @@
     $('registrationStaffOverview').addEventListener('click', event => {
       const button = event.target.closest('button[data-registration-shortcut]');
       if (button) openShortcut(button.dataset.registrationShortcut);
+    });
+    $('registrationStaffBody').addEventListener('click', event => {
+      const button = event.target.closest('button[data-edit-registration]');
+      if (button) openRegistrationEditor(button.dataset.editRegistration);
+    });
+    $('registrationEditClose').addEventListener('click',closeRegistrationEditor);
+    $('registrationStaffEditForm').addEventListener('submit',saveRegistrationEdit);
+    document.addEventListener('keydown',event=>{
+      if (event.key==='Escape' && !$('registrationStaffEditModal').classList.contains('hidden')) closeRegistrationEditor();
     });
     $('registrationStaffLogout').addEventListener('click', async () => {
       await SkyDreamFirebase.auth.signOut();

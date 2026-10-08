@@ -157,8 +157,16 @@
     ensurePortalServiceWorker();
     $('portalLoginForm').addEventListener('submit',login);
     $('portalLogout').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
+    $('portalEnablePush').addEventListener('click',()=>enablePush().catch(err=>alert(SkyDreamFirebase.friendlyError(err))));
+    $('portalDisablePush').addEventListener('click',()=>disablePush().catch(err=>alert(SkyDreamFirebase.friendlyError(err))));
     document.addEventListener('click',event=>{if(event.target.closest('a[href="#portalMessages"]'))markMessagesRead();});
     window.addEventListener('hashchange',()=>{if(location.hash==='#portalMessages')markMessagesRead();});
+    if(SkyDreamFirebase.onPushMessage){
+      SkyDreamFirebase.onPushMessage(async()=>{
+        message('You have a new SkyDream message.','info');
+        try{portal=await SkyDreamFirebase.call('getStudentPortalDashboard');render();}catch(_){}
+      });
+    }
     SkyDreamFirebase.auth.onAuthStateChanged(async user=>{
       if(!user)return;
       try{const token=await user.getIdTokenResult();if(token.claims.role==='student')await load();else await SkyDreamFirebase.auth.signOut();}catch(_){await SkyDreamFirebase.auth.signOut();}

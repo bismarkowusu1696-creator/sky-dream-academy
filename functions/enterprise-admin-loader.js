@@ -111,7 +111,7 @@ app.adminLogin=onCall({enforceAppCheck:true},async request=>{
 app.adminVerifyTwoFactorLogin=onCall({enforceAppCheck:true},async request=>{
   const challengeId=clean(request.data&&request.data.challengeId,120);
   const code=clean(request.data&&request.data.code,12);
-  if(!challengeId||!/^\\d{6}$/.test(code))throw new HttpsError('invalid-argument','Enter a valid 6-digit authentication code.');
+  if(!challengeId||!/^\d{6}$/.test(code))throw new HttpsError('invalid-argument','Enter a valid 6-digit authentication code.');
   const two=await read2fa();
   const ref=refFor(KEYS.challenges);
   let result={type:'invalid'};

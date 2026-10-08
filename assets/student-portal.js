@@ -97,8 +97,10 @@
     if(!('Notification' in window)||!('serviceWorker' in navigator)||!SkyDreamFirebase.messaging)throw new Error('Push notifications are not supported in this browser.');
     const permission=await Notification.requestPermission();
     if(permission!=='granted'){renderPushStatus();throw new Error('Notifications were not enabled. Allow them in your browser/site settings and try again.');}
+    const config=await SkyDreamFirebase.call('studentGetPushConfig');
+    if(!config.configured||!config.vapidKey)throw new Error('SkyDream phone notifications are not configured yet. Please contact the academy administrator.');
     const registration=(await ensurePortalServiceWorker())||await navigator.serviceWorker.ready;
-    const token=await SkyDreamFirebase.getPushToken(registration);
+    const token=await SkyDreamFirebase.getPushToken(registration,config.vapidKey);
     await SkyDreamFirebase.call('studentRegisterPushToken',{token});
     await loadPushStatus();
     alert('SkyDream message notifications are enabled.');

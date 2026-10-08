@@ -63,7 +63,8 @@
     section('notificationsCenter','Notification Centre',`<p class="hint">New registrations, enquiries, capacity warnings, attendance warnings and deadlines appear here.</p><div id="notificationList" class="grid"></div>`,'account');
     section('bulkStudentCommunication','Bulk Student Communication',`
       <p class="hint">Send one private Student Portal message to a selected audience. Students who enabled phone notifications will also receive a generic “You have a new SkyDream message” push alert.</p>
-      <div class="card"><div class="form-grid">
+      <div id="webPushSetupCard" class="card hidden"><h3>Web Push setup</h3><p id="webPushSetupStatus" class="hint">Loading…</p><div class="form-grid"><div class="field full"><label>Firebase Web Push public key</label><input id="webPushVapidKey" autocomplete="off" spellcheck="false" placeholder="Paste the public VAPID key from Firebase Cloud Messaging"></div><div class="field full"><button id="saveWebPushVapidKey" class="btn btn-outline btn-small" type="button">Save Web Push Key</button></div></div></div>
+      <div class="card mt-14"><div class="form-grid">
         <div class="field"><label>Audience</label><select id="bulkTarget"><option value="course">Whole program — current intake</option><option value="intake">Specific intake</option><option value="owing-fees">Students owing fees — current intake</option><option value="low-attendance">Low-attendance students — current intake</option></select></div>
         <div id="bulkCourseField" class="field"><label>Program</label><select id="bulkCourse"></select></div>
         <div id="bulkIntakeField" class="field hidden"><label>Intake</label><select id="bulkIntake"></select></div>
@@ -115,7 +116,7 @@
   async function refresh(){ data=await call('adminGetEnterpriseSnapshot'); render(); if(data.account&&data.account.role==='owner')loadRecoveryStatus().catch(e=>console.warn('Recovery status could not load',e)); }
   function queueRefresh(){setTimeout(()=>refresh().catch(e=>console.warn('Background enterprise refresh failed',e)),1600);}
   function queueRecycle(){setTimeout(()=>loadRecycle().catch(e=>console.warn('Background recycle refresh failed',e)),1600);}
-  function render(){ if(!data)return; renderSecurity();renderNotifications();renderRisk();renderSmartRules();renderCohorts();renderSessions();renderPerformance();renderNotes();renderHistory();populateSelectors(); }
+  function render(){ if(!data)return; renderSecurity();renderNotifications();renderRisk();renderSmartRules();renderWebPushSetup();renderCohorts();renderSessions();renderPerformance();renderNotes();renderHistory();populateSelectors(); }
   function populateSelectors(){
     if($('classCourse')) $('classCourse').innerHTML=Object.entries(data.courses||{}).map(([id,n])=>`<option value="${esc(id)}">${esc(n)}</option>`).join('');
     if($('bulkCourse')) $('bulkCourse').innerHTML=Object.entries(data.courses||{}).map(([id,n])=>`<option value="${esc(id)}">${esc(n)}</option>`).join('');
@@ -164,6 +165,26 @@
   }
 
   function renderNotifications(){ $('notificationList').innerHTML=(data.notifications||[]).map(n=>`<div class="card" data-notification-card="${esc(n.id)}"><div class="dashboard-top"><strong>${esc(n.title)}</strong><small>${esc(date(n.date))}</small></div><p>${esc(n.message)}</p><button class="btn btn-outline btn-small" data-dismiss-notification="${esc(n.id)}">Dismiss</button></div>`).join('')||'<p>No notifications need your attention.</p>'; }
+
+  function renderWebPushSetup(){
+    const card=$('webPushSetupCard'),status=$('webPushSetupStatus'),input=$('webPushVapidKey');
+    if(!card||!status||!input)return;
+    const owner=data&&data.account&&data.account.role==='owner';
+    card.classList.toggle('hidden',!owner);
+    if(!owner)return;
+    const key=data.settings&&data.settings.webPushVapidKey||'';
+    input.value=key;
+    status.textContent=key?'Configured — students can enable push notifications on supported browsers.':'Not configured — generate a Web Push key in Firebase Console, then paste the public key here.';
+  }
+  async function saveWebPushVapidKey(){
+    const key=$('webPushVapidKey').value.trim();
+    if(!key){alert('Paste the public Web Push key first.');return;}
+    const b=$('saveWebPushVapidKey');await withBusy(b,'Saving…',async()=>{
+      await call('adminSetWebPushVapidKey',{vapidKey:key});
+      data.settings=data.settings||{};data.settings.webPushVapidKey=key;renderWebPushSetup();
+      alert('SkyDream Web Push is configured.');
+    });
+  }
 
   function updateBulkTargetFields(){
     if(!$('bulkTarget'))return;
@@ -274,6 +295,7 @@
     $('disable2fa').onclick=async()=>{const code=prompt('Enter your current 6-digit authenticator code to disable 2-step verification:');if(code===null)return;try{await call('adminDisableTwoFactor',{code});data.twoFactorEnabled=false;renderSecurity();alert('2-step verification disabled.');queueRefresh();}catch(e){alert(SkyDreamFirebase.friendlyError(e));}};
     $('signOutAllDevices').onclick=async()=>{if(!confirm('Sign out every session for your admin account?'))return;await call('adminRevokeAllSessions',{});await SkyDreamFirebase.auth.signOut();location.reload();};
     $('generateRecoveryCodes').onclick=()=>generateRecoveryCodes().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
+    $('saveWebPushVapidKey').onclick=()=>saveWebPushVapidKey().catch(e=>alert(SkyDreamFirebase.friendlyError(e)));
     $('bulkTarget').onchange=updateBulkTargetFields;
     $('bulkCourse').onchange=updateBulkTargetFields;
     $('bulkIntake').onchange=updateBulkTargetFields;

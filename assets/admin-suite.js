@@ -56,7 +56,7 @@
     const admins = $('admins');
     const roles = document.createElement('section');
     roles.id = 'adminRoles'; roles.className = 'dashboard-panel';
-    roles.innerHTML = `<h2>Admin roles & permissions</h2><p class="hint">Owner has full control. Manager can manage students, attendance, facilitators, announcements and settings. Registration staff can manage students and attendance. Finance and Viewer are report-focused.</p><div id="suiteRoleList" class="grid"></div>`;
+    roles.innerHTML = `<h2>Admin roles & permissions</h2><p class="hint">Only the owner has full administrative control. Every other admin role is restricted to exporting registrations and changing status to Registered or Cancelled.</p><div id="suiteRoleList" class="grid"></div>`;
     admins.parentNode.insertBefore(roles, admins.nextSibling);
 
     const messages = $('messages');
@@ -237,6 +237,6 @@
 
   document.addEventListener('DOMContentLoaded',()=>{
     injectUi();
-    SkyDreamFirebase.auth.onAuthStateChanged(async user=>{if(!user)return;try{const token=await user.getIdTokenResult();if(token.claims.role==='admin')await loadSuite();}catch(err){console.warn('Admin suite failed to load',err);}});
+    SkyDreamFirebase.auth.onAuthStateChanged(async user=>{if(!user)return;try{const token=await user.getIdTokenResult();if(token.claims.role==='admin'&&token.claims.adminRole==='owner')await loadSuite();}catch(err){console.warn('Admin suite failed to load',err);}});
   });
 })();

@@ -128,6 +128,7 @@ self.addEventListener('fetch', event => {
   if ([
     '/assets/firebase.js',
     '/assets/admin.js',
+    '/assets/admin-registration.js',
     '/assets/admin-pin.js',
     '/assets/admin-intake.js',
     '/assets/admin-suite.js',

@@ -78,7 +78,7 @@ jobs:
             "app.adminCreateAdmin = onCall",
             "app.adminChangePassword = onCall",
             "requireStrongAdminSession(request)",
-            "!new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskSendApprovedTemplate']).has(name)",
+            "!new Set(['adminGetRegistrationWorkspace', 'adminSetRegistrationStatus', 'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskGetDailyReport', 'adminDeskSendApprovedTemplate']).has(name)",
             "Staff PINs can only be changed by the main administrator."
           ]) {
             if (!hardening.includes(required)) throw new Error('Security guard missing: ' + required);
@@ -147,7 +147,7 @@ jobs:
             'Edited student registration',
             'The selected program is full for this intake.',
             'The owner must handle program changes after attendance has been recorded.',
-            "'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskSendApprovedTemplate']).has(name)"
+            "'adminEditRegistration', 'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskGetDailyReport', 'adminDeskSendApprovedTemplate']).has(name)"
           ]) {
             if (!hardening.includes(text)) throw new Error('Registration editing guard missing: '+text);
           }
@@ -174,7 +174,7 @@ jobs:
             'requireStrongAdminSession(request)',
             "'SkyDream-Facilitator-' + pin + '-Aa9!'",
             "enforceRateLimit(request, 'registration-desk-create-facilitator'",
-            "'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskSendApprovedTemplate']).has(name)",
+            "'adminDeskCreateFacilitator', 'adminDeskGetInsights', 'adminDeskSaveTracking', 'adminDeskSetOnboarding', 'adminDeskAcknowledgeAlerts', 'adminDeskLogExport', 'adminDeskGetDailyReport', 'adminDeskSendApprovedTemplate']).has(name)",
             "Created facilitator from registration desk",
             "That facilitator username is already registered."
           ];
@@ -234,6 +234,34 @@ jobs:
               !backend.includes("t.approved === true")) throw new Error('Staff template approvals are not enforced');
           if(!backend.includes("ownAudit") ||
               !backend.includes("a.admin")) throw new Error('Staff audit history must be scoped to their own account');
+          NODE
+      - name: Regression checks for reliability fixes
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const otp = fs.readFileSync('functions/enterprise-admin-loader.js','utf8');
+          const messages = fs.readFileSync('functions/academic-portal-loader.js','utf8');
+          const desk = fs.readFileSync('functions/registration-desk-operations.js','utf8');
+          const ui = fs.readFileSync('assets/admin-desk-operations.js','utf8');
+          const indexes = JSON.parse(fs.readFileSync('firestore.indexes.json','utf8'));
+          const security = fs.readFileSync('functions/security-hardening-loader.js','utf8');
+          const checks = [
+            [otp.includes('challenge.failedAttempts>=5'), '2FA challenge retries'],
+            [otp.includes('result.type') && otp.includes('verifyTotp(record.secret,code)'), '2FA verified before consuming challenge'],
+            [messages.includes("orderBy('createdAt','desc')"), 'newest student messages'],
+            [indexes.indexes.some(x=>x.collectionGroup==='sdta_student_messages'), 'message composite index'],
+            [desk.includes("sdta_admin_audit_archive"), 'immutable audit archive'],
+            [desk.includes("sdta_registration_workflow_rows"), 'per-record tracking writes'],
+            [desk.includes("sdta_facilitator_onboarding_rows"), 'per-record onboarding writes'],
+            [desk.includes("readTrackingRows(keys.workflow"), 'legacy tracking compatibility'],
+            [desk.includes("dateStamp(current)"), 'intake alert baseline'],
+            [desk.includes("env.registrationCourses[student.course]"), 'template name rendering'],
+            [desk.includes("app.adminDeskGetDailyReport="), 'daily snapshots'],
+            [ui.includes("dirtyTracking"), 'unsaved form preservation'],
+            [ui.includes("const current=await call('adminDeskGetDailyReport'"), 'daily report CSV retrieval'],
+            [security.includes("'adminDeskGetDailyReport'"), 'report scoped permission']
+          ];
+          for(const [okay, label] of checks)if(!okay)throw new Error('Missing reliability fix: '+label);
           NODE
       - name: Check HTML for duplicate IDs
         run: |

@@ -18,6 +18,7 @@ const COL = {
   timetable: 'sdta_timetable_entries',
   rooms: 'sdta_rooms',
   studentMessages: 'sdta_student_messages',
+  studentPushTokens: 'sdta_student_push_tokens',
   qrAttendance: 'sdta_qr_attendance_sessions'
 };
 const COURSE_NAMES = {
@@ -199,6 +200,90 @@ function publicMessage(doc){
   };
 }
 
+async function sendPushToStudents(studentIds){
+  const ids=new Set((studentIds||[]).filter(Boolean));
+  if(!ids.size)return{devices:0,sent:0,failed:0};
+  try{
+    const snap=await db.collection(COL.studentPushTokens).limit(5000).get();
+    const docs=snap.docs.filter(doc=>ids.has((doc.data()||{}).studentId));
+    if(!docs.length)return{devices:0,sent:0,failed:0};
+    let sent=0,failed=0;
+    for(let offset=0;offset<docs.length;offset+=500){
+      const chunk=docs.slice(offset,offset+500),tokens=chunk.map(doc=>String((doc.data()||{}).token||'')).filter(Boolean);
+      if(!tokens.length)continue;
+      const result=await admin.messaging().sendEachForMulticast({
+        tokens,
+        data:{
+          title:'SkyDream Skills Training Academy',
+          body:'You have a new SkyDream message.',
+          url:'https://skydream.academy/student-portal#portalMessages'
+        },
+        webpush:{headers:{Urgency:'high'}}
+      });
+      sent+=result.successCount;failed+=result.failureCount;
+      const deletes=[];
+      result.responses.forEach((response,index)=>{
+        if(response.success)return;
+        const code=response.error&&response.error.code||'';
+        if(code==='messaging/registration-token-not-registered'||code==='messaging/invalid-registration-token'){
+          const token=tokens[index],doc=chunk.find(x=>String((x.data()||{}).token||'')===token);
+          if(doc)deletes.push(doc.ref.delete().catch(()=>null));
+        }
+      });
+      if(deletes.length)await Promise.all(deletes);
+    }
+    return{devices:docs.length,sent,failed};
+  }catch(err){
+    console.warn('Student push notification failed.',err);
+    return{devices:0,sent:0,failed:0};
+  }
+}
+
+async function selectBulkRecipients(data){
+  const d=data||{},target=clean(d.target,40),value=clean(d.value,120);
+  const threshold=Math.max(40,Math.min(95,Number(d.attendanceThreshold)||70));
+  const minMarks=Math.max(1,Math.min(20,Number(d.minAttendanceMarks)||3));
+  const [students,attendance,settings,intake]=await Promise.all([
+    readValue(KEYS.students,[]),readValue(KEYS.attendance,[]),readValue(KEYS.settings,{}),readValue(KEYS.intake,{})
+  ]);
+  const current=intake&&intake.startDate||'',fee=Math.max(0,Number(settings&&settings.registrationFee)||0);
+  const eligible=(students||[]).filter(s=>s&&s.id&&s.status!=='Cancelled');
+  let recipients=[];
+  if(target==='course'){
+    if(!COURSE_NAMES[value])throw new HttpsError('invalid-argument','Choose a valid program.');
+    recipients=eligible.filter(s=>s.course===value&&(!current||(s.intakeStart||'')===current));
+  }else if(target==='intake'){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(value))throw new HttpsError('invalid-argument','Choose a valid intake.');
+    recipients=eligible.filter(s=>(s.intakeStart||'')===value);
+  }else if(target==='owing-fees'){
+    recipients=eligible.filter(s=>(!current||(s.intakeStart||'')===current)&&Math.max(0,fee-(Number(s.feePaid)||0))>0);
+  }else if(target==='low-attendance'){
+    recipients=eligible.filter(s=>{
+      if(current&&(s.intakeStart||'')!==current)return false;
+      const rows=(attendance||[]).filter(a=>a.studentId===s.id&&(a.status==='Present'||a.status==='Absent'));
+      if(rows.length<minMarks)return false;
+      const present=rows.filter(a=>a.status==='Present').length,pct=Math.round(present/rows.length*100);
+      return pct<threshold;
+    });
+  }else{
+    throw new HttpsError('invalid-argument','Choose a bulk message audience.');
+  }
+  const seen=new Set();
+  recipients=recipients.filter(s=>!seen.has(s.id)&&seen.add(s.id));
+  return{recipients,target,value,threshold,minMarks,currentIntake:current,fee};
+}
+
+async function writeStudentMessages(students,recordBase){
+  let batch=db.batch(),ops=0;
+  for(const student of students){
+    const ref=db.collection(COL.studentMessages).doc();
+    batch.set(ref,{...recordBase,studentId:student.id});
+    ops++;
+    if(ops>=400){await batch.commit();batch=db.batch();ops=0;}
+  }
+  if(ops)await batch.commit();
+}
+
 app.adminSendStudentMessage=onCall({enforceAppCheck:true},async request=>{
   const account=await requireAdmin(request,'students'),d=request.data||{},studentId=clean(d.studentId,120),message=clean(d.message,1500);
   if(!studentId||!message)throw new HttpsError('invalid-argument','Choose a student and enter a message.');
@@ -207,8 +292,9 @@ app.adminSendStudentMessage=onCall({enforceAppCheck:true},async request=>{
   const ref=db.collection(COL.studentMessages).doc(),createdAt=new Date().toISOString();
   const record={studentId,message,createdAt,createdBy:account.username||'',senderName:account.name||'SkyDream Administration',senderType:'admin',active:true,readAt:''};
   await ref.set(record);
+  const push=await sendPushToStudents([student.id]);
   await appendAudit(account,'Sent student portal message',message.slice(0,120),student.regNumber||studentId);
-  return{ok:true,message:{id:ref.id,...record}};
+  return{ok:true,message:{id:ref.id,...record},push};
 });
 
 app.adminGetStudentMessages=onCall({enforceAppCheck:true},async request=>{
@@ -221,6 +307,58 @@ app.adminGetStudentMessages=onCall({enforceAppCheck:true},async request=>{
   return{messages,unread:messages.filter(m=>!m.readAt).length};
 });
 
+app.adminPreviewBulkStudentMessage=onCall({enforceAppCheck:true},async request=>{
+  await requireAdmin(request,'students');
+  const selected=await selectBulkRecipients(request.data||{});
+  return{
+    count:selected.recipients.length,
+    target:selected.target,
+    sample:selected.recipients.slice(0,50).map(s=>({id:s.id,fullName:s.fullName,regNumber:s.regNumber,course:s.course,courseName:COURSE_NAMES[s.course]||s.course,intakeStart:s.intakeStart||''}))
+  };
+});
+
+app.adminSendBulkStudentMessage=onCall({enforceAppCheck:true},async request=>{
+  const account=await requireAdmin(request,'students'),d=request.data||{},message=clean(d.message,1500);
+  if(!message)throw new HttpsError('invalid-argument','Enter a message to send.');
+  const selected=await selectBulkRecipients(d);
+  if(!selected.recipients.length)throw new HttpsError('failed-precondition','No students match this audience.');
+  if(selected.recipients.length>1000)throw new HttpsError('failed-precondition','This audience is too large for one send. Narrow the selection and try again.');
+  const createdAt=new Date().toISOString(),bulkId='bulk_'+crypto.randomUUID();
+  const recordBase={message,createdAt,createdBy:account.username||'',senderName:account.name||'SkyDream Administration',senderType:'admin',active:true,readAt:'',bulkId,bulkTarget:selected.target};
+  await writeStudentMessages(selected.recipients,recordBase);
+  const push=await sendPushToStudents(selected.recipients.map(s=>s.id));
+  await appendAudit(account,'Sent bulk student portal message',`${selected.recipients.length} recipient(s) · ${selected.target}`,bulkId);
+  return{ok:true,bulkId,recipients:selected.recipients.length,push};
+});
+
+app.studentGetPushStatus=onCall({enforceAppCheck:true},async request=>{
+  const token=requireStudent(request);
+  const snap=await db.collection(COL.studentPushTokens).where('studentId','==',token.studentId).limit(20).get();
+  return{enabled:!snap.empty,devices:snap.size};
+});
+
+app.studentRegisterPushToken=onCall({enforceAppCheck:true},async request=>{
+  const auth=requireStudent(request),token=clean(request.data&&request.data.token,4096);
+  if(!token||token.length<40)throw new HttpsError('invalid-argument','A valid notification token is required.');
+  const id=crypto.createHash('sha256').update(token).digest('hex'),ref=db.collection(COL.studentPushTokens).doc(id),now=new Date().toISOString();
+  const raw=request&&request.rawRequest,userAgent=clean(raw&&raw.headers&&raw.headers['user-agent'],300);
+  await ref.set({studentId:auth.studentId,token,createdAt:now,updatedAt:now,userAgent},{merge:true});
+  return{ok:true};
+});
+
+app.studentUnregisterPushToken=onCall({enforceAppCheck:true},async request=>{
+  const auth=requireStudent(request),token=clean(request.data&&request.data.token,4096);
+  let removed=0;
+  if(token){
+    const id=crypto.createHash('sha256').update(token).digest('hex'),ref=db.collection(COL.studentPushTokens).doc(id),snap=await ref.get();
+    if(snap.exists&&(snap.data()||{}).studentId===auth.studentId){await ref.delete();removed=1;}
+  }else{
+    const snap=await db.collection(COL.studentPushTokens).where('studentId','==',auth.studentId).limit(50).get();
+    if(!snap.empty){const batch=db.batch();snap.docs.forEach(doc=>batch.delete(doc.ref));await batch.commit();removed=snap.size;}
+  }
+  return{ok:true,removed};
+});
+
 app.facilitatorSendStudentMessage=onCall({enforceAppCheck:true},async request=>{
   const account=await requireFacilitator(request),d=request.data||{},studentId=clean(d.studentId,120),message=clean(d.message,1500);
   if(!studentId||!message)throw new HttpsError('invalid-argument','Choose a student and enter a message.');
@@ -230,7 +368,8 @@ app.facilitatorSendStudentMessage=onCall({enforceAppCheck:true},async request=>{
   const ref=db.collection(COL.studentMessages).doc(),createdAt=new Date().toISOString();
   const record={studentId,message,createdAt,createdBy:account.username||'',senderName:account.name||account.username||'Facilitator',senderType:'facilitator',active:true,readAt:''};
   await ref.set(record);
-  return{ok:true,message:{id:ref.id,...record}};
+  const push=await sendPushToStudents([student.id]);
+  return{ok:true,message:{id:ref.id,...record},push};
 });
 
 app.facilitatorCreateQrAttendance=onCall({enforceAppCheck:true},async request=>{

@@ -143,15 +143,12 @@
     renderReports();
     const rows = filtered();
     $('registrationStaffCount').textContent = rows.length + ' registration(s) shown · ' + workspace.students.length + ' total';
-    $('registrationStaffBody').innerHTML = rows.length ? rows.map(s => {
-      const action = s.status === 'Cancelled'
-        ? '<button class="btn btn-primary btn-small" type="button" data-registration-id="' + esc(s.id) + '" data-registration-status="Registered">Mark Registered</button>'
-        : '<button class="btn btn-outline btn-small" type="button" data-registration-id="' + esc(s.id) + '" data-registration-status="Cancelled">Cancel registration</button>';
-      return '<tr><td>' + esc(s.regNumber) + '</td><td><strong>' + esc(s.fullName) +
-        '</strong><br><small>' + esc(s.mobile) + '</small></td><td>' + esc(labelCourse(s.course)) +
-        '</td><td>' + esc(s.intakeStart || '—') + '</td><td><span class="badge">' +
-        esc(s.status) + '</span></td><td>' + action + '</td></tr>';
-    }).join('') : '<tr><td colspan="6">No matching registrations.</td></tr>';
+    $('registrationStaffBody').innerHTML = rows.length ? rows.map(s =>
+      '<tr><td>' + esc(s.regNumber) + '</td><td><strong>' + esc(s.fullName) +
+      '</strong><br><small>' + esc(s.mobile) + '</small></td><td>' + esc(labelCourse(s.course)) +
+      '</td><td>' + esc(s.intakeStart || '—') + '</td><td><span class="badge">' +
+      esc(s.status) + '</span></td></tr>'
+    ).join('') : '<tr><td colspan="5">No matching registrations.</td></tr>';
   }
   async function refresh(verifiedWorkspace = null) {
     if (loading) return loading;
@@ -207,19 +204,6 @@
     }
     downloadCsv('SkyDream-Registration-Summary.csv', rows);
   }
-  async function changeStatus(id, status, button) {
-    const s = workspace && workspace.students.find(x => x.id === id);
-    if (!s || !['Registered','Cancelled'].includes(status)) return;
-    if (!confirm('Change ' + s.fullName + ' (' + s.regNumber + ') to ' + status + '?')) return;
-    button.disabled = true;
-    try {
-      await SkyDreamFirebase.call('adminSetRegistrationStatus', { id, status });
-      await refresh();
-      notice('Registration updated to ' + status + '.', 'success');
-    } catch (err) {
-      notice(SkyDreamFirebase.friendlyError(err), 'error');
-    } finally { if (button.isConnected) button.disabled = false; }
-  }
   document.addEventListener('DOMContentLoaded', () => {
     ['registrationStaffSearch','registrationStaffCourse','registrationStaffIntake','registrationStaffStatus','registrationStaffDateFilter']
       .forEach(id => $(id).addEventListener(id === 'registrationStaffSearch' ? 'input' : 'change', render));
@@ -237,10 +221,6 @@
     $('registrationStaffLogout').addEventListener('click', async () => {
       await SkyDreamFirebase.auth.signOut();
       location.reload();
-    });
-    $('registrationStaffBody').addEventListener('click', event => {
-      const button = event.target.closest('button[data-registration-status]');
-      if (button) changeStatus(button.dataset.registrationId, button.dataset.registrationStatus, button);
     });
   });
   window.SkyDreamRegistrationWorkspace = { open: refresh };

@@ -29,10 +29,10 @@
       </div>
     </div>
     <div class="card mt-20"><div class="dashboard-top"><h3>Recent registrations</h3><button class="btn btn-outline btn-small" data-registration-shortcut="recent" type="button">View recent</button></div><div id="registrationStaffRecent" class="table-wrap"></div></div>
-    <p class="hint mt-18">Your permissions: view and export registration records, and change registration status to Registered or Cancelled. Only the main administrator can set or reset staff PINs.</p>
+    <p class="hint mt-18">Use the registration desk to review records, apply filters, and export registration reports. Only the main administrator can set or reset staff PINs.</p>
   </section>
   <section id="registrationStaff" class="dashboard-panel">
-    <div class="dashboard-top"><div><h2>Student registrations</h2><p class="hint">Search, filter, export and manage registration status. Other student data cannot be edited here.</p></div><div class="toolbar"><button id="registrationStaffExport" class="btn btn-primary btn-small" type="button">Export filtered CSV</button><button id="registrationStaffExportAll" class="btn btn-outline btn-small" type="button">Export all CSV</button></div></div>
+    <div class="dashboard-top"><div><h2>Student registrations</h2><p class="hint">Search, filter and export registration records.</p></div><div class="toolbar"><button id="registrationStaffExport" class="btn btn-primary btn-small" type="button">Export filtered CSV</button><button id="registrationStaffExportAll" class="btn btn-outline btn-small" type="button">Export all CSV</button></div></div>
     <div class="toolbar mt-14">
       <input id="registrationStaffSearch" type="search" aria-label="Search registrations" placeholder="Search name, registration no. or phone">
       <select id="registrationStaffCourse" aria-label="Filter by program"><option value="">All programs</option></select>
@@ -44,7 +44,7 @@
     </div>
     <p id="registrationStaffCount" class="hint mt-14"></p>
     <div id="registrationStaffNotice" class="notice hidden" role="status"></div>
-    <div class="table-wrap"><table class="table"><thead><tr><th>Reg no.</th><th>Student</th><th>Program</th><th>Intake</th><th>Status</th><th>Registration actions</th></tr></thead><tbody id="registrationStaffBody"><tr><td colspan="6">Loading…</td></tr></tbody></table></div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Reg no.</th><th>Student</th><th>Program</th><th>Intake</th><th>Status</th></tr></thead><tbody id="registrationStaffBody"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
   </section>
   <section id="registrationStaffReports" class="dashboard-panel">
     <div class="dashboard-top"><div><h2>Registration reports</h2><p class="hint">Read-only program and intake summaries, calculated from your permitted registration records.</p></div><button id="registrationStaffReportsExport" class="btn btn-outline btn-small" type="button">Export summary CSV</button></div>

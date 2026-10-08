@@ -114,6 +114,24 @@ jobs:
             throw new Error('Owner staff-PIN reset control is missing');
           }
           NODE
+      - name: Verify staff registration table has no action column
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const html = fs.readFileSync('admin.html', 'utf8');
+          const staffShell = html.split('id="registrationStaffShell"', 2)[1].split('id="dashboardShell"', 1)[0];
+          const staff = fs.readFileSync('assets/admin-registration.js', 'utf8');
+          if (staffShell.includes('<th>Registration actions</th>') ||
+              staffShell.includes('colspan="6"') ||
+              !staffShell.includes('<th>Status</th></tr>')) {
+            throw new Error('Staff registration table must show status without an actions column');
+          }
+          if (staff.includes('data-registration-status') ||
+              staff.includes('Cancel registration</button>') ||
+              staff.includes('changeStatus(')) {
+            throw new Error('Staff registration action buttons or handlers must not be rendered');
+          }
+          NODE
       - name: Check HTML for duplicate IDs
         run: |
           python - <<'PY'

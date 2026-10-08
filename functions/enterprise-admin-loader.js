@@ -109,11 +109,45 @@ app.adminLogin=onCall({enforceAppCheck:true},async request=>{
   const session=await createSession(result.account,request);return {...result,token:session.token,sessionId:session.id};
 });
 app.adminVerifyTwoFactorLogin=onCall({enforceAppCheck:true},async request=>{
-  const challengeId=clean(request.data&&request.data.challengeId,120),code=clean(request.data&&request.data.code,12);if(!challengeId)throw new HttpsError('invalid-argument','Login challenge is missing.');
-  const ref=refFor(KEYS.challenges);let challenge=null;await db.runTransaction(async tx=>{const s=await tx.get(ref);let list=s.exists?parseJson(s.data().value,[]):[];challenge=list.find(x=>x.id===challengeId);if(!challenge||Number(challenge.expiresAt)<Date.now())throw new HttpsError('failed-precondition','This verification request expired. Sign in again.');tx.set(ref,{value:JSON.stringify(list.filter(x=>x.id!==challengeId))});});
-  const two=await read2fa();const t=two.find(x=>x.username===challenge.username&&x.enabled&&x.secret);if(!t||!verifyTotp(t.secret,code))throw new HttpsError('permission-denied','That authenticator code is not correct.');
-  const admins=await readValue(KEYS.admins,[]);const account=admins.find(x=>x.id===challenge.accountId&&x.username===challenge.username);if(!account)throw new HttpsError('permission-denied','Administrator account is unavailable.');
-  const session=await createSession(account,request);return {token:session.token,sessionId:session.id,account:{id:account.id,name:account.name||'',username:account.username,role:account.role||'staff'}};
+  const challengeId=clean(request.data&&request.data.challengeId,120);
+  const code=clean(request.data&&request.data.code,12);
+  if(!challengeId||!/^\\d{6}$/.test(code))throw new HttpsError('invalid-argument','Enter a valid 6-digit authentication code.');
+  const two=await read2fa();
+  const ref=refFor(KEYS.challenges);
+  let result={type:'invalid'};
+  await db.runTransaction(async tx=>{
+    const snap=await tx.get(ref);
+    const list=snap.exists?parseJson(snap.data().value,[]):[];
+    if(!Array.isArray(list))throw new HttpsError('internal','Authentication challenges unavailable.');
+    const index=list.findIndex(x=>x.id===challengeId);
+    const challenge=index>=0?list[index]:null;
+    if(!challenge||Number(challenge.expiresAt)<Date.now()){
+      result={type:'expired'};
+      if(challenge){list.splice(index,1);tx.set(ref,{value:JSON.stringify(list)});}
+      return;
+    }
+    const record=two.find(x=>x.username===challenge.username&&x.enabled&&x.secret);
+    if(!record||!verifyTotp(record.secret,code)){
+      // Persist the attempt counter rather than aborting the transaction.
+      challenge.failedAttempts=(Number(challenge.failedAttempts)||0)+1;
+      if(challenge.failedAttempts>=5)list.splice(index,1);
+      result={type:challenge.failedAttempts>=5?'locked':'invalid'};
+      tx.set(ref,{value:JSON.stringify(list)});
+      return;
+    }
+    list.splice(index,1);
+    tx.set(ref,{value:JSON.stringify(list)});
+    result={type:'verified',challenge};
+  });
+  if(result.type==='expired')throw new HttpsError('failed-precondition','This verification request expired. Sign in again.');
+  if(result.type==='locked')throw new HttpsError('resource-exhausted','Too many incorrect codes. Sign in again.');
+  if(result.type!=='verified')throw new HttpsError('permission-denied','That authenticator code is not correct. Please try again.');
+  const challenge=result.challenge;
+  const admins=await readValue(KEYS.admins,[]);
+  const account=admins.find(x=>x.id===challenge.accountId&&x.username===challenge.username);
+  if(!account)throw new HttpsError('permission-denied','Administrator account is unavailable.');
+  const session=await createSession(account,request);
+  return {token:session.token,sessionId:session.id,account:{id:account.id,name:account.name||'',username:account.username,role:account.role||'staff'}};
 });
 app.adminListSessions=onCall({enforceAppCheck:true},async request=>{const a=await assertSession(request);const list=await readValue(KEYS.sessions,[]);const owner=(a.role||'staff')==='owner';return {sessions:(Array.isArray(list)?list:[]).filter(s=>owner||s.username===a.username).slice().sort((x,y)=>String(y.createdAt).localeCompare(String(x.createdAt))).slice(0,100),currentSessionId:request.auth.token.sessionId||''};});
 app.adminRevokeSession=onCall({enforceAppCheck:true},async request=>{const a=await assertSession(request),id=clean(request.data&&request.data.id,140);const ref=refFor(KEYS.sessions);let target=null;await db.runTransaction(async tx=>{const s=await tx.get(ref);const list=s.exists?parseJson(s.data().value,[]):[];target=list.find(x=>x.id===id);if(!target)throw new HttpsError('not-found','Session not found.');if(target.username!==a.username&&(a.role||'staff')!=='owner')throw new HttpsError('permission-denied','You cannot revoke that session.');target.revoked=true;target.revokedAt=nowIso();target.revokedBy=a.username;tx.set(ref,{value:JSON.stringify(list)});});await appendAudit(a,'Revoked admin session','',id);return {ok:true};});

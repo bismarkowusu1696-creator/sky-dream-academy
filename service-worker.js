@@ -129,6 +129,8 @@ self.addEventListener('fetch', event => {
     '/assets/firebase.js',
     '/assets/admin.js',
     '/assets/admin-registration.js',
+    '/assets/admin-desk-operations.js',
+    '/assets/admin-desk-owner.js',
     '/assets/admin-pin.js',
     '/assets/admin-intake.js',
     '/assets/admin-suite.js',

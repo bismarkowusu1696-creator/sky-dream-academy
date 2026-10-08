@@ -250,7 +250,12 @@ app.adminRecoverWithCode = onCall({ enforceAppCheck: true }, async request => {
     if (!account || !account.id) throw new HttpsError('permission-denied', 'Recovery details are not valid.');
 
     const recoveryRef = db.collection(RECOVERY_COLLECTION).doc(account.id);
-    const recoverySnap = await tx.get(recoveryRef);
+    const auditRef = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
+    const [recoverySnap, sessionsSnap, auditSnap] = await Promise.all([
+      tx.get(recoveryRef),
+      tx.get(sessionsRef),
+      tx.get(auditRef)
+    ]);
     const recovery = recoverySnap.exists ? recoverySnap.data() : null;
     const hashes = recovery && Array.isArray(recovery.hashes) ? recovery.hashes : [];
     const candidate = recovery ? recoveryHash(recovery.salt, code) : '';
@@ -266,14 +271,6 @@ app.adminRecoverWithCode = onCall({ enforceAppCheck: true }, async request => {
     account.failedLogins = 0;
     account.passwordRecoveredAt = new Date().toISOString();
 
-    tx.set(adminsRef, { value: JSON.stringify(admins) });
-    tx.set(recoveryRef, {
-      ...recovery,
-      hashes: nextHashes,
-      lastUsedAt: new Date().toISOString()
-    });
-
-    const sessionsSnap = await tx.get(sessionsRef);
     const sessions = sessionsSnap.exists ? parseJson(sessionsSnap.data().value, []) : [];
     if (Array.isArray(sessions)) {
       sessions.forEach(s => {
@@ -283,17 +280,38 @@ app.adminRecoverWithCode = onCall({ enforceAppCheck: true }, async request => {
           s.revokedBy = 'recovery';
         }
       });
-      tx.set(sessionsRef, { value: JSON.stringify(sessions) });
     }
 
-    recoveredAccount = { id: account.id, username: account.username };
+    let audit = auditSnap.exists ? parseJson(auditSnap.data().value, []) : [];
+    if (!Array.isArray(audit)) audit = [];
+    audit.push({
+      id: 'audit_' + crypto.randomUUID(),
+      date: new Date().toISOString(),
+      admin: account.username,
+      role: 'owner',
+      action: 'Recovered owner password with one-time code',
+      target: account.username,
+      detail: 'All existing admin sessions were revoked.'
+    });
+    if (audit.length > 1000) audit = audit.slice(-1000);
+
+    tx.set(adminsRef, { value: JSON.stringify(admins) });
+    tx.set(recoveryRef, {
+      ...recovery,
+      hashes: nextHashes,
+      lastUsedAt: new Date().toISOString()
+    });
+    tx.set(sessionsRef, { value: JSON.stringify(Array.isArray(sessions) ? sessions : []) });
+    tx.set(auditRef, { value: JSON.stringify(audit) });
+
+    recoveredAccount = { id: account.id, username: account.username, remaining: nextHashes.length };
   });
 
   if (recoveredAccount) {
     try { await admin.auth().revokeRefreshTokens('admin-' + recoveredAccount.id); } catch (_) {}
   }
 
-  return { ok: true, remainingCodes: undefined };
+  return { ok: true, remainingCodes: recoveredAccount ? recoveredAccount.remaining : 0 };
 });
 
 // Administrator sign-in now requires the modern password format. Old numeric

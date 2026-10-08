@@ -129,7 +129,7 @@
     const keepCourse = $('registrationStaffCourse').value;
     const keepIntake = $('registrationStaffIntake').value;
     const courses = [...new Set(workspace.students.map(s => s.course).filter(Boolean))].sort();
-    const intakes = [...new Set(workspace.students.map(s => s.intakeStart).filter(Boolean))].sort().reverse();
+    const intakes = [...new Set([workspace.intakeStart, ...workspace.students.map(s => s.intakeStart)].filter(Boolean))].sort().reverse();
     $('registrationStaffCourse').innerHTML = '<option value="">All programs</option>' +
       courses.map(id => '<option value="' + esc(id) + '">' + esc(labelCourse(id)) + '</option>').join('');
     $('registrationStaffIntake').innerHTML = '<option value="">All intakes</option>' +

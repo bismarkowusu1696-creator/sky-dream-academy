@@ -89,7 +89,7 @@ function verifyStoredSecret(secret, account) {
   } catch (_) { return false; }
 }
 
-async function appendCredentialAudit(username, action, target) {
+async function appendCredentialAudit(username, action, target, role = 'owner') {
   const ref = db.collection(STORAGE_COLLECTION).doc('sdta_activity_log');
   try {
     await db.runTransaction(async tx => {
@@ -100,7 +100,7 @@ async function appendCredentialAudit(username, action, target) {
         id: 'audit_' + crypto.randomUUID(),
         date: new Date().toISOString(),
         admin: clean(username, 80),
-        role: 'owner',
+        role: clean(role, 40),
         action: clean(action, 100),
         target: clean(target, 100),
         detail: 'Credential changed; no PIN recorded.'
@@ -630,7 +630,7 @@ app.adminChangePassword = onCall({ enforceAppCheck: true }, async request => {
     tx.set(ref, { value: JSON.stringify(list) });
   });
   await revokeAccountSessions(account.username, account.id);
-  await appendCredentialAudit(account.username, 'Changed own staff PIN', account.username);
+  await appendCredentialAudit(account.username, 'Changed own staff PIN', account.username, account.role || 'staff');
   return { ok: true, signOutRequired: true };
 });
 

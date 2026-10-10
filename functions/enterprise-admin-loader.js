@@ -7,6 +7,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const { backupCollections } = require('./backup-collections');
 
 const db = admin.firestore();
 const COLLECTION = 'sdta_storage';
@@ -409,14 +410,30 @@ app.smartNotificationDaily=onSchedule({schedule:'every day 08:00',timeZone:'Afri
 
 
 async function createBackup(){
-  const keys=Object.values(KEYS);const data={createdAt:nowIso(),project:'skydream-academy',documents:{}};for(const key of keys)data.documents[key]=await readValue(key,null);
-  const bucket=admin.storage().bucket(STORAGE_BUCKET);const day=nowIso().slice(0,10),stamp=nowIso().replace(/[:.]/g,'-');const file=bucket.file(`admin-backups/${day}/skydream-${stamp}.json`);await file.save(JSON.stringify(data),{contentType:'application/json',resumable:false,metadata:{cacheControl:'no-store'}});
+  const createdAt=nowIso();
+  const keys=Object.values(KEYS);
+  const data={createdAt,project:'skydream-academy',backupFormat:2,documents:{}};
+  for(const key of keys)data.documents[key]=await readValue(key,null);
+  const bucket=admin.storage().bucket(STORAGE_BUCKET);
+  const day=createdAt.slice(0,10),stamp=createdAt.replace(/[:.]/g,'-');
+  const prefix=`admin-backups/${day}/skydream-${stamp}`;
+  // Include current and legacy Firestore documents, student messages, workflow
+  // rows, daily reports and audit archives. Each collection is paginated so
+  // the export is not constrained by a single Firestore document size.
+  // Write the manifest LAST: a missing manifest means an incomplete backup.
+  data.collections=await backupCollections({
+    db, bucket, prefix, firestore:admin.firestore, pageSize:25
+  });
+  const file=bucket.file(`admin-backups/${day}/skydream-${stamp}.json`);
+  await file.save(JSON.stringify(data),{
+    contentType:'application/json',resumable:false,metadata:{cacheControl:'private, no-store'}
+  });
   try{const [files]=await bucket.getFiles({prefix:'admin-backups/'});const cutoff=Date.now()-30*86400000;await Promise.all(files.filter(f=>{const m=f.name.match(/admin-backups\/(\d{4}-\d{2}-\d{2})\//);return m&&new Date(m[1]+'T00:00:00Z').getTime()<cutoff;}).map(f=>f.delete().catch(()=>null)));}catch(_){}
   try{const bin=await readValue(KEYS.recycle,[]);const keep=(Array.isArray(bin)?bin:[]).filter(x=>new Date(x.deletedAt||0).getTime()>=Date.now()-30*86400000);if(keep.length!==(Array.isArray(bin)?bin.length:0))await writeValue(KEYS.recycle,keep);}catch(_){}
   return file.name;
 }
-app.dailyAdminBackup=onSchedule({schedule:'every day 02:30',timeZone:'Africa/Accra',region:'us-central1'},async()=>{await createBackup();});
-app.adminRunManualBackup=onCall({enforceAppCheck:true},async request=>{const a=await requirePermission(request,'settings',true);const path=await createBackup();await appendAudit(a,'Created manual cloud backup','',path);return {ok:true,path};});
+app.dailyAdminBackup=onSchedule({schedule:'every day 02:30',timeZone:'Africa/Accra',region:'us-central1',timeoutSeconds:540,memory:'512MiB'},async()=>{await createBackup();});
+app.adminRunManualBackup=onCall({enforceAppCheck:true,timeoutSeconds:540,memory:'512MiB'},async request=>{const a=await requirePermission(request,'settings',true);const path=await createBackup();await appendAudit(a,'Created manual cloud backup','',path);return {ok:true,path};});
 
 const SESSION_PROTECTED=[
   'getAdminSnapshot','adminGetSuiteSnapshot','adminUpdateStudent','adminAddPayment','adminDeleteStudent','adminSetCapacity',

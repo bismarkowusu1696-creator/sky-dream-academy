@@ -18,6 +18,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Run SkyDream local validation
+        run: node scripts/validate-local.js
+
       - name: Check JavaScript syntax
         run: |
           set -e

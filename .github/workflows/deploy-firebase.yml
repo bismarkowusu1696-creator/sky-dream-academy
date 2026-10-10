@@ -28,6 +28,9 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Validate SkyDream before deployment
+        run: node scripts/validate-local.js
+
       - name: Install Firebase CLI and function dependencies
         run: |
           npm install -g firebase-tools

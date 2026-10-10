@@ -13,18 +13,15 @@ The Firebase project is `skydream-academy` (see `.firebaserc`). Confirm that:
 
 ## 2. Deploy Firebase backend changes
 
-From the repository root on a computer authenticated to Firebase CLI:
+From the repository root on a trusted Windows computer authenticated to Firebase CLI:
 
-```bash
-npm install -g firebase-tools
-firebase login
-firebase use skydream-academy
-cd functions
-npm install
-cd ..
-firebase deploy --only functions,firestore:rules --project skydream-academy
-firebase deploy --only firestore:indexes --project skydream-academy
+```powershell
+git pull origin main
+node scripts/validate-local.js
+.\\scripts\\deploy-firebase.ps1
 ```
+
+The deployment script runs the complete local validator again before changing any Firebase resource. If Node reports a failure, **stop** and fix it first. Install the Firebase CLI using `npm install -g firebase-tools` and run `firebase login` if necessary.
 
 These commands deploy Cloud Functions, the restrictive Firestore rules, and Firestore index/TTL policies. Do not manually delete the existing `sdta_storage` documents; they contain student, administrator, facilitator, attendance, payment, waitlist and intake records.
 
@@ -51,7 +48,12 @@ The `_redirects` file redirects the old Netlify hostnames and legacy routes to t
 
 ## 5. Administrator and facilitator accounts
 
-Administrator accounts use strong passwords with at least 12 characters including uppercase, lowercase and a number. Legacy administrator PIN sign-in and PIN migration are disabled. Facilitators continue to use their separate 4-digit PIN flow.
+Main administrator: strong password (at least 12 characters) and optional authenticator 2-step verification. Registration staff and facilitators keep their existing 4-digit PINs and restricted roles. Owner legacy PIN sign-in and PIN migration remain disabled.
+
+- Shared team access: `/academy-team-access-83d7c921`
+- Facilitator access: `/academy-facilitator-access-64c2f89a`
+- Public `/admin`, `/staff`, and `/facilitator` addresses return 404 after the Netlify deploy.
+- These URLs are **unlisted, not confidential**. Their locations appear in this public repository. Firebase authorization remains the actual security boundary.
 
 ## 6. Search indexing
 
@@ -81,4 +83,22 @@ SMS actions should remain hidden until an SMS provider is deliberately configure
 
 If a GitHub Actions job fails before the first step with no runner assigned, an empty steps list, and runner ID 0, the repository code has not started executing. Re-running or changing workflow commands cannot fix that pre-runner condition.
 
-While GitHub-hosted runners are unavailable, deploy the Firebase backend from a trusted computer with Firebase CLI using the commands in section 2. The automated workflow remains configured so it can resume once GitHub assigns runners normally.
+While GitHub-hosted runners are unavailable, run `node scripts/validate-local.js` on your trusted development machine before changing the site. To deploy backend changes, run `.\\scripts\\deploy-firebase.ps1` as described above. These scripts cannot repair GitHub's runner allocation issue; visit GitHub repository Actions settings/support for that.
+
+## 9. Backups and recovery limits
+
+The deployed backend defines a daily scheduled backup (`dailyAdminBackup`, 02:30 Africa/Accra) and an owner-only manual backup (`adminRunManualBackup`). **Confirm their real production execution and storage permissions in Firebase Console**; source code alone cannot establish whether a scheduled job has run.
+
+As of backup format 2, a successful run writes:
+- `admin-backups/YYYY-MM-DD/skydream-TIMESTAMP.json`: legacy shared records plus a `collections` manifest listing document counts and page paths.
+- `admin-backups/YYYY-MM-DD/skydream-TIMESTAMP/collections/NAME/part-000000.json` etc.: paginated per-document records, including messages, audit archives, registration follow-ups, facilitator onboarding, and the full legacy `sdta_storage` collection.
+
+The manifest is saved **only after all collection pages succeed**. An interrupted export may leave orphan page files but must not count as a completed backup. Files in the `admin-backups/` prefix are deleted after about 30 days on successful backup runs. Since these files contain sensitive staff/student information, restrict bucket access and never share raw backups publicly.
+
+**Important:** These are JSON snapshots for emergency recovery, not a tested one-click Firestore restore or an atomic point-in-time database export. Verify contents and regularly perform an authorized restore drill in a separate test project before relying on them for disaster recovery. The next Firebase backend deployment is required for the expanded backup format to start running.
+
+## 10. Pre-launch owner acceptance test
+
+Using test accounts (not live student data), verify: owner sign-in/2FA; staff PIN sign-in and restricted permissions; facilitator PIN sign-in and attendance; student registration/status/portal messages; approved templates and staff activity audit; old public admin paths showing 404; mobile PWA install instructions; and that a manual backup writes a complete format-2 manifest.
+
+Do not change any current PIN format or the accepted student-status verification flow during this check.

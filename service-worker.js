@@ -43,7 +43,7 @@ self.addEventListener('notificationclick', event => {
   })());
 });
 
-const CACHE_NAME = 'skydream-pwa-v34';
+const CACHE_NAME = 'skydream-pwa-v35';
 const PUBLIC_SHELL = [
   '/',
   '/programs',
@@ -145,7 +145,8 @@ self.addEventListener('fetch', event => {
   }
 
   // Never cache authenticated entry points or dashboards.
-  if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator'].includes(url.pathname)) return;
+  if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator',
+    '/academy-team-access-83d7c921', '/academy-team-access-83d7c921.html'].includes(url.pathname)) return;
 
   if (FRESH_PUBLIC_ASSETS.has(url.pathname)) {
     event.respondWith((async () => {

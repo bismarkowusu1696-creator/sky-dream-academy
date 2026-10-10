@@ -13,7 +13,11 @@ function assert(condition, message) {
   checks += 1;
 }
 function read(name) {
-  return fs.readFileSync(path.join(root, name), 'utf8');
+  // Git may check out text with CRLF on Windows. Normalize for comparison,
+  // without altering any project file or weakening the checks.
+  return fs.readFileSync(path.join(root, name), 'utf8')
+    .replace(/^\uFEFF/, '')
+    .replace(/\r\n?/g, '\n');
 }
 function jsFiles(directory) {
   const result = [];

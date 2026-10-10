@@ -1,0 +1,4 @@
+# Netlify requires predictable text files on all developer platforms.
+# Normalize these deployed configuration files even with core.autocrlf=true.
+_headers text eol=lf
+_redirects text eol=lf

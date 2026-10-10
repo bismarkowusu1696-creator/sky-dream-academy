@@ -58,6 +58,16 @@
 /assets/student-portal.js
   Cache-Control: no-cache, max-age=0, must-revalidate
 
+/academy-team-access-83d7c921
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Referrer-Policy: no-referrer
+
+/academy-team-access-83d7c921.html
+  Cache-Control: no-store, max-age=0
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Referrer-Policy: no-referrer
+
 /staff
   Cache-Control: no-store, max-age=0
   X-Robots-Tag: noindex, nofollow, noarchive

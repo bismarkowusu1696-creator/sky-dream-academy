@@ -55,34 +55,61 @@ jobs:
             }
           }
           NODE
-      - name: Verify administrator access is no longer publicly linked
+      - name: Verify all private team access paths and role preservation
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const retired = fs.readFileSync('admin.html', 'utf8');
-          const gateway = fs.readFileSync('academy-team-access-83d7c921.html', 'utf8');
-          const staff = fs.readFileSync('staff.html', 'utf8');
+          const notFound = fs.readFileSync('404.html', 'utf8');
           const routes = fs.readFileSync('_redirects', 'utf8');
           const headers = fs.readFileSync('_headers', 'utf8');
           const sw = fs.readFileSync('service-worker.js', 'utf8');
-          if (/adminLoginForm|dashboardShell|registrationStaffShell|firebase-auth-compat/.test(retired))
-            throw new Error('Public admin.html still contains the admin interface.');
-          for (const id of ['adminLoginForm','dashboardShell','registrationStaffShell']) {
-            if (!gateway.includes('id="' + id + '"'))
-              throw new Error('Team access page is missing: ' + id);
+          const admin = fs.readFileSync('academy-team-access-83d7c921.html', 'utf8');
+          const facilitator = fs.readFileSync('academy-facilitator-access-64c2f89a.html', 'utf8');
+          const ownerJs = fs.readFileSync('assets/admin.js', 'utf8');
+          const facJs = fs.readFileSync('assets/facilitator.js', 'utf8');
+          const publicHome = fs.readFileSync('index.html', 'utf8');
+
+          for (const retired of ['admin.html', 'staff.html', 'facilitator.html']) {
+            if (fs.readFileSync(retired, 'utf8') !== notFound)
+              throw new Error(retired + ' must not contain a usable dashboard or sign-in form.');
           }
-          if (staff.includes('href="admin.html"') || staff.includes('href="/admin"'))
-            throw new Error('Public staff portal exposes old admin entry.');
-          for (const rule of ['/admin /404.html 404!', '/admin.html /404.html 404!',
-            '/academy-team-access-83d7c921 /academy-team-access-83d7c921.html 200']) {
-            if (!routes.includes(rule)) throw new Error('Missing route: ' + rule);
+          for (const route of ['admin', 'admin.html', 'staff', 'staff.html',
+            'facilitator', 'facilitator.html']) {
+            if (!routes.includes('/' + route + ' /404.html 404!'))
+              throw new Error('Public route is not disabled: /' + route);
           }
-          if (!headers.includes('/academy-team-access-83d7c921.html') ||
-              !headers.includes('X-Robots-Tag: noindex, nofollow, noarchive') ||
-              !sw.includes("'/academy-team-access-83d7c921.html'"))
-            throw new Error('Private admin entry is not excluded from indexing and caches.');
-          if (!gateway.includes('name="referrer" content="no-referrer"'))
-            throw new Error('Admin gateway must not leak its path to third parties.');
+          for (const role of ['admin','staff','facilitator']) {
+            if (!routes.includes('/' + role + '/ /404.html 404!') ||
+                !routes.includes('/' + role + '/* /404.html 404!'))
+              throw new Error('Nested public route is not blocked for: ' + role);
+          }
+          for (const page of ['academy-team-access-83d7c921','academy-facilitator-access-64c2f89a']) {
+            if (!routes.includes('/' + page + ' /' + page + '.html 200'))
+              throw new Error('Missing team portal rewrite: ' + page);
+            if (!headers.includes('/' + page + '.html\n  Cache-Control: no-store, max-age=0\n  X-Robots-Tag: noindex, nofollow, noarchive'))
+              throw new Error('Unlisted page must not be indexed or cached: ' + page);
+            if (!sw.includes("'/" + page + "'") || !sw.includes("'/" + page + ".html'"))
+              throw new Error('Unlisted page must bypass service worker caching: ' + page);
+            if (publicHome.includes(page) || notFound.includes(page))
+              throw new Error('Private entry path exposed in public UI: ' + page);
+          }
+          if (!admin.includes('id="adminLoginForm"') ||
+              !admin.includes('id="dashboardShell"') ||
+              !admin.includes('id="registrationStaffShell"') ||
+              !admin.includes('href="/academy-facilitator-access-64c2f89a"'))
+            throw new Error('Owner/staff access or facilitator link is missing.');
+          if (!facilitator.includes('id="facLoginForm"') ||
+              !facilitator.includes('id="facDashboard"') ||
+              !facilitator.includes('assets/facilitator.js') ||
+              !facilitator.includes('href="/academy-team-access-83d7c921"') ||
+              /href="\/staff"/.test(facilitator))
+            throw new Error('Facilitator sign-in or private team navigation is missing.');
+          if (!ownerJs.includes("t.claims.role==='admin'") ||
+              !facJs.includes("getFacilitatorDashboard"))
+            throw new Error('Existing authorization and role-check code must remain.');
+          if (!admin.includes('name="referrer" content="no-referrer"') ||
+              !facilitator.includes('name="referrer" content="no-referrer"'))
+            throw new Error('Private pages must not leak referring access URLs.');
           NODE
       - name: Verify production security entrypoint
         run: |
@@ -104,7 +131,7 @@ jobs:
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const html = fs.readFileSync('admin.html', 'utf8');
+          const html = fs.readFileSync('academy-team-access-83d7c921.html', 'utf8');
           if (!html.includes('id="registrationStaffShell"') || !html.includes('id="dashboardShell"')) {
             throw new Error('The two admin dashboard shells must exist for role separation');
           }
@@ -176,7 +203,7 @@ jobs:
         run: |
           node - <<'NODE'
           const fs = require('fs');
-          const html = fs.readFileSync('admin.html', 'utf8');
+          const html = fs.readFileSync('academy-team-access-83d7c921.html', 'utf8');
           const staffShell = html.split('id="registrationStaffShell"', 2)[1].split('id="dashboardShell"', 1)[0];
           const staff = fs.readFileSync('assets/admin-registration.js', 'utf8');
           if (staffShell.includes('<th>Registration actions</th>') ||

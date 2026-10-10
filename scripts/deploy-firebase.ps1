@@ -10,17 +10,9 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
-  foreach ($path in @(
-    "functions/security-hardening-loader.js",
-    "functions/enterprise-admin-loader.js",
-    "functions/academic-portal-loader.js",
-    "functions/registration-desk-operations.js"
-  )) {
-    & node --check $path
-    if ($LASTEXITCODE -ne 0) { throw "JavaScript syntax check failed: $path" }
-  }
-  & node -e "JSON.parse(require('fs').readFileSync('firestore.indexes.json','utf8'))"
-  if ($LASTEXITCODE -ne 0) { throw "Invalid firestore.indexes.json" }
+  Write-Host "Running full SkyDream local validation..."
+  & node "scripts/validate-local.js"
+  if ($LASTEXITCODE -ne 0) { throw "SkyDream validation failed. Firebase deployment was stopped safely." }
 
   Write-Host "Deploying Firebase functions, rules, and required indexes..."
   & firebase deploy --project skydream-academy --only "functions,firestore:rules,firestore:indexes"

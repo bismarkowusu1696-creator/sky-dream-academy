@@ -55,6 +55,35 @@ jobs:
             }
           }
           NODE
+      - name: Verify administrator access is no longer publicly linked
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const retired = fs.readFileSync('admin.html', 'utf8');
+          const gateway = fs.readFileSync('academy-team-access-83d7c921.html', 'utf8');
+          const staff = fs.readFileSync('staff.html', 'utf8');
+          const routes = fs.readFileSync('_redirects', 'utf8');
+          const headers = fs.readFileSync('_headers', 'utf8');
+          const sw = fs.readFileSync('service-worker.js', 'utf8');
+          if (/adminLoginForm|dashboardShell|registrationStaffShell|firebase-auth-compat/.test(retired))
+            throw new Error('Public admin.html still contains the admin interface.');
+          for (const id of ['adminLoginForm','dashboardShell','registrationStaffShell']) {
+            if (!gateway.includes('id="' + id + '"'))
+              throw new Error('Team access page is missing: ' + id);
+          }
+          if (staff.includes('href="admin.html"') || staff.includes('href="/admin"'))
+            throw new Error('Public staff portal exposes old admin entry.');
+          for (const rule of ['/admin /404.html 404!', '/admin.html /404.html 404!',
+            '/academy-team-access-83d7c921 /academy-team-access-83d7c921.html 200']) {
+            if (!routes.includes(rule)) throw new Error('Missing route: ' + rule);
+          }
+          if (!headers.includes('/academy-team-access-83d7c921.html') ||
+              !headers.includes('X-Robots-Tag: noindex, nofollow, noarchive') ||
+              !sw.includes("'/academy-team-access-83d7c921.html'"))
+            throw new Error('Private admin entry is not excluded from indexing and caches.');
+          if (!gateway.includes('name="referrer" content="no-referrer"'))
+            throw new Error('Admin gateway must not leak its path to third parties.');
+          NODE
       - name: Verify production security entrypoint
         run: |
           node - <<'NODE'
@@ -95,7 +124,7 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const hardening = fs.readFileSync('functions/security-hardening-loader.js','utf8');
-          const html = fs.readFileSync('admin.html','utf8');
+          const html = fs.readFileSync('academy-team-access-83d7c921.html','utf8');
           const staff = fs.readFileSync('assets/admin-registration.js','utf8');
           const ownerUi = fs.readFileSync('assets/admin.js','utf8');
           for (const required of [
@@ -167,7 +196,7 @@ jobs:
           const fs = require('fs');
           const hardening = fs.readFileSync('functions/security-hardening-loader.js','utf8');
           const frontend = fs.readFileSync('assets/admin-registration.js','utf8');
-          const html = fs.readFileSync('admin.html','utf8');
+          const html = fs.readFileSync('academy-team-access-83d7c921.html','utf8');
           const staff = html.split('id="registrationStaffShell"',2)[1].split('id="dashboardShell"',1)[0];
           for (const text of [
             'app.adminEditRegistration = onCall',
@@ -196,7 +225,7 @@ jobs:
           node - <<'NODE'
           const fs = require('fs');
           const security = fs.readFileSync('functions/security-hardening-loader.js','utf8');
-          const html = fs.readFileSync('admin.html','utf8');
+          const html = fs.readFileSync('academy-team-access-83d7c921.html','utf8');
           const frontend = fs.readFileSync('assets/admin-registration.js','utf8');
           const required = [
             'app.adminDeskCreateFacilitator = onCall',
@@ -232,7 +261,7 @@ jobs:
           const security=fs.readFileSync('functions/security-hardening-loader.js','utf8');
           const staff=fs.readFileSync('assets/admin-desk-operations.js','utf8');
           const owner=fs.readFileSync('assets/admin-desk-owner.js','utf8');
-          const html=fs.readFileSync('admin.html','utf8');
+          const html=fs.readFileSync('academy-team-access-83d7c921.html','utf8');
           const registration=fs.readFileSync('assets/admin-registration.js','utf8');
           const handlers=[
             'adminDeskGetInsights','adminDeskSaveTracking','adminDeskSetOnboarding',
@@ -354,7 +383,7 @@ jobs:
           if "'unsafe-inline'" in headers:
               failures.append("_headers: unsafe-inline is forbidden")
 
-          admin_html = Path('admin.html').read_text(encoding='utf-8')
+          admin_html = Path('academy-team-access-83d7c921.html').read_text(encoding='utf-8')
           admin_js = Path('assets/admin.js').read_text(encoding='utf-8')
           if 'upgradePanel' in admin_html or 'old PIN' in admin_html:
               failures.append('admin.html: obsolete legacy PIN upgrade UI is present')

@@ -4,6 +4,7 @@ const app = require('./enterprise-final-loader');
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const {matchesRegistration} = require('./registration-number-compaction');
 
 const db = admin.firestore();
 const STORAGE = 'sdta_storage';
@@ -461,7 +462,11 @@ app.studentMarkMessagesRead=onCall({enforceAppCheck:true},async request=>{
 app.studentPortalLogin=onCall({enforceAppCheck:true},async request=>{
   await enforcePortalRateLimit(request);const regNumber=clean(request.data&&request.data.regNumber,60).toUpperCase(),phone=normalizePhone(request.data&&request.data.mobile);
   if(!regNumber||!/^0\d{9}$/.test(phone))throw new HttpsError('invalid-argument','Enter your registration number and 10-digit mobile number.');
-  const students=await readValue(KEYS.students,[]),student=students.find(s=>String(s.regNumber||'').toUpperCase()===regNumber&&normalizePhone(s.mobile)===phone);
+  const students=await readValue(KEYS.students,[]);
+  // Exact CURRENT number takes priority over a historical alias if a number
+  // is later legitimately issued again to someone with the same mobile.
+  const student=students.find(s=>String(s.regNumber||'').toUpperCase()===regNumber&&normalizePhone(s.mobile)===phone)
+    ||students.find(s=>matchesRegistration(s,regNumber)&&normalizePhone(s.mobile)===phone);
   if(!student)throw new HttpsError('permission-denied','The registration number and mobile number do not match our records.');
   const token=await admin.auth().createCustomToken('student-'+student.id,{role:'student',studentId:student.id,regNumber:student.regNumber});return{token,student:{fullName:student.fullName,regNumber:student.regNumber}};
 });

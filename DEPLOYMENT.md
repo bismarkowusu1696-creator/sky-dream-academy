@@ -102,3 +102,15 @@ The manifest is saved **only after all collection pages succeed**. An interrupte
 Using test accounts (not live student data), verify: owner sign-in/2FA; staff PIN sign-in and restricted permissions; facilitator PIN sign-in and attendance; student registration/status/portal messages; approved templates and staff activity audit; old public admin paths showing 404; mobile PWA install instructions; and that a manual backup writes a complete format-2 manifest.
 
 Do not change any current PIN format or the accepted student-status verification flow during this check.
+
+## 11. Safe registration-number compaction on student deletion
+
+When the **main administrator** deletes a registration, SkyDream moves the removed record into the recycle bin and checks the remaining students in that **same program and intake**. If all students whose numbers would change are safe to renumber, their sequence is made contiguous again (for example, deleting 001 moves 002 → 001 and 003 → 002). The operation keeps permanent student IDs, payments and attendance associations, and writes an audit entry for each old/new number and one for the deletion.
+
+**Fail-closed safety:** No other students are renumbered when a relevant record has a payment, attendance, portal account, message, push device, assessment, verification tracking, internal note, historical audit record, protected status, unsupported numbering, or an ambiguous registration number/mobile pair. An unavailable protection check also prevents renumbering. Deletion still moves the record into the recycle bin, but the owner dashboard explains why numbers were retained.
+
+For records that do change, old registration numbers are retained under `previousRegNumbers`. Students can continue signing into their **Student Portal** with a previous number and their existing matching mobile; the portal shows their current number. The existing student status lookup continues to expect the **current** registration number. Exact current portal numbers take priority over aliases. The recycle-bin restore action checks for duplicate current registration numbers and assigns a free number if the previous one has already been reassigned.
+
+Historical receipts and exported reports are not rewritten. Keep the immutable audit trail with old and new numbers and advise affected students of their current number. This implementation intentionally avoids forcing contiguous numbers when that would threaten the integrity of historical or external records. Staff-admin and facilitator roles remain unchanged.
+
+Run `node scripts/validate-local.js` and deploy Cloud Functions using `.\\scripts\\deploy-firebase.ps1`. This feature runs in Firebase; changing frontend files alone does not activate it.

@@ -75,7 +75,10 @@ function planCompaction(students, deletedId, linkedIds = new Set()) {
   }
   // The portal supports old numbers using the matching mobile. Never create
   // an ambiguous number+mobile combination with a different student.
-  const normalizedMobile = student => String(student.mobile||'').replace(/\D/g,'').slice(-10);
+  const normalizedMobile = student => {
+    const digits=String(student.mobile||'').replace(/\D/g,'');
+    return digits.startsWith('233')&&digits.length===12?'0'+digits.slice(3):digits.slice(-10);
+  };
   const assigned=remaining.map(({student})=>{
     const changed=changes.find(c=>c.id===student.id);
     return {id:student.id,phone:normalizedMobile(student),

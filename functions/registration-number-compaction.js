@@ -67,6 +67,33 @@ function planCompaction(students, deletedId, linkedIds = new Set()) {
     }
     changes.push({ id:student.id, from:student.regNumber, to:target });
   }
+  // Also reject assignments that collide with a current number in another
+  // intake or course (two intakes in the same month can share a suffix).
+  const other=students.filter(s=>s&&s.id!==deletedId&&!sameCohort(s,removed));
+  if(changes.some(change=>other.some(s=>String(s.regNumber||'').toUpperCase()===change.to))) {
+    return {changes:[],reason:'A registration number is already used by another course or intake.'};
+  }
+  // The portal supports old numbers using the matching mobile. Never create
+  // an ambiguous number+mobile combination with a different student.
+  const normalizedMobile = student => String(student.mobile||'').replace(/\\D/g,'').slice(-10);
+  const assigned=remaining.map(({student})=>{
+    const changed=changes.find(c=>c.id===student.id);
+    return {id:student.id,phone:normalizedMobile(student),
+      numbers:changed?[changed.to,changed.from,...previousNumbers(student)]
+        :[student.regNumber,...previousNumbers(student)]};
+  }).concat(other.map(student=>({id:student.id,phone:normalizedMobile(student),
+    numbers:[student.regNumber,...previousNumbers(student)]})));
+  const seen=new Map();
+  for(const entry of assigned){
+    if(!entry.phone)continue;
+    for(const value of entry.numbers){
+      const key=String(value||'').toUpperCase()+'|'+entry.phone;
+      if(seen.has(key)&&seen.get(key)!==entry.id) {
+        return {changes:[],reason:'Renumbering would make an existing portal login ambiguous.'};
+      }
+      seen.set(key,entry.id);
+    }
+  }
   return { changes, reason:'' };
 }
 function applyCompaction(students, changes) {

@@ -168,17 +168,18 @@ async function linkedStudentIds(group){
   await Promise.all(group.map(async student=>{
     try {
       const id=String(student.id||'');
-      const [messages,assessments,push,workflow,authUser]=await Promise.all([
+      const [messages,assessments,push,archivedAudit,workflow,authUser]=await Promise.all([
         db.collection('sdta_student_messages').where('studentId','==',id).limit(1).get(),
         db.collection('sdta_assessment_records').where('studentId','==',id).limit(1).get(),
         db.collection('sdta_student_push_tokens').where('studentId','==',id).limit(1).get(),
+        db.collection('sdta_admin_audit_archive').where('studentId','==',id).limit(1).get(),
         db.collection('sdta_registration_workflow_rows').doc(id).get(),
         admin.auth().getUser('student-'+id).then(()=>true).catch(err=>{
           if(err && err.code==='auth/user-not-found')return false;
           throw err;
         })
       ]);
-      if(!messages.empty || !assessments.empty || !push.empty || workflow.exists || authUser)linked.add(id);
+      if(!messages.empty || !assessments.empty || !push.empty || !archivedAudit.empty || workflow.exists || authUser)linked.add(id);
     } catch (_) {
       // A failed safety check must never cause an unsafe registration change.
       linked.add(student.id);
@@ -224,7 +225,7 @@ app.adminDeleteStudent=onCall({enforceAppCheck:true},async request=>{
     const protectedIds=new Set(linked);
     for(const s of currentCohort){
       if(attendance.some(a=>a.studentId===s.id) ||
-         notes.some(n=>n.studentId===s.id||n.targetId===s.id) ||
+         notes.some(n=>n.studentId===s.id||n.targetId===s.id||n.entityId===s.id) ||
          history.some(h=>h.entityId===s.id||h.studentId===s.id) ||
          audit.some(a=>a.target===s.id||a.target===s.regNumber)){
         protectedIds.add(s.id);

@@ -278,7 +278,54 @@ app.adminDeleteFacilitator=onCall({enforceAppCheck:true},r=>softDeleteFromList(r
 app.adminDeleteBroadcast=onCall({enforceAppCheck:true},r=>softDeleteFromList(r,KEYS.broadcasts,'announcement',false));
 app.adminDeleteAdmin=onCall({enforceAppCheck:true},async request=>{const a=await requirePermission(request,'settings',true);const id=clean(request.data&&request.data.id,140);const ref=refFor(KEYS.admins);let removed=null;await db.runTransaction(async tx=>{const s=await tx.get(ref);const list=s.exists?parseJson(s.data().value,[]):[];const i=list.findIndex(x=>x&&x.id===id);if(i<0)throw new HttpsError('not-found','Administrator not found.');if((list[i].role||'staff')==='owner'||list[i].username===a.username)throw new HttpsError('failed-precondition','The main/current administrator cannot be deleted.');removed=list[i];list.splice(i,1);tx.set(ref,{value:JSON.stringify(list)});});await moveToRecycle(a,'admin',removed,KEYS.admins);try{await admin.auth().deleteUser('admin-'+id);}catch(_){}await appendAudit(a,'Moved administrator to recycle bin','',removed.username||id);return {ok:true};});
 app.adminGetRecycleBin=onCall({enforceAppCheck:true},async request=>{await requirePermission(request,'settings',true);const list=await readValue(KEYS.recycle,[]);return {items:(Array.isArray(list)?list:[]).slice().sort((a,b)=>String(b.deletedAt).localeCompare(String(a.deletedAt)))};});
-app.adminRestoreRecycleItem=onCall({enforceAppCheck:true},async request=>{const a=await requirePermission(request,'settings',true),id=clean(request.data&&request.data.id,140);const binRef=refFor(KEYS.recycle);let item=null;await db.runTransaction(async tx=>{const bs=await tx.get(binRef);const bin=bs.exists?parseJson(bs.data().value,[]):[];const i=bin.findIndex(x=>x.id===id);if(i<0)throw new HttpsError('not-found','Recycle item not found.');item=bin[i];const sourceRef=refFor(item.sourceKey);const ss=await tx.get(sourceRef);const list=ss.exists?parseJson(ss.data().value,[]):[];if(list.some(x=>x&&x.id===item.record.id))throw new HttpsError('already-exists','A record with the same ID already exists.');list.push(item.record);bin.splice(i,1);tx.set(sourceRef,{value:JSON.stringify(list)});tx.set(binRef,{value:JSON.stringify(bin)});});await appendAudit(a,'Restored recycle item',item.type,item.record&&item.record.id);return {ok:true};});
+app.adminRestoreRecycleItem=onCall({enforceAppCheck:true},async request=>{
+  const account=await requirePermission(request,'settings',true),
+    id=clean(request.data&&request.data.id,140);
+  const binRef=refFor(KEYS.recycle);
+  let restored=null,changedFrom='';
+  await db.runTransaction(async tx=>{
+    const bs=await tx.get(binRef);
+    const bin=bs.exists?parseJson(bs.data().value,[]):[];
+    if(!Array.isArray(bin))throw new HttpsError('internal','Recycle bin is unavailable.');
+    const index=bin.findIndex(x=>x.id===id);
+    if(index<0)throw new HttpsError('not-found','Recycle item not found.');
+    const item=bin[index];
+    const sourceRef=refFor(item.sourceKey);
+    const ss=await tx.get(sourceRef);
+    const list=ss.exists?parseJson(ss.data().value,[]):[];
+    if(!Array.isArray(list))throw new HttpsError('internal','Original records unavailable.');
+    if(list.some(x=>x&&x.id===item.record.id))
+      throw new HttpsError('already-exists','A record with the same ID already exists.');
+    const record={...item.record};
+    // Deleted registration numbers may be assigned to remaining students.
+    // Never restore a second CURRENT registration number with the same value.
+    if(item.type==='student'){
+      const current=String(record.regNumber||'').toUpperCase();
+      const collision=list.some(s=>String(s.regNumber||'').toUpperCase()===current);
+      if(collision){
+        const newNumber=nextFreeRegistration(list,record);
+        if(!newNumber)throw new HttpsError('failed-precondition',
+          'A replacement registration number is not available. Contact the academy administrator.');
+        const aliases=new Set(previousNumbers(record));aliases.add(record.regNumber);
+        record.previousRegNumbers=[...aliases];
+        changedFrom=record.regNumber;
+        record.regNumber=newNumber;
+      }
+      const duplicate=list.find(s=>s.status!=='Cancelled'&&
+        sameCohort(s,record)&&normPhone(s.mobile)&&normPhone(s.mobile)===normPhone(record.mobile));
+      if(duplicate)throw new HttpsError('already-exists',
+        'A student in this course and intake already has that mobile number.');
+    }
+    list.push(record);
+    bin.splice(index,1);
+    tx.set(sourceRef,{value:JSON.stringify(list)});
+    tx.set(binRef,{value:JSON.stringify(bin)});
+    restored={type:item.type,id:record.id,regNumber:record.regNumber};
+  });
+  await appendAudit(account,'Restored recycle item',restored.type,
+    restored.id+(changedFrom?' · Registration number changed from '+changedFrom+' to '+restored.regNumber:''));
+  return{ok:true,restored,registrationNumberChanged:!!changedFrom,previousRegistrationNumber:changedFrom};
+});
 app.adminPurgeRecycleItem=onCall({enforceAppCheck:true},async request=>{const a=await requirePermission(request,'settings',true),id=clean(request.data&&request.data.id,140);const ref=refFor(KEYS.recycle);await db.runTransaction(async tx=>{const s=await tx.get(ref);const list=s.exists?parseJson(s.data().value,[]):[];if(!list.some(x=>x.id===id))throw new HttpsError('not-found','Recycle item not found.');tx.set(ref,{value:JSON.stringify(list.filter(x=>x.id!==id))});});await appendAudit(a,'Permanently deleted recycle item','',id);return {ok:true};});
 
 function parseCsv(text){const rows=[];let row=[],field='',q=false;for(let i=0;i<String(text||'').length;i++){const c=text[i],n=text[i+1];if(q){if(c==='"'&&n==='"'){field+='"';i++;}else if(c==='"')q=false;else field+=c;}else if(c==='"')q=true;else if(c===','){row.push(field);field='';}else if(c==='\n'){row.push(field.replace(/\r$/,''));rows.push(row);row=[];field='';}else field+=c;}row.push(field.replace(/\r$/,''));if(row.some(v=>v!==''))rows.push(row);return rows;}

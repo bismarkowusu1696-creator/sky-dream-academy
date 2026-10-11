@@ -34,6 +34,17 @@ function run(){
   assert.equal(planCompaction([student('a',1),student('b',2),student('c',3)],'a',new Set(['c'])).changes.length,0);
   assert.equal(planCompaction([student('a',1),student('b',1)],'a').changes.length,0);
   assert.equal(planCompaction([student('a',1),student('b',2,{regNumber:'BAD'})],'a').changes.length,0);
+  assert.equal(planCompaction([
+    student('a',1),student('b',2),student('c',3),
+    student('other',2,{intakeStart:'2026-10-20'})
+  ],'a').changes.length,0,'Do not collide with another intake in the same month.');
+  assert.equal(planCompaction([
+    student('a',1),
+    student('b',2,{mobile:'0242222222'}),
+    student('c',3),
+    student('other',8,{intakeStart:'2026-10-20',mobile:'+233 24 222 2222',
+      previousRegNumbers:['SDCO002/10/2026']})
+  ],'a').changes.length,0,'Do not break previous portal numbers using formatted Ghana phone numbers.');
   assert.equal(planCompaction([student('a',3),student('b',1),student('c',2)],'a').changes.length,0);
   assert.equal(nextFreeRegistration(survivors,student('a',1)),'SDCO003/10/2026');
   const number=nextFreeRegistration([student('a',1),student('b',2)],student('old',2));
@@ -42,6 +53,6 @@ function run(){
   assert.deepEqual(survivors.find(s=>s.id==='c').previousRegNumbers,[
     'SDCO003/10/2026','SDCO002/10/2026'
   ]);
-  console.log('SkyDream safe registration renumbering: 16 scenarios passed.');
+  console.log('SkyDream safe registration renumbering: 18 scenarios passed.');
 }
 run();

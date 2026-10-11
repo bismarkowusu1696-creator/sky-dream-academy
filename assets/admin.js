@@ -139,8 +139,19 @@
     try{await withBusy(button,'Saving…',async()=>{await SkyDreamFirebase.call('adminAddPayment',{id,amount:Number(amount),note});await refresh('Payment recorded.');});}catch(err){alert(errText(err));}
   }
   async function deleteStudent(id,button){
-    const s=data.students.find(x=>x.id===id); if(!s||!confirm(`Delete ${s.fullName} (${s.regNumber})? This cannot be undone.`))return;
-    try{await withBusy(button,'Deleting…',async()=>{await SkyDreamFirebase.call('adminDeleteStudent',{id});await refresh('Registration deleted.');});}catch(err){alert(errText(err));}
+    const s=data.students.find(x=>x.id===id); if(!s)return;
+    if(!confirm(`Move ${s.fullName} (${s.regNumber}) to the recycle bin?\n\nEligible students in the same program and intake will be renumbered only when their records can be preserved safely.`))return;
+    try{
+      await withBusy(button,'Deleting…',async()=>{
+        const result=await SkyDreamFirebase.call('adminDeleteStudent',{id});
+        const count=Number(result&&result.renumbered)||0;
+        const msg=count? `Registration moved to recycle bin. ${count} registration number(s) updated.`
+          :result&&result.renumberingSkipped
+            ?`Registration moved to recycle bin. Existing numbers retained: ${result.renumberingSkipped}`
+            :'Registration moved to recycle bin. No other numbers needed changing.';
+        await refresh(msg);
+      });
+    }catch(err){alert(errText(err));}
   }
   async function sendPortalMessage(id,button){
     const s=data.students.find(x=>x.id===id); if(!s)return;

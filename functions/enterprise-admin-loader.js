@@ -7,6 +7,7 @@ const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const admin = require('firebase-admin');
 const crypto = require('crypto');
+const {planCompaction,applyCompaction,sameCohort,previousNumbers,nextFreeRegistration} = require('./registration-number-compaction');
 const { backupCollections } = require('./backup-collections');
 
 const db = admin.firestore();
@@ -156,7 +157,123 @@ app.adminRevokeAllSessions=onCall({enforceAppCheck:true},async request=>{const a
 
 async function moveToRecycle(account,type,record,sourceKey){const ref=refFor(KEYS.recycle);await db.runTransaction(async tx=>{const s=await tx.get(ref);let list=s.exists?parseJson(s.data().value,[]):[];if(!Array.isArray(list))list=[];list.push({id:'bin_'+crypto.randomUUID(),type,sourceKey,record,deletedAt:nowIso(),deletedBy:account.username});if(list.length>500)list=list.slice(-500);tx.set(ref,{value:JSON.stringify(list)});});}
 async function softDeleteFromList(request,key,type,ownerOnly=false){const a=await requirePermission(request,type==='student'?'students':type==='announcement'?'announcements':'facilitators',ownerOnly);const id=clean(request.data&&request.data.id,140);const ref=refFor(key);let removed=null;await db.runTransaction(async tx=>{const s=await tx.get(ref);const list=s.exists?parseJson(s.data().value,[]):[];const i=list.findIndex(x=>x&&x.id===id);if(i<0)throw new HttpsError('not-found',`${type} not found.`);removed=list[i];list.splice(i,1);tx.set(ref,{value:JSON.stringify(list)});});await moveToRecycle(a,type,removed,key);await appendAudit(a,`Moved ${type} to recycle bin`,'',id);return {ok:true};}
-app.adminDeleteStudent=onCall({enforceAppCheck:true},r=>softDeleteFromList(r,KEYS.students,'student',true));
+// A deleted student is placed in the same recycle bin as before. Only records
+// with no linked activity may be automatically renumbered. Student IDs stay fixed.
+async function linkedStudentIds(group){
+  const linked=new Set();
+  if(group.length>50){
+    group.forEach(s=>linked.add(s.id)); // Fail closed for large cohorts.
+    return linked;
+  }
+  await Promise.all(group.map(async student=>{
+    try {
+      const id=String(student.id||'');
+      const [messages,assessments,push,workflow,authUser]=await Promise.all([
+        db.collection('sdta_student_messages').where('studentId','==',id).limit(1).get(),
+        db.collection('sdta_assessment_records').where('studentId','==',id).limit(1).get(),
+        db.collection('sdta_student_push_tokens').where('studentId','==',id).limit(1).get(),
+        db.collection('sdta_registration_workflow_rows').doc(id).get(),
+        admin.auth().getUser('student-'+id).then(()=>true).catch(err=>{
+          if(err && err.code==='auth/user-not-found')return false;
+          throw err;
+        })
+      ]);
+      if(!messages.empty || !assessments.empty || !push.empty || workflow.exists || authUser)linked.add(id);
+    } catch (_) {
+      // A failed safety check must never cause an unsafe registration change.
+      linked.add(student.id);
+    }
+  }));
+  return linked;
+}
+app.adminDeleteStudent=onCall({enforceAppCheck:true},async request=>{
+  const account=await requirePermission(request,'students',true);
+  const id=clean(request.data&&request.data.id,140);
+  if(!id)throw new HttpsError('invalid-argument','Choose a student.');
+  const studentsRef=refFor(KEYS.students),recycleRef=refFor(KEYS.recycle),
+    auditRef=refFor(KEYS.audit),attendanceRef=refFor(KEYS.attendance),
+    historyRef=refFor(KEYS.history),notesRef=refFor(KEYS.notes);
+  const prior=await readValue(KEYS.students,[]);
+  const original=Array.isArray(prior)?prior.find(s=>s&&s.id===id):null;
+  if(!original)throw new HttpsError('not-found','Student not found.');
+  const cohort=prior.filter(s=>sameCohort(s,original));
+  const linked=await linkedStudentIds(cohort);
+  let outcome;
+  await db.runTransaction(async tx=>{
+    const [ss,bs,as,at,hs,ns]=await Promise.all([
+      tx.get(studentsRef),tx.get(recycleRef),tx.get(auditRef),
+      tx.get(attendanceRef),tx.get(historyRef),tx.get(notesRef)
+    ]);
+    const students=ss.exists?parseJson(ss.data().value,[]):[];
+    const bin=bs.exists?parseJson(bs.data().value,[]):[];
+    const audit=as.exists?parseJson(as.data().value,[]):[];
+    const attendance=at.exists?parseJson(at.data().value,[]):[];
+    const history=hs.exists?parseJson(hs.data().value,[]):[];
+    const notes=ns.exists?parseJson(ns.data().value,[]):[];
+    if(!Array.isArray(students)||!Array.isArray(bin)||!Array.isArray(audit)||
+       !Array.isArray(attendance)||!Array.isArray(history)||!Array.isArray(notes)){
+      throw new HttpsError('internal','Student history is unavailable. No changes were made.');
+    }
+    const student=students.find(s=>s&&s.id===id);
+    if(!student)throw new HttpsError('not-found','Student not found.');
+    // The preflight and transaction must refer to the same cohort; if an
+    // intervening edit occurred, deletion proceeds without any renumbering.
+    const currentCohort=students.filter(s=>sameCohort(s,student));
+    const unchanged=JSON.stringify(currentCohort.map(s=>[s.id,s.regNumber,s.status,s.feePaid,s.payments]))===
+      JSON.stringify(cohort.map(s=>[s.id,s.regNumber,s.status,s.feePaid,s.payments]));
+    const protectedIds=new Set(linked);
+    for(const s of currentCohort){
+      if(attendance.some(a=>a.studentId===s.id) ||
+         notes.some(n=>n.studentId===s.id||n.targetId===s.id) ||
+         history.some(h=>h.entityId===s.id||h.studentId===s.id) ||
+         audit.some(a=>a.target===s.id||a.target===s.regNumber)){
+        protectedIds.add(s.id);
+      }
+    }
+    const result=unchanged
+      ?planCompaction(students,id,protectedIds)
+      :{changes:[],reason:'Student records changed while deleting; numbers were preserved.'};
+    const deletedSnapshot={...student};
+    const remaining=students.filter(s=>s.id!==id);
+    if(result.changes.length)applyCompaction(remaining,result.changes);
+    const now=nowIso(),binEntry={
+      id:'bin_'+crypto.randomUUID(),type:'student',sourceKey:KEYS.students,
+      record:deletedSnapshot,deletedAt:now,deletedBy:account.username
+    };
+    bin.push(binEntry);
+    // The deleted record is recoverable; never silently discard it from the
+    // recycle bin to make room for an entry. Keep previous retention behavior.
+    if(bin.length>500)bin.splice(0,bin.length-500);
+    const changeEvents=[];
+    for(const change of result.changes){
+      const event={
+        id:'audit_'+crypto.randomUUID(),date:now,admin:account.username,
+        role:account.role||'owner',action:'Renumbered student after deletion',
+        studentId:change.id,target:change.from,oldRegNumber:change.from,
+        newRegNumber:change.to,deletedStudentId:id,
+        detail:change.from+' → '+change.to
+      };
+      changeEvents.push(event);
+      tx.create(db.collection('sdta_admin_audit_archive').doc(event.id),event);
+    }
+    const deletionEvent={
+      id:'audit_'+crypto.randomUUID(),date:now,admin:account.username,
+      role:account.role||'owner',action:'Moved student to recycle bin',
+      studentId:id,target:String(deletedSnapshot.regNumber||id),
+      detail:result.changes.length+' registration number(s) shifted.'+
+        (result.reason?' Renumbering skipped: '+result.reason:'')
+    };
+    tx.create(db.collection('sdta_admin_audit_archive').doc(deletionEvent.id),deletionEvent);
+    audit.push(...changeEvents,deletionEvent);
+    tx.set(studentsRef,{value:JSON.stringify(remaining)});
+    tx.set(recycleRef,{value:JSON.stringify(bin)});
+    tx.set(auditRef,{value:JSON.stringify(audit.slice(-500))});
+    outcome={ok:true,renumbered:result.changes.length,
+      changes:result.changes.map(c=>({oldNumber:c.from,newNumber:c.to})),
+      renumberingSkipped:result.reason||''};
+  });
+  return outcome;
+});
 app.adminDeleteFacilitator=onCall({enforceAppCheck:true},r=>softDeleteFromList(r,KEYS.facilitators,'facilitator',true));
 app.adminDeleteBroadcast=onCall({enforceAppCheck:true},r=>softDeleteFromList(r,KEYS.broadcasts,'announcement',false));
 app.adminDeleteAdmin=onCall({enforceAppCheck:true},async request=>{const a=await requirePermission(request,'settings',true);const id=clean(request.data&&request.data.id,140);const ref=refFor(KEYS.admins);let removed=null;await db.runTransaction(async tx=>{const s=await tx.get(ref);const list=s.exists?parseJson(s.data().value,[]):[];const i=list.findIndex(x=>x&&x.id===id);if(i<0)throw new HttpsError('not-found','Administrator not found.');if((list[i].role||'staff')==='owner'||list[i].username===a.username)throw new HttpsError('failed-precondition','The main/current administrator cannot be deleted.');removed=list[i];list.splice(i,1);tx.set(ref,{value:JSON.stringify(list)});});await moveToRecycle(a,'admin',removed,KEYS.admins);try{await admin.auth().deleteUser('admin-'+id);}catch(_){}await appendAudit(a,'Moved administrator to recycle bin','',removed.username||id);return {ok:true};});

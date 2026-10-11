@@ -38,7 +38,7 @@ async function scenario({protectedStudent='',paid=false}={}){
             async get(){return {exists:false,data:()=>({})}}};
         },
         where(field,operator,id){
-          assert.equal(field,'studentId');assert.equal(operator,'==');
+          assert(['studentId','target'].includes(field));assert.equal(operator,'==');
           return {limit(){return this},async get(){
             return {empty:!(collection==='sdta_student_messages'&&id===protectedStudent)};
           }};

@@ -89,5 +89,20 @@ assert(backup.includes('data.collections=await backupCollections('),
 
 runNode(['scripts/test-backup-collections.js']);
 checks += 1;
+runNode(['scripts/test-registration-renumbering.js']);
+checks += 1;
+const enterprise=read('functions/enterprise-admin-loader.js');
+const portal=read('functions/academic-portal-loader.js');
+assert(enterprise.includes('planCompaction(students,id,protectedIds)'),
+  'Student deletion must use protected cohort registration renumbering.');
+assert(enterprise.includes('tx.set(recycleRef,{value:JSON.stringify(bin)})'),
+  'Student deletion must remain recoverable.');
+assert(enterprise.includes("app.adminRestoreRecycleItem=onCall"),
+  'Recycle bin restore must remain available.');
+assert(portal.includes('matchesRegistration(s,regNumber)'),
+  'Student portal sign-in must honor previous registration numbers.');
+assert(read('functions/index.js').includes('checkStudentStatus'),
+  'The existing student registration status check must remain unchanged.');
+
 console.log('SkyDream local validation passed: '+checks+
   ' checks (JavaScript, configuration, private routes, backup regression).');

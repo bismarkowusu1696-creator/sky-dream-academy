@@ -84,7 +84,7 @@ function publicGuidance(question,facts){
   const asksPlaces=/availab|space|slot|full|capacity/.test(q);
   let answer='';
   let topic='course-guidance';
-  if(/student|record|my status|my payment|registration number|my portal|password|personal|private/.test(q)){
+  if(/(?:my|own)\s+(?:student\s+)?(?:record|registration|status|payment|account|portal|details)|registration number|student portal|password|ghana card|personal (?:record|details)|private (?:record|details)/.test(q)){
     topic='private-account';
     answer='I cannot access private student records. Use the Student Portal or the Check Status page, or contact the academy. Do not share your registration number, phone or payment details here.';
   }else if(asksFee&&!chosen.length){

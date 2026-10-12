@@ -103,6 +103,9 @@ function publicGuidance(question,facts){
     topic='recommendation';
     answer=`Based on your question, you could explore ${availability.join(', ')}. `+
       (status==='open'?'Use the registration page to apply.':'Check the registration page or contact the academy for a future intake.');
+    if(asksFee)answer+=facts.registrationFee===null
+      ?' Contact the academy for the current registration fee and programme costs.'
+      :` The published registration fee is GHS ${facts.registrationFee.toFixed(2)}. Other course costs must be confirmed with the academy.`;
   }else if(asksPlaces){
     topic='capacity';
     answer='Current programme availability is displayed on the SkyDream programmes page. Places can change as registrations are processed.';

@@ -20,6 +20,8 @@ assert.match(publicGuidance('Can I register?',closed).answer,/closed/i);
 assert.match(publicGuidance('I want to learn wiring',open).answer,/Electricals/);
 assert.match(publicGuidance('How much is registration?',open).answer,/GHS 50/);
 assert.equal(publicGuidance('My student portal or payment status?',open).topic,'private-account');
+assert.equal(publicGuidance('I am a student and want to learn Electricals',open).topic,'recommendation');
+assert.equal(publicGuidance('Can you check my student record?',open).topic,'private-account');
 assert.equal(JSON.stringify(open).includes('fullName'),false);
 
 const students=[

@@ -97,6 +97,8 @@ runNode(['scripts/test-ai-academy.js']);
 checks += 1;
 runNode(['scripts/test-ai-academy-callables.js']);
 checks += 1;
+runNode(['scripts/test-ai-secret-isolation.js']);
+checks += 1;
 
 const aiPublic = read('assets/ai-academy-public.js');
 const aiAdmin = read('assets/ai-academy-admin.js');

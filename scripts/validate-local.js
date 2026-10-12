@@ -93,6 +93,28 @@ runNode(['scripts/test-registration-renumbering.js']);
 checks += 1;
 runNode(['scripts/test-delete-registration-transaction.js']);
 checks += 1;
+runNode(['scripts/test-ai-academy.js']);
+checks += 1;
+runNode(['scripts/test-ai-academy-callables.js']);
+checks += 1;
+runNode(['scripts/test-ai-secret-isolation.js']);
+checks += 1;
+
+const aiPublic = read('assets/ai-academy-public.js');
+const aiAdmin = read('assets/ai-academy-admin.js');
+assert(!aiPublic.includes("createElement('style')") && !aiAdmin.includes("createElement('style')"),
+  'AI interfaces must not use inline styles blocked by the production CSP.');
+for (const page of ['index.html','programs.html','register.html','schedule.html','about.html',
+  'contact.html','check-status.html','academy-team-access-83d7c921.html']) {
+  assert(read(page).includes('href="assets/ai-academy.css"'),
+    'AI CSS missing from '+page);
+  assert(read(page).includes('src="assets/ai-academy-'+
+    (page.includes('academy-team')?'admin':'public')+'.js"'),
+    'AI interface script missing from '+page);
+}
+assert(read('_headers').includes("style-src 'self'"),
+  'Production content security policy must not be weakened for AI styles.');
+
 const enterprise=read('functions/enterprise-admin-loader.js');
 const portal=read('functions/academic-portal-loader.js');
 assert(enterprise.includes('planCompaction(students,id,protectedIds)'),

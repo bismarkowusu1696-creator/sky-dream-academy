@@ -8,6 +8,8 @@ const https = require('firebase-functions/v2/https');
 const params = require('firebase-functions/params');
 
 const realOnCall = https.onCall;
+const realDefineSecret = params.defineSecret;
+const OPTIONAL_AI_SECRET = 'SKYDREAM_AI_API_KEY';
 
 function onCallWithoutSecrets(optionsOrHandler, maybeHandler) {
   if (typeof optionsOrHandler === 'function') {
@@ -15,7 +17,12 @@ function onCallWithoutSecrets(optionsOrHandler, maybeHandler) {
   }
 
   const options = { ...(optionsOrHandler || {}) };
-  delete options.secrets;
+  // SMS integrations remain disabled, but allow only the explicitly configured
+  // AI key for the new read-only AI pilot. Never restore legacy Twilio bindings.
+  const safeSecrets = (Array.isArray(options.secrets) ? options.secrets : [])
+    .filter(secret => secret && secret.name === OPTIONAL_AI_SECRET);
+  if (safeSecrets.length) options.secrets = safeSecrets;
+  else delete options.secrets;
   return realOnCall(options, maybeHandler);
 }
 
@@ -31,12 +38,14 @@ try {
   https.onCall = onCallWithoutSecrets;
 }
 
-const disabledSecret = name => ({
-  name,
-  value() {
-    throw new Error(`Secret ${name} is disabled because SMS is not configured.`);
-  }
-});
+const disabledSecret = name => name === OPTIONAL_AI_SECRET
+  ? realDefineSecret(name)
+  : ({
+      name,
+      value() {
+        throw new Error(`Secret ${name} is disabled because SMS is not configured.`);
+      }
+    });
 
 try {
   Object.defineProperty(params, 'defineSecret', {

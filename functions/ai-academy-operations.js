@@ -39,6 +39,7 @@ module.exports=function installAiAcademy(app,env){
     const max=kind==='admissions'?80:40;
     let allowed=false;
     await db.runTransaction(async tx=>{
+      allowed=false; // Firestore may retry a transaction after contention.
       const snap=await tx.get(ref),data=snap.exists?snap.data():{};
       const used=Number(data[kind])||0;
       if(used>=max)return;

@@ -114,3 +114,32 @@ For records that do change, old registration numbers are retained under `previou
 Historical receipts and exported reports are not rewritten. Keep the immutable audit trail with old and new numbers and advise affected students of their current number. This implementation intentionally avoids forcing contiguous numbers when that would threaten the integrity of historical or external records. Staff-admin and facilitator roles remain unchanged.
 
 Run `node scripts/validate-local.js` and deploy Cloud Functions using `.\\scripts\\deploy-firebase.ps1`. This feature runs in Firebase; changing frontend files alone does not activate it.
+
+## 12. AI Command Center, Data Guardian and Admissions Concierge (pilot)
+
+This update adds three **read-only** Firebase features:
+
+- `adminAiCommandCenter`: owner-only answers grounded in registered student counts, attendance, finance/capacity statistics and related owner-visible rows. Students and staff do not have access. The existing staff and facilitator permissions are unchanged.
+- `adminAiDataGuardian`: owner-only review flags for duplicate current registration numbers, shared numbers within an intake, ledger mismatches, orphan attendance and course mismatches. It **never edits** student, attendance or payment records.
+- `publicAdmissionsAssistant`: website assistant that uses the current **publicCatalog** to discuss listed courses, course recommendations, dates, published fee and places. It cannot identify students, verify personal registration details or take an application.
+
+These features use App Check, server-side authorization and hashed rate-limiting identifiers. The public assistant accepts at most 15 requests per IP per hour; the owner workspaces allow 40 per principal per hour. The model does not receive raw public questions, student names, phone numbers, Ghana Card details, registration numbers, individual payment transactions or student attendance histories. Only a classification/topic and precomputed programme or academy aggregate facts are sent. No chats are retained by this implementation. Use the original records to verify any output before taking action.
+
+**Provider configuration:** The optional AI model uses OpenAI Responses with model `gpt-4.1-mini`; model use may incur provider charges. From a trusted, authorized development machine, set the Firebase Secret Manager secret *before deploying the code*:
+
+```powershell
+firebase functions:secrets:set SKYDREAM_AI_API_KEY --project skydream-academy
+```
+
+Paste the API key **only into the Firebase CLI prompt**, never a source file, browser console, chat message, GitHub issue or repository secret printed in logs. The cloud functions bind this secret; absent/invalid credentials cause locally computed **Guided** responses instead of failed admissions or incorrect claims. Verify Firebase billing, quota, App Check configuration and provider permission before enabling production model requests.
+
+This is a **pilot for review**, not an authorization to deploy. Before merging and deploying: run `node scripts/validate-local.js`, confirm new tests pass, confirm database backups, exercise the owner-only permissions with test accounts, test public FAQ and rate limits, and verify that personal information is never present in model request payloads. Test in a staging Firebase project where possible. New backend functions and scripts are deployed only after a Firebase deploy; changing public HTML alone will display controls that cannot answer until backend deployment completes.
+
+The deployment process should keep the following guarantees:
+
+1. Anonymous visitors can ask about public courses but cannot retrieve private student or payment details.
+2. Staff admins, facilitators and students are denied access to AI Command Center and Data Guardian.
+3. No AI action can delete, renumber or otherwise modify registration, attendance or payment data.
+4. A model outage, provider rejection or absent API key falls back to deterministic, clearly labeled guidance.
+5. Live enrolment capacity is not guaranteed by a chatbot; only the normal registration transaction reserves places.
+

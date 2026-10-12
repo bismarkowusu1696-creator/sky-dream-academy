@@ -1,27 +1,6 @@
 (() => {
   'use strict';
   // Public, no-profile admissions assistant. Never request student identifiers.
-  const style=document.createElement('style');
-  style.textContent=`
-  .sd-admissions-launch{position:fixed;bottom:22px;right:22px;z-index:7999;background:#174a79;color:#fff;border:0;border-radius:999px;padding:14px 19px;font:600 15px/1.3 system-ui,sans-serif;cursor:pointer;box-shadow:0 6px 25px #001d3650}
-  .sd-admissions-panel{position:fixed;bottom:84px;right:18px;z-index:8000;display:none;width:min(390px,calc(100vw - 26px));max-height:min(580px,calc(100dvh - 120px));background:#fff;color:#112338;border:1px solid #d3e1ef;border-radius:17px;box-shadow:0 10px 40px #071b3750;overflow:auto;font:14px/1.5 system-ui,sans-serif}
-  .sd-admissions-panel.is-open{display:block}
-  .sd-admissions-head{padding:14px 17px;background:#11395d;color:#fff;display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .sd-admissions-head strong{font-size:1.05rem}
-  .sd-admissions-close{background:transparent;border:1px solid #bdd0e6;color:white;border-radius:7px;cursor:pointer;padding:5px 10px}
-  .sd-admissions-content{padding:16px}
-  .sd-admissions-content p{margin:0 0 10px}
-  .sd-admissions-content label{font-weight:600;display:block;margin-bottom:7px}
-  .sd-admissions-content textarea{display:block;width:100%;box-sizing:border-box;min-height:75px;border:1px solid #9caec1;border-radius:9px;padding:10px;font:inherit;resize:vertical}
-  .sd-admissions-send{margin-top:9px;background:#174a79;color:white;border:0;border-radius:8px;padding:10px 18px;font-weight:700;cursor:pointer}
-  .sd-admissions-send:disabled{opacity:.65;cursor:wait}
-  .sd-admissions-answer{white-space:pre-wrap;margin-top:13px;background:#f0f6fc;border-radius:9px;padding:12px;min-height:27px}
-  .sd-admissions-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
-  .sd-admissions-links a{color:#174a79;border:1px solid #b5cada;border-radius:8px;padding:7px 9px;text-decoration:none;font-size:13px}
-  .sd-admissions-disclaimer{font-size:12px;color:#526579;margin-top:10px!important}
-  @media(max-width:520px){.sd-admissions-launch{right:12px;bottom:12px}.sd-admissions-panel{right:12px;bottom:72px;max-height:calc(100dvh - 90px)}}
-  `;
-  document.head.appendChild(style);
   const launch=document.createElement('button');
   launch.className='sd-admissions-launch';launch.type='button';
   launch.textContent='Ask SkyDream';launch.setAttribute('aria-haspopup','dialog');

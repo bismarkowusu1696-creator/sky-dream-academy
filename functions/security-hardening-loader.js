@@ -893,4 +893,10 @@ for (const legacyName of [
 
 // checkStudentStatus is intentionally not wrapped or changed here, per the
 // requested compatibility requirement.
+// Owner-only AI workspaces and public admissions concierge run behind App Check.
+// Installed last so existing roles, credentials and callable wrappers are untouched.
+require('./ai-academy-operations')(app, {
+  onCall, HttpsError, db, crypto, readStorage, requireStrongAdminSession
+});
+
 module.exports = app;

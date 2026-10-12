@@ -78,6 +78,28 @@ async function test(){
   assert.ok(writes.every(key=>key.startsWith('sdta_ai_rate_limits/')),
     'AI pilot must only write to rate-limits collection');
   assert.equal(students.length,1);
+  // A global daily cap must stop unlimited model requests across many IPs.
+  const meteredModule={exports:{}};
+  let modelCalls=0;
+  const providerApp={publicCatalog:app.publicCatalog};
+  const providerRequire=name=>{
+    if(name==='firebase-functions/params')return{defineSecret:()=>({value:()=> 'TEST_ONLY_FAKE_API_KEY'})};
+    if(name==='./ai-academy-core')return core;
+    throw new Error('Unexpected import '+name);
+  };
+  vm.runInNewContext(source,{module:meteredModule,require:providerRequire,
+    console,AbortController,setTimeout,clearTimeout,fetch:async()=>{
+      modelCalls++;
+      return{ok:true,json:async()=>({output:[{content:[{type:'output_text',text:'AI answer'}]}]})};
+    }},{filename:'ai-academy-operations.js',timeout:1000});
+  meteredModule.exports(providerApp,env);
+  for(let i=0;i<81;i++){
+    const answer=await providerApp.publicAdmissionsAssistant.run(
+      request('I want graphic design',undefined,'198.51.100.'+(i+1)));
+    assert.equal(answer.mode,i<80?'ai':'guided');
+  }
+  assert.equal(modelCalls,80,'Never exceed daily public AI provider ceiling');
+  assert.equal(students.length,1);
   console.log('SkyDream AI callables: owner-only, App Check, public isolation, 15/hour rate limit and no sensitive writes passed.');
 }
 test().catch(err=>{console.error(err);process.exitCode=1;});

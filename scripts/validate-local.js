@@ -93,6 +93,8 @@ runNode(['scripts/test-registration-renumbering.js']);
 checks += 1;
 runNode(['scripts/test-delete-registration-transaction.js']);
 checks += 1;
+runNode(['scripts/test-ai-academy.js']);
+checks += 1;
 const enterprise=read('functions/enterprise-admin-loader.js');
 const portal=read('functions/academic-portal-loader.js');
 assert(enterprise.includes('planCompaction(students,id,protectedIds)'),

@@ -80,7 +80,7 @@ function publicGuidance(question,facts){
   const availability=chosen.map(p=>p.name+(status!=='open'?' (registration not currently open)':
     p.available===null?' (ask the academy for current places)':p.full?' (waitlist)':` (${p.available} place(s) shown)`));
   const asksStatus=/register|apply|admission|join|enrol|enroll|open|deadline|start/.test(q);
-  const asksFee=/fee|cost|price|payment|pay/.test(q);
+  const asksFee=/fee|cost|price|payment|pay|how much|tuition|charges?/.test(q);
   const asksPlaces=/availab|space|slot|full|capacity/.test(q);
   let answer='';
   let topic='course-guidance';

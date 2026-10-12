@@ -9,7 +9,7 @@ const source=fs.readFileSync(path.join(__dirname,'../functions/ai-academy-operat
 
 const records=new Map(),writes=[];
 const db={
-  collection(name){return{doc(id){return{name,id}};}},
+  collection(name){return {doc(id){return {name,id};}};},
   async runTransaction(callback){
     const pending=[];
     const tx={

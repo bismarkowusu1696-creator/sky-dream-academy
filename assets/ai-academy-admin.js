@@ -6,9 +6,6 @@
   const esc=value=>String(value==null?'':value).replace(/[&<>"']/g,
     ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const error=e=>window.SkyDreamFirebase?.friendlyError(e)||e.message||'Please try again.';
-  const style=document.createElement('style');
-  style.textContent='.sd-ai-pill{display:inline-block;padding:3px 9px;border-radius:16px;background:#ecf3ff;color:#164a79;font-size:.8rem}.sd-ai-output{white-space:pre-wrap;line-height:1.65}.sd-ai-meta{font-size:.8rem;color:#526278}.sd-ai-find{padding:14px;border:1px solid #dbe4ee;border-radius:10px;margin:10px 0}.sd-ai-find strong{display:block}.sd-ai-warn{color:#a14d15}.sd-ai-high{color:#a92133}.sd-ai-table{overflow:auto;margin-top:14px}.sd-ai-table table{width:100%;min-width:540px;border-collapse:collapse}.sd-ai-table td,.sd-ai-table th{padding:9px;border-bottom:1px solid #dde6f0;text-align:left}.sd-ai-controls{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}';
-  document.head.appendChild(style);
   function section(id,title,body){
     if($(id))return;
     const main=document.querySelector('#dashboardShell .dashboard-main');

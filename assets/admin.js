@@ -115,7 +115,7 @@
     $('studentCount').textContent=`${rows.length} record${rows.length===1?'':'s'}`;
     $('studentsBody').innerHTML=rows.length?rows.slice().sort((a,b)=>String(b.regDate||'').localeCompare(String(a.regDate||''))).map(s=>{
       const paid=Number(s.feePaid)||0;
-      return `<tr><td>${esc(s.regNumber)}</td><td><strong>${esc(s.fullName)}</strong><br><small>${esc(s.mobile||'')}</small></td><td>${esc(courseName(s.course))}</td><td><span class="badge">${esc(s.status||'Registered')}</span></td><td>GHS ${paid.toFixed(2)}</td><td><div class="toolbar"><button class="btn btn-outline btn-small" data-edit="${esc(s.id)}">Edit</button><button class="btn btn-outline btn-small" data-pay="${esc(s.id)}">Payment</button><button class="btn btn-outline btn-small" data-portal-message="${esc(s.id)}">Message</button>${account.role==='owner'?`<button class="btn btn-danger btn-small" data-delete="${esc(s.id)}">Delete</button>`:''}</div></td></tr>`;
+      return `<tr><td>${esc(s.regNumber)}</td><td><strong>${esc(s.fullName)}</strong><br><small>${esc(s.mobile||'')}</small></td><td>${esc(courseName(s.course))}</td><td><span class="badge">${esc(s.status||'Registered')}</span></td><td>GHS ${paid.toFixed(2)}</td><td><div class="toolbar"><button class="btn btn-outline btn-small" data-edit="${esc(s.id)}">Edit</button><button class="btn btn-outline btn-small" data-pay="${esc(s.id)}">Payment</button>${account.role==='owner'?`<button class="btn btn-outline btn-small" data-correct-payment="${esc(s.id)}">Correct Payment</button>`:''}<button class="btn btn-outline btn-small" data-portal-message="${esc(s.id)}">Message</button>${account.role==='owner'?`<button class="btn btn-danger btn-small" data-delete="${esc(s.id)}">Delete</button>`:''}</div></td></tr>`;
     }).join(''):'<tr><td colspan="6">No matching students.</td></tr>';
   }
 
@@ -137,6 +137,31 @@
     const amount=prompt(`Payment amount for ${s.fullName} (GHS):`); if(amount===null)return;
     const note=prompt('Payment note (optional):','')||'';
     try{await withBusy(button,'Saving…',async()=>{await SkyDreamFirebase.call('adminAddPayment',{id,amount:Number(amount),note});await refresh('Payment recorded.');});}catch(err){alert(errText(err));}
+  }
+  async function correctPayment(id,button){
+    if(!account||account.role!=='owner')return;
+    const student=data.students.find(s=>s.id===id);if(!student)return;
+    const payments=Array.isArray(student.payments)?student.payments:[];
+    if(!payments.length){alert('No recorded payments to correct.');return;}
+    const menu=payments.map((p,i)=>(i+1)+'. GHS '+Number(p.amount||0).toFixed(2)+' / '+(p.date||'No date')+' / '+(p.note||'No note')).join('\n');
+    const choice=payments.length===1?'1':prompt('Choose the payment to correct for '+student.fullName+' ('+student.regNumber+'):\n\n'+menu+'\n\nEnter its number:',String(payments.length));
+    if(choice===null)return;
+    if(!/^[1-9]\d*$/.test(String(choice).trim())||!payments[Number(choice)-1]){alert('Select a valid payment number.');return;}
+    const index=Number(choice)-1,p=payments[index],oldAmount=Number(p.amount);
+    const value=prompt('Correct amount actually received for '+student.fullName+' (GHS):',oldAmount.toFixed(2));
+    if(value===null)return;
+    const amount=String(value).trim();
+    if(!/^(?:0|[1-9]\d{0,5})(?:\.\d{1,2})?$/.test(amount)||Number(amount)>100000||Number(amount)===oldAmount){alert('Enter a different valid GHS amount with at most 2 decimal places.');return;}
+    const reason=prompt('Reason for correction (required):','Corrected data-entry mistake');
+    if(reason===null)return;
+    if(reason.trim().length<5||reason.trim().length>250){alert('Enter a reason of 5–250 characters.');return;}
+    const message='Correct payment for '+student.fullName+' ('+student.regNumber+')?\n\nOriginal: GHS '+oldAmount.toFixed(2)+'\nCorrect: GHS '+Number(amount).toFixed(2)+'\nReason: '+reason.trim()+'\n\nThe original amount will remain in the correction audit history.';
+    if(!confirm(message))return;
+    try{await withBusy(button,'Correcting…',async()=>{
+      const result=await SkyDreamFirebase.call('adminCorrectPayment',{studentId:student.id,paymentIndex:index,expectedAmount:String(p.amount),expectedDate:p.date||'',newAmount:amount,reason:reason.trim()});
+      alert('Payment corrected successfully.\nStudent payment total: GHS '+Number(result.newTotal).toFixed(2)+'\nAn audit record was saved.');
+      location.reload();
+    });}catch(err){alert(errText(err));}
   }
   async function deleteStudent(id,button){
     const s=data.students.find(x=>x.id===id); if(!s)return;
@@ -246,7 +271,7 @@
     $('adminLoginForm').addEventListener('submit',handleLogin); $('editStudentForm').addEventListener('submit',saveStudent); $('createFacilitatorForm').addEventListener('submit',createFacilitator); $('createAdminForm').addEventListener('submit',createAdmin); $('staffPinForm').addEventListener('submit',submitStaffPin); $('closeStaffPinModal').addEventListener('click',closeStaffPinModal); $('changePasswordForm').addEventListener('submit',changePassword);
     $('studentSearch').addEventListener('input',renderStudents);$('studentCourseFilter').addEventListener('change',renderStudents);$('exportStudents').addEventListener('click',exportCsv);$('closeStudentModal').addEventListener('click',()=>$('studentModal').classList.add('hidden'));
     $('logoutBtn').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
-    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay,b);if(b.dataset.portalMessage)sendPortalMessage(b.dataset.portalMessage,b);if(b.dataset.delete)deleteStudent(b.dataset.delete,b);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity,b);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac,b);if(b.dataset.setAdminPin)openStaffPinModal(b.dataset.setAdminPin);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin,b);});
+    document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.dataset.busy==='1')return;if(b.dataset.edit)openStudent(b.dataset.edit);if(b.dataset.pay)addPayment(b.dataset.pay,b);if(b.dataset.correctPayment)correctPayment(b.dataset.correctPayment,b);if(b.dataset.portalMessage)sendPortalMessage(b.dataset.portalMessage,b);if(b.dataset.delete)deleteStudent(b.dataset.delete,b);if(b.dataset.saveCapacity)saveCapacity(b.dataset.saveCapacity,b);if(b.dataset.deleteFac)deleteFacilitator(b.dataset.deleteFac,b);if(b.dataset.setAdminPin)openStaffPinModal(b.dataset.setAdminPin);if(b.dataset.deleteAdmin)deleteAdmin(b.dataset.deleteAdmin,b);});
   }
 
   document.addEventListener('DOMContentLoaded',()=>{

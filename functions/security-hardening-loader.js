@@ -893,4 +893,51 @@ for (const legacyName of [
 
 // checkStudentStatus is intentionally not wrapped or changed here, per the
 // requested compatibility requirement.
+
+// Correct a single payment with a durable in-record revision trail. This endpoint
+// intentionally does not alter registrations, attendance, or student identities.
+const {correctPaymentInPlace} = require('./payment-corrections');
+app.adminCorrectPayment = onCall({enforceAppCheck:true},async request=>{
+  const {account} = await requireStrongAdminSession(request);
+  if((account.role||'staff')!=='owner')
+    throw new HttpsError('permission-denied','Only the Main Admin can correct payments.');
+  const d=request.data||{},id=clean(d.studentId,140);
+  if(!id)throw new HttpsError('invalid-argument','Select a student.');
+  const studentsRef=db.collection(STORAGE_COLLECTION).doc('sdta_students');
+  const auditRef=db.collection('sdta_admin_audit_archive').doc('audit_'+crypto.randomUUID());
+  const when=new Date().toISOString();
+  let correction;
+  try{
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(studentsRef);
+      const list=snap.exists?parseJson(snap.data().value,[]):[];
+      if(!Array.isArray(list))throw new HttpsError('internal','Student records unavailable.');
+      const student=list.find(s=>s&&s.id===id);
+      correction=correctPaymentInPlace(student,{
+        paymentIndex:d.paymentIndex,
+        expectedAmount:d.expectedAmount,
+        expectedDate:d.expectedDate,
+        newAmount:d.newAmount,
+        reason:d.reason
+      },account.username,when);
+      tx.set(studentsRef,{value:JSON.stringify(list)});
+      tx.create(auditRef,{
+        id:auditRef.id,action:'Corrected recorded payment',studentId:id,
+        registrationNumber:correction.registrationNumber,
+        paymentIndex:correction.paymentIndex,paymentDate:correction.paymentDate,
+        previousAmount:correction.oldAmount,newAmount:correction.newAmount,
+        previousTotal:correction.oldTotal,newTotal:correction.newTotal,
+        reason:correction.reason,admin:account.username,
+        role:'owner',date:when
+      });
+    });
+  }catch(error){
+    if(['invalid-argument','failed-precondition','aborted','not-found','permission-denied'].includes(error&&error.code))
+      throw new HttpsError(error.code,error.message);
+    throw error;
+  }
+  return {ok:true,oldAmount:correction.oldAmount,newAmount:correction.newAmount,
+    oldTotal:correction.oldTotal,newTotal:correction.newTotal};
+});
+
 module.exports = app;

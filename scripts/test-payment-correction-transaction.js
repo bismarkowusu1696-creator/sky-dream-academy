@@ -28,7 +28,7 @@ const db={collection(name){return{doc(id){return{name,id};}};},
 const app={},HttpsError=class extends Error{constructor(code,message){super(message);this.code=code;}};
 const sandbox={app,onCall:(config,run)=>({config,run}),HttpsError,db,crypto,
   STORAGE_COLLECTION:'sdta_storage',parseJson:(raw,fallback)=>{try{return JSON.parse(raw);}catch(_){return fallback;}},
-  clean:(v,n)=>String(v||'').trim().slice(0,n),correctPaymentInPlace,
+  clean:(v,n)=>String(v||'').trim().slice(0,n),
   requireStrongAdminSession:async r=>({account:{username:'admin',role:r.role}}),
   require:n=>{if(n==='./payment-corrections')return{correctPaymentInPlace};throw Error(n);}};
 vm.runInNewContext(endpoint,sandbox,{timeout:1000});

@@ -114,3 +114,17 @@ For records that do change, old registration numbers are retained under `previou
 Historical receipts and exported reports are not rewritten. Keep the immutable audit trail with old and new numbers and advise affected students of their current number. This implementation intentionally avoids forcing contiguous numbers when that would threaten the integrity of historical or external records. Staff-admin and facilitator roles remain unchanged.
 
 Run `node scripts/validate-local.js` and deploy Cloud Functions using `.\\scripts\\deploy-firebase.ps1`. This feature runs in Firebase; changing frontend files alone does not activate it.
+
+## 12. Main Admin payment correction (audited)
+
+Existing **Payment** actions append new entries and never correct an incorrect entry. The separate **Correct Payment** action is shown to the Main Admin in the student registration table.
+
+1. Create a verified database backup before correcting live financial records.
+2. Select the intended student's **Correct Payment** button. If several transactions are listed, select the exact one by amount/date/note.
+3. Enter the actual amount received, a specific reason, and review the final confirmation before submitting.
+4. The callable `adminCorrectPayment` validates the active Main Admin session, checks the payment's index/date/previous amount to prevent stale edits, and confirms the payment ledger matched the stored total before the change.
+5. A single Firestore transaction updates the selected payment and recomputes `feePaid` while atomically creating a dedicated `sdta_admin_audit_archive` event with old/new amounts, admin, reason, and timestamp. Each payment also keeps its own correction history, visible on the student's profile.
+
+**Safety:** This action does not delete the student, alter registration numbers, remove earlier payment history, or automatically refund money. It cannot fix an actual financial transfer; any real overpayment or refund must be processed and documented separately by staff. Staff administrators and facilitators cannot call the owner-only endpoint. Corrections to records with inconsistent existing totals are blocked for manual review.
+
+Before deployment: run `node scripts/validate-local.js`, make a fresh cloud backup using the Main Admin dashboard, confirm the correct Firebase project, and deploy Firebase backend through `./scripts/deploy-firebase.ps1` (PowerShell: `.\\scripts\\deploy-firebase.ps1`). A frontend-only publication is insufficient because the correction callable runs on Firebase. Test with disposable data before correcting a live student's entry.

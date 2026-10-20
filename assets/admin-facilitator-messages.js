@@ -18,7 +18,7 @@
       '<div class="toolbar mt-14"><button id="fmSend" class="btn btn-primary" type="button">Send to Facilitator</button>'+
       '<button id="fmRefresh" class="btn btn-outline" type="button">Refresh</button></div>'+
       '<p id="fmStatus" class="hint" role="status" aria-live="polite"></p></div>'+
-      '<h3 class="mt-18">Messages sent to this facilitator</h3><div id="fmHistory" class="grid"></div>';
+      '<h3 class="mt-18">Messages and replies</h3><p id="fmReplyStatus" class="hint" role="status"></p><div id="fmHistory" class="grid"></div>';
     main.insertBefore(section,$('account')||null);
     $('fmRecipient').addEventListener('change',()=>refresh(false));
     $('fmRefresh').addEventListener('click',()=>refresh(false));
@@ -35,7 +35,22 @@
       $('fmSend').disabled=!roster.length;
       if(roster.length)return refresh(false);
     }
-    $('fmHistory').innerHTML=(result.messages||[]).map(m=>'<div class="card"><div class="dashboard-top"><strong>'+esc(m.senderName||'SkyDream Administration')+'</strong><small>'+esc(new Date(m.createdAt).toLocaleString('en-GB'))+'</small></div><p class="pre-wrap">'+esc(m.message)+'</p><small class="hint">'+(m.readAt?'Read '+esc(new Date(m.readAt).toLocaleString('en-GB')):'Not read yet')+'</small></div>').join('')||'<p class="hint">No facilitator inbox messages have been sent to this account.</p>';
+    $('fmReplyStatus').textContent=Number(result.unreadReplies||0)+' unread facilitator reply/replies.';
+    $('fmHistory').innerHTML=(result.messages||[]).map(m=>{
+      const replies=Array.isArray(m.replies)?m.replies:[];
+      const unread=replies.filter(r=>!r.readAt).length;
+      return '<div class="card"><div class="dashboard-top"><strong>'+esc(m.senderName||'SkyDream Administration')+
+        '</strong><small>'+esc(new Date(m.createdAt).toLocaleString('en-GB'))+'</small></div>'+
+        '<p class="pre-wrap">'+esc(m.message)+'</p><small class="hint">'+
+        (m.readAt?'Read '+esc(new Date(m.readAt).toLocaleString('en-GB')):'Not read yet')+'</small>'+
+        (replies.length?'<h4 class="mt-14">Facilitator replies ('+replies.length+')</h4>'+
+          replies.map(r=>'<div class="card"><strong>'+esc(r.senderName||'Facilitator')+'</strong>'+
+            '<small class="hint"> · '+esc(new Date(r.createdAt).toLocaleString('en-GB'))+'</small>'+
+            '<p class="pre-wrap">'+esc(r.message)+'</p><small class="hint">'+
+            (r.readAt?'Read':'New reply')+'</small></div>').join('')+
+          (unread?'<button type="button" class="btn btn-outline btn-small" data-fac-admin-read="'+esc(m.id)+'">Mark '+unread+' reply/replies as read</button>':'')
+          :'')+'</div>';
+    }).join('')||'<p class="hint">No facilitator inbox messages have been sent to this account.</p>';
   }
   async function send(){
     const facilitatorId=$('fmRecipient').value,message=$('fmMessage').value.trim(),b=$('fmSend');
@@ -47,5 +62,14 @@
       await refresh(false);
     }catch(e){error(e);}finally{b.disabled=false;}
   }
+  document.addEventListener('click',async e=>{
+    const b=e.target.closest('[data-fac-admin-read]');
+    if(!b||!$('facilitatorMessages')?.contains(b))return;
+    b.disabled=true;
+    try{
+      await call('adminMarkFacilitatorRepliesRead',{id:b.dataset.facAdminRead});
+      await refresh(false);
+    }catch(err){error(err);b.disabled=false;}
+  });
   window.addEventListener('skydream-owner-session-ready',build);
 })();

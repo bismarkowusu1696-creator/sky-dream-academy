@@ -169,7 +169,16 @@
     const result=await SkyDreamFirebase.call('adminGetStudentMessages',{studentId:id});
     if(selectedStudentId!==id||!$('suiteStudentMessages'))return;
     const list=result.messages||[];
-    $('suiteStudentMessages').innerHTML=list.length?list.map(m=>`<div class="card"><div class="dashboard-top"><strong>${esc(m.from||'SkyDream')}</strong><span class="badge">${m.readAt?'Read':'Unread'}</span></div><p class="pre-wrap">${esc(m.message)}</p><small class="hint">Sent ${esc(friendlyDate(m.date))}${m.readAt?` · Read ${esc(friendlyDate(m.readAt))}`:''}</small></div>`).join(''):'<p class="hint">No portal messages have been sent to this student.</p>';
+    $('suiteStudentMessages').innerHTML=list.length?list.map(m=>`<div class="card"><div class="dashboard-top"><strong>${esc(m.from||'SkyDream')}</strong><span class="badge">${m.readAt?'Read':'Unread'}</span></div><p class="pre-wrap">${esc(m.message)}</p><small class="hint">Sent ${esc(friendlyDate(m.date))}${m.readAt?` · Read ${esc(friendlyDate(m.readAt))}`:''}</small><button type="button" class="btn btn-outline btn-small" data-suite-delete-message="${esc(m.id)}" data-suite-message-student="${esc(id)}">Delete for me</button></div>`).join(''):'<p class="hint">No portal messages have been sent to this student.</p>';
+  }
+  async function deleteStudentPortalMessage(studentId,id,button){
+    if(!id||!studentId)return;
+    if(!confirm('Delete this message from your admin history? The student will keep their copy.'))return;
+    button.disabled=true;
+    try{
+      await SkyDreamFirebase.call('adminDeleteStudentPortalMessage',{studentId,id});
+      await loadStudentMessages(studentId);
+    }catch(error){alert(SkyDreamFirebase.friendlyError(error));button.disabled=false;}
   }
   function renderStudentProfile(id) {
     selectedStudentId = id;
@@ -231,7 +240,7 @@
 
   function bindUi(){
     $('suiteStudentSearch').addEventListener('input',renderStudentList);$('suiteBulkApply').addEventListener('click',()=>safe(applyBulk));$('suiteAttendanceRefresh').addEventListener('click',renderAttendance);['suiteAttendanceCourse','suiteAttendanceFrom','suiteAttendanceTo'].forEach(id=>$(id).addEventListener('change',renderAttendance));$('suiteFacSave').addEventListener('click',()=>safe(saveFacilitator));$('suiteSaveSettings').addEventListener('click',()=>safe(saveSettings));$('suiteNoticePost').addEventListener('click',()=>safe(postScheduledNotice));$('suiteCsv').addEventListener('click',exportCsv);$('suiteExcel').addEventListener('click',exportExcel);$('suitePrintReport').addEventListener('click',printReport);$('suiteBackup').addEventListener('click',backupJson);
-    document.addEventListener('click',e=>{if(e.target.closest('[data-suite-select]'))return;const b=e.target.closest('button');if(!b)return;if(b.dataset.suiteStudent)renderStudentProfile(b.dataset.suiteStudent);if(b.dataset.suiteEditFac)editFacilitator(b.dataset.suiteEditFac);if(b.dataset.suiteSaveRole)safe(()=>saveRole(b.dataset.suiteSaveRole));if(b.dataset.suiteMessage)safe(()=>messageStudent(b.dataset.suiteMessage));if(b.dataset.suiteIdcard)printStudentId(b.dataset.suiteIdcard);if(b.dataset.suiteProfilePrint)printStudentProfile(b.dataset.suiteProfilePrint);});
+    document.addEventListener('click',e=>{if(e.target.closest('[data-suite-select]'))return;const b=e.target.closest('button');if(!b)return;if(b.dataset.suiteStudent)renderStudentProfile(b.dataset.suiteStudent);if(b.dataset.suiteDeleteMessage)deleteStudentPortalMessage(b.dataset.suiteMessageStudent,b.dataset.suiteDeleteMessage,b);if(b.dataset.suiteEditFac)editFacilitator(b.dataset.suiteEditFac);if(b.dataset.suiteSaveRole)safe(()=>saveRole(b.dataset.suiteSaveRole));if(b.dataset.suiteMessage)safe(()=>messageStudent(b.dataset.suiteMessage));if(b.dataset.suiteIdcard)printStudentId(b.dataset.suiteIdcard);if(b.dataset.suiteProfilePrint)printStudentProfile(b.dataset.suiteProfilePrint);});
   }
   async function safe(fn){try{await fn();}catch(err){alert(SkyDreamFirebase.friendlyError(err));}}
 

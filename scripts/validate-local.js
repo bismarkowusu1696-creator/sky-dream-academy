@@ -144,7 +144,8 @@ const deleteFunctions=[
   'studentClearFacilitatorChat','facilitatorClearStudentChat',
   'adminDeleteFacilitatorInboxItem','facilitatorDeleteInboxItem',
   'adminClearFacilitatorInbox','facilitatorClearInbox',
-  'studentDeletePortalMessage','adminDeleteStudentPortalMessage'
+  'studentDeletePortalMessage','adminDeleteStudentPortalMessage',
+  'studentClearPortalMessages','adminClearStudentPortalMessages'
 ];
 const deleteSources=read('functions/student-facilitator-chat.js')+
   read('functions/facilitator-messaging.js')+read('functions/academic-portal-loader.js');
@@ -161,6 +162,11 @@ assert(read('assets/facilitator-inbox.js').includes('data-delete-fac-inbox')&&
 assert(read('assets/student-facilitator-chat.js').includes('studentClearFacilitatorChat')&&
   read('assets/facilitator-student-chat.js').includes('facilitatorClearStudentChat'),
   'Students and facilitators must be able to clear only their own chat history.');
+assert(read('student-portal.html').includes('id="portalClearMessages"')&&
+  read('assets/student-portal.js').includes('studentClearPortalMessages'),
+  'Student Portal must provide a clear message history action.');
+assert(read('assets/admin-suite.js').includes('adminClearStudentPortalMessages'),
+  'Admin student profile must provide a clear message history action.');
 assert(read('student-portal.html').includes('student-portal.js?v=20261020-delete1'),
   'Student portal must load the current script version.');
 assert(read('service-worker.js').includes("'/assets/student-portal.js'"),

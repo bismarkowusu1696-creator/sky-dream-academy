@@ -16,13 +16,25 @@
       '<div class="card"><div class="field"><label for="fmRecipient">Facilitator</label><select id="fmRecipient"></select></div>'+
       '<div class="field mt-14"><label for="fmMessage">Message</label><textarea id="fmMessage" rows="4" maxlength="1500" placeholder="Write a private message to the facilitator"></textarea></div>'+
       '<div class="toolbar mt-14"><button id="fmSend" class="btn btn-primary" type="button">Send to Facilitator</button>'+
-      '<button id="fmRefresh" class="btn btn-outline" type="button">Refresh</button></div>'+
+      '<button id="fmRefresh" class="btn btn-outline" type="button">Refresh</button>'+
+      '<button id="fmClear" class="btn btn-outline" type="button">Clear my message history</button></div>'+
       '<p id="fmStatus" class="hint" role="status" aria-live="polite"></p></div>'+
       '<h3 class="mt-18">Messages and replies</h3><p id="fmReplyStatus" class="hint" role="status"></p><div id="fmHistory" class="grid"></div>';
     main.insertBefore(section,$('account')||null);
     $('fmRecipient').addEventListener('change',()=>refresh(false));
     $('fmRefresh').addEventListener('click',()=>refresh(false));
     $('fmSend').addEventListener('click',send);
+    $('fmClear').addEventListener('click',async()=>{
+      const facilitatorId=$('fmRecipient').value;
+      if(!facilitatorId||!confirm('Clear your admin view of messages with this facilitator? The facilitator keeps their messages.'))return;
+      $('fmClear').disabled=true;
+      try{
+        const result=await call('adminClearFacilitatorInbox',{facilitatorId});
+        await refresh(false);
+        $('fmStatus').textContent=result.cleared+' message(s) hidden from your admin view.'+
+          (result.morePossible?' Repeat Clear to hide older messages.':'');
+      }catch(e){error(e);}finally{$('fmClear').disabled=false;}
+    });
     refresh(true).catch(error);
   }
   function error(e){$('fmStatus').textContent=SkyDreamFirebase.friendlyError(e)||e.message||'Could not load facilitator messages.';}

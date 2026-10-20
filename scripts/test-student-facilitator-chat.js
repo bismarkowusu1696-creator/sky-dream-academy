@@ -92,7 +92,9 @@ const facilitatorReq=(id,username,data={})=>({
 async function main(){
   for(const action of [
     'studentListFacilitatorChats','studentGetFacilitatorChat','studentSendFacilitatorChat',
-    'facilitatorListStudentChats','facilitatorGetStudentChat','facilitatorSendStudentChat'
+    'facilitatorListStudentChats','facilitatorGetStudentChat','facilitatorSendStudentChat',
+    'studentDeleteFacilitatorChatMessage','facilitatorDeleteStudentChatMessage',
+    'studentClearFacilitatorChat','facilitatorClearStudentChat'
   ])assert.equal(app[action].options.enforceAppCheck,true,action+' must enforce App Check');
 
   const studentList=await app.studentListFacilitatorChats.run(studentReq('s1'));
@@ -151,7 +153,48 @@ async function main(){
   await assert.rejects(app.facilitatorGetStudentChat.run(
     facilitatorReq('f2','korean',{studentId:'s1'})),error=>error.code==='permission-denied');
 
-  for(let n=0;n<29;n++){
+
+  await assert.rejects(app.studentDeleteFacilitatorChatMessage.run(
+    studentReq('s2',{facilitatorId:'f1',id:sent.id})),
+    error=>error.code==='permission-denied');
+  await assert.rejects(app.facilitatorDeleteStudentChatMessage.run(
+    facilitatorReq('f2','korean',{studentId:'s1',id:sent.id})),
+    error=>error.code==='permission-denied');
+  await assert.rejects(app.studentDeleteFacilitatorChatMessage.run(
+    studentReq('s1',{facilitatorId:'f1',id:'random-message'})),
+    error=>error.code==='not-found');
+  const removed=await app.studentDeleteFacilitatorChatMessage.run(
+    studentReq('s1',{facilitatorId:'f1',id:reply.id}));
+  assert.equal(removed.removed,true);
+  assert.equal((await app.studentGetFacilitatorChat.run(
+    studentReq('s1',{facilitatorId:'f1'}))).messages.length,1);
+  assert.equal((await app.facilitatorGetStudentChat.run(
+    facilitatorReq('f1','graphic',{studentId:'s1'}))).messages.length,2,
+    'Student deletion must not remove facilitator transcript');
+  await app.facilitatorDeleteStudentChatMessage.run(
+    facilitatorReq('f1','graphic',{studentId:'s1',id:sent.id}));
+  assert.equal((await app.facilitatorGetStudentChat.run(
+    facilitatorReq('f1','graphic',{studentId:'s1'}))).messages.length,1);
+  await app.studentClearFacilitatorChat.run(studentReq('s1',{facilitatorId:'f1'}));
+  assert.equal((await app.studentGetFacilitatorChat.run(
+    studentReq('s1',{facilitatorId:'f1'}))).messages.length,0);
+  assert.equal((await app.studentListFacilitatorChats.run(studentReq('s1'))).threads.length,0);
+  assert.equal((await app.facilitatorListStudentChats.run(
+    facilitatorReq('f1','graphic'))).threads.length,1,
+    'Clearing student view must not clear facilitator view');
+  await app.facilitatorClearStudentChat.run(
+    facilitatorReq('f1','graphic',{studentId:'s1'}));
+  assert.equal((await app.facilitatorListStudentChats.run(
+    facilitatorReq('f1','graphic'))).threads.length,0);
+  const resumed=await app.studentSendFacilitatorChat.run(
+    studentReq('s1',{facilitatorId:'f1',message:'New conversation message'}));
+  assert.equal(resumed.ok,true);
+  assert.equal((await app.facilitatorGetStudentChat.run(
+    facilitatorReq('f1','graphic',{studentId:'s1'}))).messages.length,1);
+  assert.equal((await app.studentGetFacilitatorChat.run(
+    studentReq('s1',{facilitatorId:'f1'}))).messages.length,1);
+
+  for(let n=0;n<28;n++){
     await app.studentSendFacilitatorChat.run(studentReq('s1',{
       facilitatorId:'f1',message:'Test message '+(n+1)
     }));

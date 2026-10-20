@@ -52,7 +52,9 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
     if(!facilitatorId)return{facilitators,messages:[]};
     if(!list.some(f=>f.id===facilitatorId))
       throw new HttpsError('not-found','Facilitator no longer exists.');
-    return{facilitators,messages:await messagesFor(facilitatorId)};
+    const messages=await messagesFor(facilitatorId);
+    return{facilitators,messages,unreadReplies:messages.reduce((total,m)=>
+      total+(Array.isArray(m.replies)?m.replies.filter(r=>!r.readAt).length:0),0)};
   });
   app.adminSendFacilitatorMessage=onCall({enforceAppCheck:true},async request=>{
     const account=await owner(request),d=request.data||{};
@@ -91,4 +93,52 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
     });
     return{ok:true};
   });
+  // Facilitator replies are linked to an existing message rather than
+  // published as admin-only notes. All changes use a Firestore transaction.
+  app.facilitatorReplyToMessage=onCall({enforceAppCheck:true},async request=>{
+    const fac=await facilitator(request),id=clean(request.data?.id,140);
+    const raw=String(request.data?.reply==null?'':request.data.reply);
+    const reply=raw.trim();
+    if(!id||!reply||reply.length>1500||raw.length>1600)
+      throw new HttpsError('invalid-argument','Choose a message and enter a reply of up to 1500 characters.');
+    const ref=db.collection(MESSAGES).doc(id);
+    const now=new Date().toISOString(),replyId='reply_'+crypto.randomUUID();
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists||snap.data().active===false||snap.data().facilitatorId!==fac.id)
+        throw new HttpsError('not-found','Message not found in your inbox.');
+      const data=snap.data();
+      const replies=Array.isArray(data.replies)?data.replies:[];
+      if(replies.length>=40)
+        throw new HttpsError('failed-precondition','This conversation is full. Ask the administrator to start a new message.');
+      tx.update(ref,{replies:[...replies,{
+        id:replyId,message:reply,createdAt:now,facilitatorId:fac.id,
+        senderName:fac.name||fac.username,readAt:''
+      }],readAt:data.readAt||now});
+    });
+    return{ok:true,id:replyId,createdAt:now};
+  });
+
+  // Owner manually acknowledges unread facilitator replies. Existing
+  // facilitator read receipts remain completely independent.
+  app.adminMarkFacilitatorRepliesRead=onCall({enforceAppCheck:true},async request=>{
+    await owner(request);
+    const id=clean(request.data?.id,140);
+    if(!id)throw new HttpsError('invalid-argument','Select a message.');
+    const ref=db.collection(MESSAGES).doc(id);
+    let marked=0;
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists||snap.data().active===false)
+        throw new HttpsError('not-found','Facilitator message not found.');
+      const data=snap.data(),replies=Array.isArray(data.replies)?data.replies:[];
+      marked=replies.filter(r=>!r.readAt).length;
+      if(marked){
+        const when=new Date().toISOString();
+        tx.update(ref,{replies:replies.map(r=>r.readAt?r:{...r,readAt:when})});
+      }
+    });
+    return{ok:true,marked};
+  });
+
 };

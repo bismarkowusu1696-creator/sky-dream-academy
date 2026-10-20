@@ -45,7 +45,7 @@ moduleObject.exports(app,{onCall:(options,run)=>({options,run}),HttpsError,db:da
 const adminReq=(data={},mockRole='owner')=>({data,mockRole});
 const facReq=(id,username,data={})=>({data,auth:{uid:'fac-'+id,token:{role:'facilitator',username}}});
 async function main(){
-  for(const name of ['adminGetFacilitatorMessages','adminSendFacilitatorMessage','facilitatorGetInbox','facilitatorMarkInboxRead'])
+  for(const name of ['adminGetFacilitatorMessages','adminSendFacilitatorMessage','facilitatorGetInbox','facilitatorMarkInboxRead','facilitatorReplyToMessage','adminMarkFacilitatorRepliesRead'])
     assert.equal(app[name].options.enforceAppCheck,true,'AppCheck must be on');
   await assert.rejects(app.adminSendFacilitatorMessage.run(adminReq({facilitatorId:'f1',message:'Hello'},'staff')),e=>e.code==='permission-denied');
   const initial=await app.adminGetFacilitatorMessages.run(adminReq());
@@ -67,6 +67,63 @@ async function main(){
   assert.equal((await app.facilitatorGetInbox.run(facReq('f1','one'))).unread,0);
   const history=await app.adminGetFacilitatorMessages.run(adminReq({facilitatorId:'f1'}));
   assert.ok(history.messages[0].readAt);
+  // New: replying must be scoped to the facilitator ID, not a supplied username.
+  await assert.rejects(
+    app.facilitatorReplyToMessage.run(facReq('f2','two',{id:sent.id,reply:'I cannot see this'})),
+    e=>e.code==='not-found');
+  await assert.rejects(
+    app.facilitatorReplyToMessage.run(facReq('f2','one',{id:sent.id,reply:'Spoofed account'})),
+    e=>e.code==='permission-denied');
+  await assert.rejects(
+    app.facilitatorReplyToMessage.run(facReq('f3','off',{id:sent.id,reply:'Disabled account'})),
+    e=>e.code==='permission-denied');
+  await assert.rejects(
+    app.facilitatorReplyToMessage.run(facReq('f1','one',{id:sent.id,reply:'  '})),
+    e=>e.code==='invalid-argument');
+  await assert.rejects(
+    app.facilitatorReplyToMessage.run(facReq('f1','one',{id:sent.id,reply:'a'.repeat(1501)})),
+    e=>e.code==='invalid-argument');
+  await assert.rejects(
+    app.facilitatorReplyToMessage.run({data:{id:sent.id,reply:'Anonymous'}}),
+    e=>e.code==='permission-denied');
+
+  const reply=await app.facilitatorReplyToMessage.run(
+    facReq('f1','one',{id:sent.id,reply:'I will attend the meeting.'}));
+  assert.ok(reply.id.startsWith('reply_'));
+  const secondReply=await app.facilitatorReplyToMessage.run(
+    {data:{id:sent.id,reply:'Thank you for the reminder.',_facIdToken:'valid-f1'}});
+  assert.ok(secondReply.id.startsWith('reply_'));
+  const ownerThread=await app.adminGetFacilitatorMessages.run(adminReq({facilitatorId:'f1'}));
+  assert.equal(ownerThread.messages[0].replies.length,2);
+  assert.equal(ownerThread.unreadReplies,2);
+  assert.equal(ownerThread.messages[0].replies[0].senderName,'Facilitator One');
+  assert.equal((await app.facilitatorGetInbox.run(facReq('f2','two'))).messages.length,0);
+  assert.equal((await app.facilitatorGetInbox.run(facReq('f1','one'))).unread,0,
+    'Sending a reply marks the original message read but not the admin reply.');
+  await assert.rejects(app.adminMarkFacilitatorRepliesRead.run(
+    adminReq({id:sent.id},'staff')),e=>e.code==='permission-denied');
+  await assert.rejects(app.adminMarkFacilitatorRepliesRead.run(adminReq({id:'missing'})),
+    e=>e.code==='not-found');
+  const acknowledged=await app.adminMarkFacilitatorRepliesRead.run(adminReq({id:sent.id}));
+  assert.equal(acknowledged.marked,2);
+  const readThread=await app.adminGetFacilitatorMessages.run(adminReq({facilitatorId:'f1'}));
+  assert.equal(readThread.unreadReplies,0);
+  assert.ok(readThread.messages[0].replies.every(r=>r.readAt));
+  assert.equal((await app.adminMarkFacilitatorRepliesRead.run(adminReq({id:sent.id}))).marked,0);
+
+  await assert.rejects(
+    app.adminGetFacilitatorMessages.run(adminReq({facilitatorId:'f1'},'staff')),
+    e=>e.code==='permission-denied');
+  // Bound each conversation so abusive clients cannot grow Firestore documents indefinitely.
+  for(let i=0;i<38;i++){
+    await app.facilitatorReplyToMessage.run(facReq('f1','one',{
+      id:sent.id,reply:'Follow-up '+(i+1)
+    }));
+  }
+  await assert.rejects(
+    app.facilitatorReplyToMessage.run(facReq('f1','one',{id:sent.id,reply:'Overflow'})),
+    e=>e.code==='failed-precondition');
+  assert.equal((await app.facilitatorGetInbox.run(facReq('f1','one'))).messages[0].replies.length,40);
   assert.ok(writes.every(x=>['sdta_facilitator_messages','sdta_admin_audit_archive'].includes(x)));
   const loader=fs.readFileSync(path.resolve(__dirname,'../functions/security-hardening-loader.js'),'utf8');
   assert.ok(loader.includes("require('./facilitator-messaging')"));
@@ -76,6 +133,9 @@ async function main(){
   const owner=fs.readFileSync(path.resolve(__dirname,'../assets/admin-facilitator-messages.js'),'utf8');
   assert.ok(facilitator.includes("facilitatorGetInbox")&&facilitator.includes('Mark as read'));
   assert.ok(owner.includes('adminSendFacilitatorMessage'));
-  console.log('SkyDream facilitator messaging tests passed: admin authorization, account isolation, inbox, read receipts, token verification and backup inclusion.');
+  assert.ok(facilitator.includes('facilitatorReplyToMessage'),'Facilitator reply button is wired');
+  assert.ok(owner.includes('adminMarkFacilitatorRepliesRead'),'Admin reply acknowledgement is wired');
+
+  console.log('SkyDream facilitator messaging tests passed: admin authorization, account isolation, inbox, replies, cross-account isolation, owner acknowledgement, token verification and backups.');
 }
 main().catch(err=>{console.error(err);process.exitCode=1;});

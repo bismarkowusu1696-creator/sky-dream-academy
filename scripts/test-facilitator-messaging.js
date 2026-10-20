@@ -18,9 +18,17 @@ const database={
       return{docs:entries.map(([key,data])=>({id:key.slice(name.length+1),data:()=>clone(data)}))};
     }};}};}
   };},
-  batch(){const ops=[];return{set(r,data){ops.push([r,data]);},async commit(){
-    for(const [r,value]of ops){docs.set(r.collection+'/'+r.id,clone(value));writes.push(r.collection);}
-  }};},
+  batch(){const ops=[];return{
+    set(r,data){ops.push([r,data,'set']);},
+    update(r,data){ops.push([r,data,'update']);},
+    async commit(){
+      for(const [r,value,kind]of ops){
+        const key=r.collection+'/'+r.id;
+        docs.set(key,kind==='update'?{...docs.get(key),...clone(value)}:clone(value));
+        writes.push(r.collection);
+      }
+    }
+  };},
   async runTransaction(fn){const changes=[];const tx={get:r=>r.get(),update(r,data){changes.push([r,data]);}};
     await fn(tx);for(const [r,data]of changes){const key=r.collection+'/'+r.id;
       docs.set(key,{...docs.get(key),...data});writes.push(r.collection);}
@@ -45,7 +53,7 @@ moduleObject.exports(app,{onCall:(options,run)=>({options,run}),HttpsError,db:da
 const adminReq=(data={},mockRole='owner')=>({data,mockRole});
 const facReq=(id,username,data={})=>({data,auth:{uid:'fac-'+id,token:{role:'facilitator',username}}});
 async function main(){
-  for(const name of ['adminGetFacilitatorMessages','adminSendFacilitatorMessage','facilitatorGetInbox','facilitatorMarkInboxRead','facilitatorReplyToMessage','adminMarkFacilitatorRepliesRead'])
+  for(const name of ['adminGetFacilitatorMessages','adminSendFacilitatorMessage','facilitatorGetInbox','facilitatorMarkInboxRead','facilitatorReplyToMessage','adminMarkFacilitatorRepliesRead','facilitatorDeleteInboxItem','adminDeleteFacilitatorInboxItem','adminClearFacilitatorInbox','facilitatorClearInbox'])
     assert.equal(app[name].options.enforceAppCheck,true,'AppCheck must be on');
   await assert.rejects(app.adminSendFacilitatorMessage.run(adminReq({facilitatorId:'f1',message:'Hello'},'staff')),e=>e.code==='permission-denied');
   const initial=await app.adminGetFacilitatorMessages.run(adminReq());
@@ -124,6 +132,47 @@ async function main(){
     app.facilitatorReplyToMessage.run(facReq('f1','one',{id:sent.id,reply:'Overflow'})),
     e=>e.code==='failed-precondition');
   assert.equal((await app.facilitatorGetInbox.run(facReq('f1','one'))).messages[0].replies.length,40);
+
+  // Message deletion is account scoped and must not erase the other account.
+  await assert.rejects(app.facilitatorDeleteInboxItem.run(
+    facReq('f2','two',{id:sent.id})),e=>e.code==='not-found');
+  await assert.rejects(app.adminDeleteFacilitatorInboxItem.run(
+    adminReq({id:sent.id},'staff')),e=>e.code==='permission-denied');
+  await assert.rejects(app.facilitatorDeleteInboxItem.run(
+    facReq('f1','one',{id:sent.id,replyId:'bad-id'})),e=>e.code==='not-found');
+  await app.facilitatorDeleteInboxItem.run(
+    facReq('f1','one',{id:sent.id,replyId:reply.id}));
+  assert.equal((await app.facilitatorGetInbox.run(
+    facReq('f1','one'))).messages[0].replies.length,39);
+  assert.equal((await app.adminGetFacilitatorMessages.run(
+    adminReq({facilitatorId:'f1'}))).messages[0].replies.length,40);
+  await app.adminDeleteFacilitatorInboxItem.run(
+    adminReq({id:sent.id,replyId:secondReply.id}));
+  assert.equal((await app.adminGetFacilitatorMessages.run(
+    adminReq({facilitatorId:'f1'}))).messages[0].replies.length,39);
+  await app.facilitatorDeleteInboxItem.run(facReq('f1','one',{id:sent.id}));
+  assert.equal((await app.facilitatorGetInbox.run(facReq('f1','one'))).messages.length,0);
+  assert.equal((await app.adminGetFacilitatorMessages.run(
+    adminReq({facilitatorId:'f1'}))).messages.length,1);
+  await app.adminDeleteFacilitatorInboxItem.run(adminReq({id:sent.id}));
+  assert.equal((await app.adminGetFacilitatorMessages.run(
+    adminReq({facilitatorId:'f1'}))).messages.length,0);
+  const again=await app.adminSendFacilitatorMessage.run(
+    adminReq({facilitatorId:'f1',message:'New message after clean-up'}));
+  assert.ok(again.id);
+  const facCleared=await app.facilitatorClearInbox.run(facReq('f1','one'));
+  assert.equal(facCleared.cleared,1);
+  assert.equal((await app.facilitatorGetInbox.run(facReq('f1','one'))).messages.length,0);
+  assert.equal((await app.adminGetFacilitatorMessages.run(
+    adminReq({facilitatorId:'f1'}))).messages.length,1);
+  await assert.rejects(app.adminClearFacilitatorInbox.run(
+    adminReq({facilitatorId:'f1'},'staff')),e=>e.code==='permission-denied');
+  const cleared=await app.adminClearFacilitatorInbox.run(
+    adminReq({facilitatorId:'f1'}));
+  assert.equal(cleared.cleared,1);
+  assert.equal((await app.adminGetFacilitatorMessages.run(
+    adminReq({facilitatorId:'f1'}))).messages.length,0);
+
   assert.ok(writes.every(x=>['sdta_facilitator_messages','sdta_admin_audit_archive'].includes(x)));
   const loader=fs.readFileSync(path.resolve(__dirname,'../functions/security-hardening-loader.js'),'utf8');
   assert.ok(loader.includes("require('./facilitator-messaging')"));

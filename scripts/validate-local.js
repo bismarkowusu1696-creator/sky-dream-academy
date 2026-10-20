@@ -99,6 +99,15 @@ runNode(['scripts/test-payment-correction-transaction.js']);
 checks += 1;
 runNode(['scripts/test-facilitator-messaging.js']);
 checks += 1;
+for(const [page,script] of [
+  ['academy-team-access-83d7c921.html','assets/admin-facilitator-messages.js'],
+  ['academy-facilitator-access-64c2f89a.html','assets/facilitator-inbox.js']
+]){
+  assert(read(page).includes('src="'+script+'"'),'Facilitator messaging script missing on '+page);
+}
+assert(read('assets/facilitator.js').includes("skydream-facilitator-dashboard-ready"),
+  'Inbox must refresh after facilitator login.');
+
 const enterprise=read('functions/enterprise-admin-loader.js');
 const portal=read('functions/academic-portal-loader.js');
 assert(enterprise.includes('planCompaction(students,id,protectedIds)'),

@@ -14,10 +14,22 @@
     section.innerHTML='<h2>Messages from SkyDream Administration <span id="facInboxBadge" class="badge">0 unread</span></h2>'+
       '<p class="hint">Private messages sent to your facilitator account. These are not messages from students.</p>'+
       '<button id="facInboxRefresh" class="btn btn-outline btn-small" type="button">Refresh Messages</button>'+
+      '<button id="facInboxClear" class="btn btn-outline btn-small" type="button">Clear my inbox</button>'+
       '<p id="facInboxStatus" class="hint" role="status" aria-live="polite"></p>'+
       '<div id="facInboxItems" class="grid mt-16"></div>';
     main.appendChild(section);
     $('facInboxRefresh').addEventListener('click',refresh);
+    $('facInboxClear').addEventListener('click',async()=>{
+      if(!confirm('Clear messages from your own inbox? The Main Admin keeps their copies.'))return;
+      $('facInboxClear').disabled=true;
+      try{
+        const result=await call('facilitatorClearInbox');
+        await refresh();
+        $('facInboxStatus').textContent=result.cleared+' message(s) removed from your inbox.'+
+          (result.morePossible?' Repeat Clear to hide older messages.':'');
+      }catch(e){$('facInboxStatus').textContent=SkyDreamFirebase.friendlyError(e)||e.message;}
+      finally{$('facInboxClear').disabled=false;}
+    });
   }
   async function call(name,data={}){
     const user=SkyDreamFirebase.auth?.currentUser;

@@ -99,6 +99,27 @@ runNode(['scripts/test-payment-correction-transaction.js']);
 checks += 1;
 runNode(['scripts/test-facilitator-messaging.js']);
 checks += 1;
+runNode(['scripts/test-student-facilitator-chat.js']);
+checks += 1;
+for(const [page,script] of [
+  ['student-portal.html','assets/student-facilitator-chat.js'],
+  ['academy-facilitator-access-64c2f89a.html','assets/facilitator-student-chat.js']
+]){
+  assert(read(page).includes(script+'?v=20261020-chat1'),
+    'Private student-facilitator chat script missing on '+page);
+}
+assert(read('assets/student-portal.js').includes('skydream-student-portal-ready'),
+  'Student chat must open after authentication.');
+assert(read('assets/facilitator.js').includes('skydream-facilitator-open-student-chat'),
+  'Facilitator roster Chat control must open the conversation.');
+const chatServiceWorker=read('service-worker.js');
+assert(chatServiceWorker.includes("'/assets/student-facilitator-chat.js'")&&
+  chatServiceWorker.includes("'/assets/facilitator-student-chat.js'"),
+  'Private chat scripts must bypass the PWA cache.');
+assert(read('_headers').includes('/assets/student-facilitator-chat.js')&&
+  read('_headers').includes('/assets/facilitator-student-chat.js'),
+  'Private chat scripts must have no-store cache headers.');
+
 for(const [page,script] of [
   ['academy-team-access-83d7c921.html','assets/admin-facilitator-messages.js'],
   ['academy-facilitator-access-64c2f89a.html','assets/facilitator-inbox.js']

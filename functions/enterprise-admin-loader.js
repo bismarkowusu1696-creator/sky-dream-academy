@@ -168,8 +168,9 @@ async function linkedStudentIds(group){
   await Promise.all(group.map(async student=>{
     try {
       const id=String(student.id||'');
-      const [messages,assessments,push,archivedAudit,archivedByNumber,workflow,authUser]=await Promise.all([
+      const [messages,studentFacChats,assessments,push,archivedAudit,archivedByNumber,workflow,authUser]=await Promise.all([
         db.collection('sdta_student_messages').where('studentId','==',id).limit(1).get(),
+        db.collection('sdta_student_facilitator_threads').where('studentId','==',id).limit(1).get(),
         db.collection('sdta_assessment_records').where('studentId','==',id).limit(1).get(),
         db.collection('sdta_student_push_tokens').where('studentId','==',id).limit(1).get(),
         db.collection('sdta_admin_audit_archive').where('studentId','==',id).limit(1).get(),
@@ -180,7 +181,7 @@ async function linkedStudentIds(group){
           throw err;
         })
       ]);
-      if(!messages.empty || !assessments.empty || !push.empty || !archivedAudit.empty || !archivedByNumber.empty || workflow.exists || authUser)linked.add(id);
+      if(!messages.empty || !studentFacChats.empty || !assessments.empty || !push.empty || !archivedAudit.empty || !archivedByNumber.empty || workflow.exists || authUser)linked.add(id);
     } catch (_) {
       // A failed safety check must never cause an unsafe registration change.
       linked.add(student.id);

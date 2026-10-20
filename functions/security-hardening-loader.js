@@ -945,4 +945,7 @@ require('./facilitator-messaging')(app,{
   onCall,HttpsError,db,admin,crypto,requireStrongAdminSession
 });
 
+// Authenticated, course-scoped student/facilitator private conversations.
+require('./student-facilitator-chat')(app,{onCall,HttpsError,db,admin,crypto});
+
 module.exports = app;

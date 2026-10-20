@@ -43,7 +43,7 @@ self.addEventListener('notificationclick', event => {
   })());
 });
 
-const CACHE_NAME = 'skydream-pwa-v37';
+const CACHE_NAME = 'skydream-pwa-v39';
 const PUBLIC_SHELL = [
   '/',
   '/programs',
@@ -52,7 +52,6 @@ const PUBLIC_SHELL = [
   '/contact',
   '/register',
   '/check-status',
-  '/student-portal',
   '/privacy',
   '/terms',
   '/assets/site.css',
@@ -73,7 +72,6 @@ const FRESH_PUBLIC_ASSETS = new Set([
   '/assets/public.js',
   '/assets/schedule-live.js',
   '/assets/student-portal.js',
-  '/student-portal',
   '/manifest.webmanifest'
 ]);
 
@@ -136,6 +134,8 @@ self.addEventListener('fetch', event => {
     '/assets/admin-suite.js',
     '/assets/admin-facilitator-messages.js',
     '/assets/facilitator-inbox.js',
+    '/assets/student-facilitator-chat.js',
+    '/assets/facilitator-student-chat.js',
     '/assets/admin-extra-actions.js',
     '/assets/admin-enterprise-login.js',
     '/assets/admin-enterprise.js',
@@ -148,6 +148,7 @@ self.addEventListener('fetch', event => {
 
   // Never cache authenticated entry points or dashboards.
   if (['/staff.html', '/staff', '/admin.html', '/admin', '/facilitator.html', '/facilitator',
+    '/student-portal', '/student-portal.html',
     '/academy-team-access-83d7c921', '/academy-team-access-83d7c921.html',
     '/academy-facilitator-access-64c2f89a', '/academy-facilitator-access-64c2f89a.html'].includes(url.pathname)) return;
 

@@ -72,6 +72,7 @@
         $('facDashboard').classList.remove('hidden');
         $('facIdentity').textContent=`${account.name} · @${account.username}`;
         populateCourses();setDefaultDate();render();
+        window.dispatchEvent(new Event('skydream-facilitator-dashboard-ready'));
       }catch(err){
         $('facDashboard').classList.add('hidden');
         $('facLoginShell').classList.remove('hidden');

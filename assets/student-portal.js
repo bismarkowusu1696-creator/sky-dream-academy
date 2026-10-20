@@ -67,7 +67,7 @@
     $('portalAttendanceBody').innerHTML=(a.records||[]).length?(a.records||[]).map(r=>`<tr><td>${esc(friendlyDate(r.date))}</td><td>${esc(s.courseName)}</td><td><span class="badge">${esc(r.status||'')}</span></td><td>${esc(r.note||'—')}</td></tr>`).join(''):'<tr><td colspan="4">No attendance has been recorded yet.</td></tr>';
     const notifications=portal.notifications||[];
     $('portalNotificationList').innerHTML=notifications.length?notifications.map(n=>`<div class="card"><div class="dashboard-top"><strong>${esc(n.title||'Notification')}</strong><span class="badge">${esc(n.type||'info')}</span></div><p class="pre-wrap">${esc(n.message||'')}</p>${n.date?`<small class="hint">${esc(friendlyDate(n.date))}</small>`:''}${n.target?`<p><a href="${esc(n.target)}">Open</a></p>`:''}</div>`).join(''):'<p>No notifications right now.</p>';
-    $('portalMessageList').innerHTML=(portal.messages||[]).length?(portal.messages||[]).map(m=>`<div class="card"><div class="dashboard-top"><strong>${esc(m.from||'SkyDream')}</strong><span class="badge">${m.readAt?'Read':'New'}</span></div><small class="hint">${esc(friendlyDate(m.date))}</small><p class="pre-wrap">${esc(m.message)}</p></div>`).join(''):'<p>No private messages yet.</p>';
+    $('portalMessageList').innerHTML=(portal.messages||[]).length?(portal.messages||[]).map(m=>`<div class="card"><div class="dashboard-top"><strong>${esc(m.from||'SkyDream')}</strong><span class="badge">${m.readAt?'Read':'New'}</span></div><small class="hint">${esc(friendlyDate(m.date))}</small><p class="pre-wrap">${esc(m.message)}</p><button type="button" class="btn btn-outline btn-small" data-delete-portal-message="${esc(m.id)}">Delete for me</button></div>`).join(''):'<p>No private messages yet.</p>';
     $('portalNoticeList').innerHTML=(portal.notices||[]).length?(portal.notices||[]).map(n=>`<div class="card"><small class="hint">${esc(friendlyDate(n.date))}</small><p class="pre-wrap">${esc(n.message)}</p></div>`).join(''):'<p>No current announcements.</p>';
     setBadge('portalMessageBadge',Number(portal.unreadMessages)||0);
     setBadge('portalNotificationBadge',notifications.length);
@@ -114,6 +114,18 @@
     alert('SkyDream push notifications are disabled.');
   }
 
+  async function deletePortalMessage(id,button){
+    if(!id||!portal)return;
+    if(!confirm('Delete this message from your student portal? Other recipients retain their copy.'))return;
+    button.disabled=true;
+    try{
+      await SkyDreamFirebase.call('studentDeletePortalMessage',{id});
+      portal.messages=(portal.messages||[]).filter(m=>m.id!==id);
+      portal.unreadMessages=portal.messages.filter(m=>!m.readAt).length;
+      portal.notifications=(portal.notifications||[]).filter(n=>n.id!=='message:'+id);
+      render();
+    }catch(err){alert(SkyDreamFirebase.friendlyError(err));button.disabled=false;}
+  }
   async function markMessagesRead(){
     if(!portal)return;
     const ids=(portal.messages||[]).filter(m=>!m.readAt).map(m=>m.id).filter(Boolean);
@@ -162,6 +174,10 @@
     $('portalLogout').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
     $('portalEnablePush').addEventListener('click',()=>enablePush().catch(err=>alert(SkyDreamFirebase.friendlyError(err))));
     $('portalDisablePush').addEventListener('click',()=>disablePush().catch(err=>alert(SkyDreamFirebase.friendlyError(err))));
+    $('portalMessageList').addEventListener('click',e=>{
+      const b=e.target.closest('[data-delete-portal-message]');
+      if(b)deletePortalMessage(b.dataset.deletePortalMessage,b);
+    });
     document.addEventListener('click',event=>{if(event.target.closest('a[href="#portalMessages"]'))markMessagesRead();});
     window.addEventListener('hashchange',()=>{if(location.hash==='#portalMessages')markMessagesRead();});
     if(SkyDreamFirebase.onPushMessage){

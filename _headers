@@ -49,6 +49,12 @@
 /assets/admin-suite.js
   Cache-Control: no-store, max-age=0
 
+/assets/admin-facilitator-messages.js
+  Cache-Control: no-store, max-age=0
+
+/assets/facilitator-inbox.js
+  Cache-Control: no-store, max-age=0
+
 /assets/admin-enterprise.js
   Cache-Control: no-store, max-age=0
 

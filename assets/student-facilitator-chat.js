@@ -17,7 +17,7 @@
       '<p class="hint">Only facilitators assigned to your current programme can view your messages. Messages are saved in your private portal.</p>'+
       '<div class="field"><label for="studentChatFac">Choose your facilitator</label><select id="studentChatFac"></select></div>'+
       '<div class="toolbar mt-12"><button type="button" class="btn btn-outline btn-small" id="studentChatRefresh">Refresh Conversation</button>'+
-      '<span class="hint" id="studentChatUnread"></span></div>'+
+      '<span class="hint" id="studentChatUnread"></span>'+'<button type="button" class="btn btn-outline btn-small" id="studentChatClear">Clear conversation</button></div>'+
       '<div id="studentChatHistory" class="grid mt-12" aria-live="polite"></div>'+
       '<div class="field mt-16"><label for="studentChatText">Your message</label>'+
       '<textarea id="studentChatText" rows="3" maxlength="1000" placeholder="Ask about a lesson, assignment, or practical activity"></textarea></div>'+
@@ -27,6 +27,8 @@
     $('studentChatFac').addEventListener('change',()=>{selected=$('studentChatFac').value;showChat();});
     $('studentChatRefresh').addEventListener('click',async()=>{await loadList();await showChat();});
     $('studentChatSend').addEventListener('click',send);
+    $('studentChatClear').addEventListener('click',clearChat);
+    $('studentChatHistory').addEventListener('click',deleteMessage);
     ready=true;
   }
   const status=(v)=>{if($('studentChatStatus'))$('studentChatStatus').textContent=v;};
@@ -59,10 +61,31 @@
       history.innerHTML=msgs.map(m=>
         '<div class="card"><div class="dashboard-top"><strong>'+esc(m.senderType==='student'?'You':m.senderName||'Facilitator')+
         '</strong><small class="hint">'+esc(new Date(m.createdAt).toLocaleString('en-GB'))+'</small></div>'+
-        '<p class="pre-wrap">'+esc(m.message)+'</p></div>').join('')||
+        '<p class="pre-wrap">'+esc(m.message)+'</p>'+
+        '<button type="button" class="btn btn-outline btn-small" data-delete-student-chat="'+esc(m.id)+'">Delete for me</button></div>').join('')||
         '<p class="hint">No messages yet. Send a question to begin the conversation.</p>';
       status('');
     }catch(e){history.textContent=err(e);}
+  }
+  async function deleteMessage(e){
+    const button=e.target.closest('[data-delete-student-chat]');
+    if(!button||!selected)return;
+    if(!confirm('Remove this message from your own conversation? The facilitator keeps their copy.'))return;
+    button.disabled=true;
+    try{
+      await call('studentDeleteFacilitatorChatMessage',{
+        facilitatorId:selected,id:button.dataset.deleteStudentChat});
+      await showChat();
+      status('Message deleted from your view.');
+    }catch(error){status(err(error));button.disabled=false;}
+  }
+  async function clearChat(){
+    if(!selected||!confirm('Clear your conversation with this facilitator? Only your view will be cleared. New messages will still arrive.'))return;
+    const button=$('studentChatClear');button.disabled=true;
+    try{
+      await call('studentClearFacilitatorChat',{facilitatorId:selected});
+      await loadList();await showChat();status('Conversation cleared from your view.');
+    }catch(error){status(err(error));}finally{button.disabled=false;}
   }
   async function send(){
     if(busy||!selected)return;

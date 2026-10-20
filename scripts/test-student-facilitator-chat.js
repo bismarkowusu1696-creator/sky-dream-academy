@@ -171,7 +171,7 @@ async function main(){
   assert.ok(backend.includes("require('./student-facilitator-chat')"));
   const indexes=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../firestore.indexes.json'),'utf8'));
   assert.ok(indexes.indexes.some(i=>i.collectionGroup==='sdta_student_facilitator_messages'&&
-    i.fields.some(f=>f.fieldPath==='threadId')&&i.fields.some(f=>f.fieldPath==='createdAt')));
+    i.fields.some(f=>f.fieldPath==='threadId')&&i.fields.some(f=>f.fieldPath==='sequence')));
   assert.ok(indexes.indexes.some(i=>i.collectionGroup==='sdta_student_facilitator_threads'&&
     i.fields.some(f=>f.fieldPath==='facilitatorId')&&
     i.fields.some(f=>f.fieldPath==='lastMessageAt')));

@@ -179,4 +179,27 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
   app.facilitatorDeleteInboxItem=onCall({enforceAppCheck:true},async request=>
     hideForViewer(request,'facilitator'));
 
+  async function clearVisibleInbox(request,viewer){
+    const account=viewer==='admin'?await owner(request):await facilitator(request);
+    const facilitatorId=viewer==='admin'?clean(request.data?.facilitatorId,140):account.id;
+    if(viewer==='admin'&&!(await roster()).some(f=>f.id===facilitatorId))
+      throw new HttpsError('not-found','Select a valid facilitator.');
+    const messages=await messagesFor(facilitatorId,viewer);
+    if(!messages.length)return{ok:true,cleared:0};
+    const hidden=viewer==='admin'?'hiddenForAdmin':'hiddenForFacilitator';
+    const batch=db.batch();
+    for(const m of messages){
+      batch.update(db.collection(MESSAGES).doc(m.id),{
+        [hidden]:true,
+        [viewer==='admin'?'hiddenByAdminAt':'hiddenByFacilitatorAt']:new Date().toISOString()
+      });
+    }
+    await batch.commit();
+    return{ok:true,cleared:messages.length,morePossible:messages.length===100};
+  }
+  app.adminClearFacilitatorInbox=onCall({enforceAppCheck:true},async request=>
+    clearVisibleInbox(request,'admin'));
+  app.facilitatorClearInbox=onCall({enforceAppCheck:true},async request=>
+    clearVisibleInbox(request,'facilitator'));
+
 };

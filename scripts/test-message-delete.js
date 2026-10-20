@@ -9,7 +9,7 @@ const sectionStart=source.indexOf('function publicMessage(doc){');
 const sectionEnd=source.indexOf('async function sendPushToStudents(',sectionStart);
 const deleteStart=source.indexOf('// Hide one student portal announcement');
 const deleteEnd=source.indexOf('app.adminPreviewBulkStudentMessage=onCall(',deleteStart);
-assert(sectionStart>0&&sectionEnd>sectionStart&&deleteStart>sectionEnd&&deleteEnd>deleteStart,
+assert.ok(sectionStart>0&&sectionEnd>sectionStart&&deleteStart>sectionEnd&&deleteEnd>deleteStart,
   'Student portal message handling source must exist and be verifiable.');
 const docs=new Map(),writes=[];
 const clone=v=>JSON.parse(JSON.stringify(v));

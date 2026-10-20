@@ -6,6 +6,7 @@
 const BACKUP_COLLECTIONS = Object.freeze([
   'sdta_storage',
   'sdta_student_messages',
+  'sdta_facilitator_messages',
   'sdta_student_push_tokens',
   'sdta_qr_attendance_sessions',
   'sdta_registration_workflow_rows',

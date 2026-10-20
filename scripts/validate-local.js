@@ -103,8 +103,16 @@ for(const [page,script] of [
   ['academy-team-access-83d7c921.html','assets/admin-facilitator-messages.js'],
   ['academy-facilitator-access-64c2f89a.html','assets/facilitator-inbox.js']
 ]){
-  assert(read(page).includes('src="'+script+'"'),'Facilitator messaging script missing on '+page);
+  assert(new RegExp('src="'+script.replace('.', '\\.').replace('.', '\\.')+'(?:\\?v=[a-zA-Z0-9-]+)?"').test(read(page)),
+    'Facilitator messaging script missing on '+page);
 }
+const inboxScript=read('assets/facilitator-inbox.js');
+assert(inboxScript.includes('data-toggle-fac-reply')&&inboxScript.includes('data-send-fac-reply'),
+  'Reply must be a visible button and must send to the protected reply callable.');
+const worker=read('service-worker.js');
+assert(worker.includes("'/assets/facilitator-inbox.js'")&&
+  worker.includes("'/assets/admin-facilitator-messages.js'"),
+  'Service worker must bypass caching both private messaging interfaces.');
 assert(read('assets/facilitator.js').includes("skydream-facilitator-dashboard-ready"),
   'Inbox must refresh after facilitator login.');
 

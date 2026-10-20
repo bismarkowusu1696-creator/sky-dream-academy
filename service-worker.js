@@ -43,7 +43,7 @@ self.addEventListener('notificationclick', event => {
   })());
 });
 
-const CACHE_NAME = 'skydream-pwa-v39';
+const CACHE_NAME = 'skydream-pwa-v40';
 const PUBLIC_SHELL = [
   '/',
   '/programs',
@@ -57,7 +57,6 @@ const PUBLIC_SHELL = [
   '/assets/site.css',
   '/assets/public.js',
   '/assets/schedule-live.js',
-  '/assets/student-portal.js',
   '/assets/offline.js',
   '/assets/print.css',
   '/manifest.webmanifest',
@@ -125,6 +124,7 @@ self.addEventListener('fetch', event => {
   // Never serve authentication/security/admin/student scripts or admin styling from an old PWA cache.
   if ([
     '/assets/firebase.js',
+    '/assets/student-portal.js',
     '/assets/admin.js',
     '/assets/admin-registration.js',
     '/assets/admin-desk-operations.js',

@@ -111,6 +111,19 @@ async function main(){
   assert.ok(readThread.messages[0].replies.every(r=>r.readAt));
   assert.equal((await app.adminMarkFacilitatorRepliesRead.run(adminReq({id:sent.id}))).marked,0);
 
+  await assert.rejects(
+    app.adminGetFacilitatorMessages.run(adminReq({facilitatorId:'f1'},'staff')),
+    e=>e.code==='permission-denied');
+  // Bound each conversation so abusive clients cannot grow Firestore documents indefinitely.
+  for(let i=0;i<38;i++){
+    await app.facilitatorReplyToMessage.run(facReq('f1','one',{
+      id:sent.id,reply:'Follow-up '+(i+1)
+    }));
+  }
+  await assert.rejects(
+    app.facilitatorReplyToMessage.run(facReq('f1','one',{id:sent.id,reply:'Overflow'})),
+    e=>e.code==='failed-precondition');
+  assert.equal((await app.facilitatorGetInbox.run(facReq('f1','one'))).messages[0].replies.length,40);
   assert.ok(writes.every(x=>['sdta_facilitator_messages','sdta_admin_audit_archive'].includes(x)));
   const loader=fs.readFileSync(path.resolve(__dirname,'../functions/security-hardening-loader.js'),'utf8');
   assert.ok(loader.includes("require('./facilitator-messaging')"));

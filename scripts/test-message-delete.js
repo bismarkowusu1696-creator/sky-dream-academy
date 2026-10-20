@@ -32,12 +32,24 @@ const db={
           let entries=[...docs].filter(([k,v])=>k.startsWith(collection+'/')&&v[field]===value);
           if(sort)entries.sort((a,b)=>String(b[1].createdAt).localeCompare(String(a[1].createdAt)));
           entries=entries.slice(0,max);
-          return{docs:entries.map(([k,v])=>({id:k.slice(collection.length+1),data:()=>clone(v)}))};
+          return{docs:entries.map(([k,v])=>({id:k.slice(collection.length+1),ref:idref(collection,k.slice(collection.length+1)),data:()=>clone(v)}))};
         }
       };
       return query;
     }
   };},
+  batch(){
+    const records=[];
+    return{
+      update(ref,data){records.push([ref,data]);},
+      async commit(){
+        for(const [ref,data]of records){
+          const key=ref.collection+'/'+ref.id;
+          docs.set(key,{...docs.get(key),...clone(data)});writes.push(ref.id);
+        }
+      }
+    };
+  },
   async runTransaction(cb){
     const pending=[];
     const tx={
@@ -77,7 +89,8 @@ vm.runInNewContext(source.slice(sectionStart,sectionEnd)+source.slice(deleteStar
 const request=(id,data={})=>({data,auth:{uid:'student-'+id,token:{role:'student',studentId:id}}});
 const adminRequest=(data={})=>({data,auth:{role:'admin'}});
 async function main(){
-  for(const action of ['studentDeletePortalMessage','adminDeleteStudentPortalMessage'])
+  for(const action of ['studentDeletePortalMessage','adminDeleteStudentPortalMessage',
+    'studentClearPortalMessages','adminClearStudentPortalMessages'])
     assert.equal(app[action].config.enforceAppCheck,true);
   assert.equal((await app.testListMessages('s1','student')).length,2);
   await assert.rejects(app.studentDeletePortalMessage.run(request('s2',{id:'m1'})),
@@ -104,6 +117,19 @@ async function main(){
     'Student must retain their own copy after admin hides it');
   assert.equal((await app.testListMessages('s2','student')).length,1);
   assert.equal(writes.length,2,'Repeated deletion must not write twice');
+  const studentCleared=await app.studentClearPortalMessages.run(request('s1'));
+  assert.equal(studentCleared.cleared,1);
+  assert.equal((await app.testListMessages('s1','student')).length,0);
+  assert.equal((await app.testListMessages('s1','admin')).length,1);
+  await assert.rejects(app.adminClearStudentPortalMessages.run({
+    data:{studentId:'s1'}
+  }),error=>error.code==='permission-denied');
+  const adminCleared=await app.adminClearStudentPortalMessages.run(
+    adminRequest({studentId:'s1'}));
+  assert.equal(adminCleared.cleared,1);
+  assert.equal((await app.testListMessages('s1','admin')).length,0);
+  assert.equal((await app.testListMessages('s2','student')).length,1);
+
   console.log('SkyDream student portal deletion tests passed: recipient isolation, account permissions and non-destructive inbox cleanup.');
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});

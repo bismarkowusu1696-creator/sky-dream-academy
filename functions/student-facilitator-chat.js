@@ -141,7 +141,7 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
       await db.runTransaction(async tx=>{
         const fresh=await tx.get(ref);
         if(fresh.exists&&fresh.data().studentId===student.id&&
-          fresh.data().facilitatorId===fac.id&&fresh.data().lastMessageAt===raw.lastMessageAt&&
+          fresh.data().facilitatorId===fac.id&&fresh.data().messageSeq===raw.messageSeq&&
           Number(fresh.data()[unreadKey])>0)
           tx.update(ref,{[unreadKey]:0,[viewer+'ReadAt']:new Date().toISOString()});
       });

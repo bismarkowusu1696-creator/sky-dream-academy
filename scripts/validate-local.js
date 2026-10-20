@@ -103,7 +103,7 @@ for(const [page,script] of [
   ['academy-team-access-83d7c921.html','assets/admin-facilitator-messages.js'],
   ['academy-facilitator-access-64c2f89a.html','assets/facilitator-inbox.js']
 ]){
-  assert(new RegExp('src="'+script.replace('.', '\\.').replace('.', '\\.')+'(?:\\?v=[a-zA-Z0-9-]+)?"').test(read(page)),
+  assert(new RegExp('src="'+script.replace('.', '\\.')+'(?:\\?v=[a-zA-Z0-9-]+)?"').test(read(page)),
     'Facilitator messaging script missing on '+page);
 }
 const inboxScript=read('assets/facilitator-inbox.js');

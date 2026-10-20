@@ -38,6 +38,7 @@
       try{
         portal=await SkyDreamFirebase.call('getStudentPortalDashboard');
         render();
+        window.dispatchEvent(new Event('skydream-student-portal-ready'));
         loadPushStatus().catch(err=>console.warn('Push status could not load.',err));
         if(location.hash==='#portalMessages')await markMessagesRead();
         await processQrCheckIn();

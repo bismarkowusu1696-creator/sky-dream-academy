@@ -96,10 +96,10 @@ async function main(){
   ])assert.equal(app[action].options.enforceAppCheck,true,action+' must enforce App Check');
 
   const studentList=await app.studentListFacilitatorChats.run(studentReq('s1'));
-  assert.deepEqual(studentList.facilitators.map(f=>f.id),['f1']);
+  assert.equal(studentList.facilitators.map(f=>f.id).join(','),'f1');
   assert.equal(studentList.threads.length,0);
   const facilitatorList=await app.facilitatorListStudentChats.run(facilitatorReq('f1','graphic'));
-  assert.deepEqual(facilitatorList.roster.map(s=>s.id),['s1']);
+  assert.equal(facilitatorList.roster.map(s=>s.id).join(','),'s1');
 
   await assert.rejects(app.studentListFacilitatorChats.run(studentReq('s3')),
     error=>error.code==='permission-denied');

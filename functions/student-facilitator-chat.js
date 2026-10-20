@@ -101,7 +101,9 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
       const count=reset?0:(Number(old[side+'RateCount'])||0);
       if(count>=30)
         throw new HttpsError('resource-exhausted','Message limit reached. Please try again later.');
+      const sequence=(Number(old.messageSeq)||0)+1;
       const meta={
+        messageSeq:sequence,
         studentId:student.id,facilitatorId:fac.id,
         studentName:clean(student.fullName,110),
         facilitatorName:clean(fac.name||fac.username,110),
@@ -114,6 +116,7 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
       tx.set(ref,meta,{merge:true});
       tx.create(messageRef,{
         threadId:ref.id,studentId:student.id,facilitatorId:fac.id,
+        sequence,
         senderType,senderName:senderType==='student'?clean(student.fullName,110):clean(fac.name||fac.username,110),
         message:body,createdAt:now
       });
@@ -127,7 +130,7 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
     if(raw.studentId!==student.id||raw.facilitatorId!==fac.id)
       throw new HttpsError('permission-denied','Conversation is unavailable.');
     const msgs=await db.collection(MESSAGES).where('threadId','==',ref.id)
-      .orderBy('createdAt','desc').limit(80).get();
+      .orderBy('sequence','desc').limit(80).get();
     const messages=msgs.docs.map(doc=>({
       id:doc.id,message:clean(doc.data().message,1000),
       createdAt:doc.data().createdAt||'',senderType:doc.data().senderType,

@@ -97,6 +97,8 @@ runNode(['scripts/test-payment-correction.js']);
 checks += 1;
 runNode(['scripts/test-payment-correction-transaction.js']);
 checks += 1;
+runNode(['scripts/test-facilitator-messaging.js']);
+checks += 1;
 const enterprise=read('functions/enterprise-admin-loader.js');
 const portal=read('functions/academic-portal-loader.js');
 assert(enterprise.includes('planCompaction(students,id,protectedIds)'),

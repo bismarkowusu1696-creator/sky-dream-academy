@@ -177,3 +177,24 @@ Students can now send and receive messages with **active facilitators assigned t
 **Deployment:** Use a real fresh Firestore backup and validate locally first: `node scripts/validate-local.js`, including `scripts/test-student-facilitator-chat.js`. Review and merge the feature branch deliberately. Deploy Firebase Functions **and Firestore indexes** with `.\\scripts\\deploy-firebase.ps1`. Two new indexes for thread/message ordering must finish building before chat history can load reliably; verify them in Firebase Console → Firestore Database → Indexes. Confirm the six new callable names in `firebase functions:list --project skydream-academy`. Separately verify that Netlify has published `main` to the canonical `skydream.academy` domain. Both chat JS files use versioned URLs, network-only PWA treatment, and no-store headers.
 
 **Verification:** In different browsers, sign in as a test student and an assigned active facilitator for the same current intake; send a student message, use the facilitator's **Student Chats → Refresh Chats**, reply, then refresh the student portal conversation. Also test another student, a different-programme facilitator, a disabled facilitator, and expired sessions. Check that no private messages are visible across accounts and the old administrator messages still display correctly. Student notifications for these new conversations are **in-portal unread counts**; realtime background push for facilitator chats has not been implemented in this initial version.
+
+
+## 17. Message deletion and clearing (participant-scoped)
+
+Every authenticated SkyDream messaging area now offers a **Delete for me** action on individual messages. This includes (1) student–facilitator private chats on both portals, (2) Main Admin–facilitator messages and individual replies on both portals, and (3) legacy private Student Portal messages and the Student Profile message-history panel inside the admin dashboard.
+
+Where large histories are common, **Clear conversation** or **Clear my message history / inbox** also appears:
+- Students and facilitators can clear their current student–facilitator conversation with one action. This uses `studentClearedThroughSeq` or `facilitatorClearedThroughSeq` on the immutable thread record so it takes one Firestore write rather than hundreds of individual deletes; messages received afterward remain visible.
+- Main Admin and facilitator private inboxes support **Clear my inbox/history**, hiding up to 100 visible messages per call. If 100 were hidden, repeat the action to continue with older history.
+- Student Portal and Main Admin per-student message history likewise support clearing up to 100 items at a time.
+
+**Safety and scope:** Delete and Clear actions remove content **only from the requesting person's view**. They do **not** delete the other participant's message copy, student or facilitator registrations, payments, attendance, read history or historical backups. They mark the relevant message with a per-viewer hidden flag in Firestore, or record a high-water message sequence for clearing a conversation. This deliberately does **not** reduce Firestore storage usage; controlled permanent purging and data-retention rules are a separate maintenance function and should require explicit academy policy and backup verification.
+
+**Authorization:** Every delete/clear callable enforces Firebase App Check and authenticates the relevant existing student, assigned active facilitator, or permission-checked Main Admin before modifying records. Student-to-facilitator chats cannot be cleared across programmes or intakes. Main Admin–facilitator owner-only rules remain intact. Admin deletions of Student Portal messages use the existing students permission level. No message body is sent to an external service.
+
+**Rollout:**
+1. Run `node scripts/validate-local.js` (includes `scripts/test-message-delete.js` and extended existing chat tests).
+2. Back up Firestore via **Main Admin → Cloud Backups → Create Backup Now**.
+3. Merge this branch after validation, deploy Firebase Functions through `.\\scripts\\deploy-firebase.ps1`, and verify the new callables appear in `firebase functions:list --project skydream-academy`.
+4. Confirm the Netlify production build for `main` published to `https://skydream.academy`. All affected private script URLs are versioned and do not use the old PWA cache.
+5. Test with two separate browser sessions: a student and their facilitator exchange two messages; deleting one should hide it from the deleting user but not the other, and clearing a conversation should allow future messages to appear. Repeat for Main Admin–facilitator messages/replies and legacy student portal notices, verifying all read-only roles remain excluded.

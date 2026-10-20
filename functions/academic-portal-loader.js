@@ -204,7 +204,7 @@ function publicMessage(doc){
 // Retrieve recent messages in Firestore ordering instead of taking the
 // first arbitrary 100 documents and sorting them only in memory. The
 // compatibility query also includes older records without createdAt.
-async function latestStudentMessages(studentId){
+async function latestStudentMessages(studentId,viewer='student'){
   const base=db.collection(COL.studentMessages).where('studentId','==',studentId);
   const legacy=base.limit(100).get();
   const recent=base.orderBy('createdAt','desc').limit(100).get()
@@ -217,7 +217,9 @@ async function latestStudentMessages(studentId){
   for(const snap of [legacySnap,recentSnap]){
     if(snap)for(const doc of snap.docs)merged.set(doc.id,doc);
   }
-  return [...merged.values()].map(publicMessage).filter(m=>m.message)
+  const hiddenKey=viewer==='admin'?'hiddenForAdmin':'hiddenForStudent';
+  return [...merged.values()].filter(doc=>doc.data().active!==false&&doc.data()[hiddenKey]!==true)
+    .map(publicMessage).filter(m=>m.message)
     .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))).slice(0,50);
 }
 
@@ -323,8 +325,78 @@ app.adminGetStudentMessages=onCall({enforceAppCheck:true},async request=>{
   const studentId=clean(request.data&&request.data.studentId,120);
   const students=await readValue(KEYS.students,[]);
   if(!(students||[]).some(s=>s.id===studentId))throw new HttpsError('not-found','Student not found.');
-  const messages=await latestStudentMessages(studentId);
+  const messages=await latestStudentMessages(studentId,'admin');
   return{messages,unread:messages.filter(m=>!m.readAt).length};
+});
+
+// Hide one student portal announcement from just the current viewer.
+// Existing Firebase student identity and authenticated admin permissions
+// are validated on the server; sending another message remains unaffected.
+app.studentDeletePortalMessage=onCall({enforceAppCheck:true},async request=>{
+  const token=requireStudent(request),id=clean(request.data?.id,140);
+  if(!id)throw new HttpsError('invalid-argument','Choose a message to delete.');
+  const ref=db.collection(COL.studentMessages).doc(id);
+  let removed=false;
+  await db.runTransaction(async tx=>{
+    const snap=await tx.get(ref);
+    if(!snap.exists||snap.data().studentId!==token.studentId||
+      snap.data().active===false)
+      throw new HttpsError('not-found','Message is not in your student portal.');
+    if(snap.data().hiddenForStudent===true)return;
+    tx.update(ref,{hiddenForStudent:true,studentHiddenAt:new Date().toISOString()});
+    removed=true;
+  });
+  return{ok:true,removed};
+});
+app.adminDeleteStudentPortalMessage=onCall({enforceAppCheck:true},async request=>{
+  const account=await requireAdmin(request,'students');
+  const id=clean(request.data?.id,140),studentId=clean(request.data?.studentId,140);
+  if(!id||!studentId)throw new HttpsError('invalid-argument','Choose a student message.');
+  const students=await readValue(KEYS.students,[]);
+  if(!students.some(s=>s.id===studentId))throw new HttpsError('not-found','Student not found.');
+  const ref=db.collection(COL.studentMessages).doc(id);let removed=false;
+  await db.runTransaction(async tx=>{
+    const snap=await tx.get(ref);
+    if(!snap.exists||snap.data().studentId!==studentId||
+      snap.data().active===false)
+      throw new HttpsError('not-found','Message does not belong to this student.');
+    if(snap.data().hiddenForAdmin===true)return;
+    tx.update(ref,{hiddenForAdmin:true,adminHiddenBy:account.username,
+      adminHiddenAt:new Date().toISOString()});
+    removed=true;
+  });
+  return{ok:true,removed};
+});
+
+// Bulk inbox cleanup is bounded (100 writes per request), preserving the
+// counterpart's copy of each message. It never touches payments or attendance.
+async function clearPortalInbox(studentId,viewer,actor=''){
+  const key=viewer==='admin'?'hiddenForAdmin':'hiddenForStudent';
+  const snap=await db.collection(COL.studentMessages)
+    .where('studentId','==',studentId).limit(500).get();
+  const docs=snap.docs.filter(doc=>doc.data().active!==false&&
+    doc.data()[key]!==true).slice(0,100);
+  if(!docs.length)return{ok:true,cleared:0,morePossible:false};
+  const batch=db.batch(),now=new Date().toISOString();
+  for(const doc of docs){
+    batch.update(doc.ref,{[key]:true,
+      [viewer==='admin'?'adminHiddenAt':'studentHiddenAt']:now,
+      ...(viewer==='admin'?{adminHiddenBy:actor}:{})});
+  }
+  await batch.commit();
+  return{ok:true,cleared:docs.length,morePossible:docs.length===100};
+}
+app.studentClearPortalMessages=onCall({enforceAppCheck:true},async request=>{
+  const token=requireStudent(request);
+  return clearPortalInbox(token.studentId,'student');
+});
+app.adminClearStudentPortalMessages=onCall({enforceAppCheck:true},async request=>{
+  const account=await requireAdmin(request,'students');
+  const studentId=clean(request.data?.studentId,140);
+  const students=await readValue(KEYS.students,[]);
+  if(!students.some(s=>s.id===studentId))
+    throw new HttpsError('not-found','Student not found.');
+  return clearPortalInbox(studentId,'admin',account.username);
 });
 
 app.adminPreviewBulkStudentMessage=onCall({enforceAppCheck:true},async request=>{
@@ -454,7 +526,7 @@ app.studentMarkMessagesRead=onCall({enforceAppCheck:true},async request=>{
   if(!ids.length)return{ok:true,updated:0};
   const snaps=await Promise.all(ids.map(id=>db.collection(COL.studentMessages).doc(id).get()));
   const batch=db.batch(),readAt=new Date().toISOString();let updated=0;
-  snaps.forEach(s=>{if(!s.exists)return;const m=s.data()||{};if(m.studentId!==token.studentId||m.readAt)return;batch.update(s.ref,{readAt});updated++;});
+  snaps.forEach(s=>{if(!s.exists)return;const m=s.data()||{};if(m.studentId!==token.studentId||m.readAt||m.hiddenForStudent===true)return;batch.update(s.ref,{readAt});updated++;});
   if(updated)await batch.commit();
   return{ok:true,updated,readAt};
 });
@@ -475,7 +547,7 @@ app.getStudentPortalDashboard=onCall({enforceAppCheck:true},async request=>{
   const token=requireStudent(request);
   const [students,attendance,broadcasts,settings,intake,intakeHistory,messageSnap]=await Promise.all([
     readValue(KEYS.students,[]),readValue(KEYS.attendance,[]),readValue(KEYS.broadcasts,[]),readValue(KEYS.settings,{}),
-    readValue(KEYS.intake,{}),readValue(KEYS.intakeHistory,[]),latestStudentMessages(token.studentId)
+    readValue(KEYS.intake,{}),readValue(KEYS.intakeHistory,[]),latestStudentMessages(token.studentId,'student')
   ]);
   const student=students.find(s=>s.id===token.studentId);if(!student)throw new HttpsError('permission-denied','Student record is no longer available.');
   const currentIntake=student.intakeStart||intake.startDate||'';

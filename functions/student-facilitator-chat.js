@@ -78,6 +78,9 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
       course:clean(data.course,70),
       lastMessage:clean(data.lastMessage,1000),lastMessageAt:data.lastMessageAt||'',
       lastSenderType:data.lastSenderType||'',
+      messageSeq:Number(data.messageSeq)||0,
+      studentClearedThroughSeq:Number(data.studentClearedThroughSeq)||0,
+      facilitatorClearedThroughSeq:Number(data.facilitatorClearedThroughSeq)||0,
       unreadStudent:Number(data.unreadStudent)||0,
       unreadFacilitator:Number(data.unreadFacilitator)||0,
       studentReadAt:data.studentReadAt||'',facilitatorReadAt:data.facilitatorReadAt||''
@@ -134,8 +137,13 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
     const messages=msgs.docs.map(doc=>({
       id:doc.id,message:clean(doc.data().message,1000),
       createdAt:doc.data().createdAt||'',senderType:doc.data().senderType,
-      senderName:clean(doc.data().senderName,110)
-    })).reverse();
+      senderName:clean(doc.data().senderName,110),
+      sequence:Number(doc.data().sequence)||0
+    })).filter(m=>{
+      const record=msgs.docs.find(d=>d.id===m.id)?.data()||{};
+      return m.sequence>(Number(raw[viewer+'ClearedThroughSeq'])||0)&&
+        record[viewer==='student'?'hiddenForStudent':'hiddenForFacilitator']!==true;
+    }).reverse();
     const unreadKey=viewer==='student'?'unreadStudent':'unreadFacilitator';
     if(Number(raw[unreadKey])>0){
       await db.runTransaction(async tx=>{
@@ -153,7 +161,7 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
     const facilitators=c.facilitators.filter(f=>activeFacilitator(f,student));
     const threads=await Promise.all(facilitators.slice(0,40).map(async f=>{
       const snap=await threadRef(student.id,f.id).get();
-      return snap.exists?safeThread(snap.data()):null;
+      return snap.exists&&Number(snap.data().messageSeq||0)>Number(snap.data().studentClearedThroughSeq||0)?safeThread(snap.data()):null;
     }));
     return{facilitators:facilitators.slice(0,40).map(f=>({id:f.id,name:clean(f.name||f.username,110)})),
       threads:threads.filter(Boolean).sort((a,b)=>String(b.lastMessageAt).localeCompare(String(a.lastMessageAt)))};
@@ -175,7 +183,7 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
       .orderBy('lastMessageAt','desc').limit(200).get();
     const allowed=new Set(roster.map(s=>s.id));
     const threads=threadSnap.docs.map(d=>safeThread(d.data()))
-      .filter(t=>t&&allowed.has(t.studentId))
+      .filter(t=>t&&allowed.has(t.studentId)&&t.messageSeq>t.facilitatorClearedThroughSeq)
       .sort((a,b)=>String(b.lastMessageAt).localeCompare(String(a.lastMessageAt)));
     return{roster:roster.slice(0,500).map(s=>({id:s.id,name:clean(s.fullName,110),
       regNumber:clean(s.regNumber,80),course:s.course})),threads};
@@ -189,4 +197,73 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
     return writeMessage(pair(c,clean(request.data?.studentId,140),f.id),
       'facilitator',validText(request.data?.message));
   });
+  // Deleting an individual message affects only the requesting participant's
+  // view. No participant may erase another person's historical transcript.
+  async function hideMessage(participants,viewer,id){
+    if(!id)throw new HttpsError('invalid-argument','Select a message to delete.');
+    const thread=threadRef(participants.student.id,participants.fac.id);
+    const ref=db.collection(MESSAGES).doc(id);
+    let removed=false;
+    await db.runTransaction(async tx=>{
+      const [messageSnap,threadSnap]=await Promise.all([tx.get(ref),tx.get(thread)]);
+      if(!messageSnap.exists||!threadSnap.exists||
+          messageSnap.data().threadId!==thread.id||
+          messageSnap.data().studentId!==participants.student.id||
+          messageSnap.data().facilitatorId!==participants.fac.id)
+        throw new HttpsError('not-found','Message not found in this conversation.');
+      const hiddenKey=viewer==='student'?'hiddenForStudent':'hiddenForFacilitator';
+      const m=messageSnap.data(),t=threadSnap.data();
+      if(t.studentId!==participants.student.id||t.facilitatorId!==participants.fac.id)
+        throw new HttpsError('permission-denied','Conversation is unavailable.');
+      if(m[hiddenKey]===true)return;
+      tx.update(ref,{[hiddenKey]:true});
+      const unreadKey='unread'+(viewer==='student'?'Student':'Facilitator');
+      const readAt=t[viewer+'ReadAt']||'';
+      const isUnread=m.senderType!==viewer&&m.createdAt>readAt&&
+        Number(m.sequence)>Number(t[viewer+'ClearedThroughSeq']||0);
+      if(isUnread&&Number(t[unreadKey])>0)
+        tx.update(thread,{[unreadKey]:Math.max(0,Number(t[unreadKey])-1)});
+      removed=true;
+    });
+    return{ok:true,removed};
+  }
+  // Clearing a conversation does not destroy the other participant's messages
+  // and does not require 100s of document writes. Future messages reappear.
+  async function clearConversation(participants,viewer){
+    const ref=threadRef(participants.student.id,participants.fac.id);
+    let cleared=0;
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists)return;
+      const t=snap.data();
+      if(t.studentId!==participants.student.id||t.facilitatorId!==participants.fac.id)
+        throw new HttpsError('permission-denied','Conversation is unavailable.');
+      cleared=Number(t.messageSeq)||0;
+      tx.update(ref,{
+        [viewer+'ClearedThroughSeq']:cleared,
+        ['unread'+(viewer==='student'?'Student':'Facilitator')]:0,
+        [viewer+'ReadAt']:new Date().toISOString()
+      });
+    });
+    return{ok:true,clearedThroughSeq:cleared};
+  }
+  app.studentDeleteFacilitatorChatMessage=onCall({enforceAppCheck:true},async request=>{
+    const c=await context(),s=studentIdentity(request,c);
+    return hideMessage(pair(c,s.id,clean(request.data?.facilitatorId,140)),
+      'student',clean(request.data?.id,140));
+  });
+  app.facilitatorDeleteStudentChatMessage=onCall({enforceAppCheck:true},async request=>{
+    const c=await context(),f=await facilitatorIdentity(request,c);
+    return hideMessage(pair(c,clean(request.data?.studentId,140),f.id),
+      'facilitator',clean(request.data?.id,140));
+  });
+  app.studentClearFacilitatorChat=onCall({enforceAppCheck:true},async request=>{
+    const c=await context(),s=studentIdentity(request,c);
+    return clearConversation(pair(c,s.id,clean(request.data?.facilitatorId,140)),'student');
+  });
+  app.facilitatorClearStudentChat=onCall({enforceAppCheck:true},async request=>{
+    const c=await context(),f=await facilitatorIdentity(request,c);
+    return clearConversation(pair(c,clean(request.data?.studentId,140),f.id),'facilitator');
+  });
+
 };

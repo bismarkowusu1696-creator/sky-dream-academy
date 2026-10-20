@@ -55,6 +55,9 @@
 /assets/facilitator-inbox.js
   Cache-Control: no-store, max-age=0
 
+/assets/student-portal.js
+  Cache-Control: no-store, max-age=0
+
 /assets/student-facilitator-chat.js
   Cache-Control: no-store, max-age=0
 

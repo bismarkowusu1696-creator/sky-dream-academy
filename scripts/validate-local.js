@@ -101,11 +101,13 @@ runNode(['scripts/test-facilitator-messaging.js']);
 checks += 1;
 runNode(['scripts/test-student-facilitator-chat.js']);
 checks += 1;
+runNode(['scripts/test-message-delete.js']);
+checks += 1;
 for(const [page,script] of [
   ['student-portal.html','assets/student-facilitator-chat.js'],
   ['academy-facilitator-access-64c2f89a.html','assets/facilitator-student-chat.js']
 ]){
-  assert(read(page).includes(script+'?v=20261020-chat1'),
+  assert(read(page).includes(script+'?v=20261020-delete1'),
     'Private student-facilitator chat script missing on '+page);
 }
 assert(read('assets/student-portal.js').includes('skydream-student-portal-ready'),
@@ -136,6 +138,39 @@ assert(worker.includes("'/assets/facilitator-inbox.js'")&&
   'Service worker must bypass caching both private messaging interfaces.');
 assert(read('assets/facilitator.js').includes("skydream-facilitator-dashboard-ready"),
   'Inbox must refresh after facilitator login.');
+
+const deleteFunctions=[
+  'studentDeleteFacilitatorChatMessage','facilitatorDeleteStudentChatMessage',
+  'studentClearFacilitatorChat','facilitatorClearStudentChat',
+  'adminDeleteFacilitatorInboxItem','facilitatorDeleteInboxItem',
+  'adminClearFacilitatorInbox','facilitatorClearInbox',
+  'studentDeletePortalMessage','adminDeleteStudentPortalMessage',
+  'studentClearPortalMessages','adminClearStudentPortalMessages'
+];
+const deleteSources=read('functions/student-facilitator-chat.js')+
+  read('functions/facilitator-messaging.js')+read('functions/academic-portal-loader.js');
+for(const action of deleteFunctions){
+  assert(deleteSources.includes(action+'=onCall({enforceAppCheck:true}'),
+    'Message delete callable must enforce App Check: '+action);
+}
+assert(read('assets/student-portal.js').includes('data-delete-portal-message')&&
+  read('assets/admin-suite.js').includes('data-suite-delete-message'),
+  'Both student and administrator portal messages need delete controls.');
+assert(read('assets/facilitator-inbox.js').includes('data-delete-fac-inbox')&&
+  read('assets/admin-facilitator-messages.js').includes('data-admin-delete-fac'),
+  'Admin/facilitator inbox and reply delete controls are required.');
+assert(read('assets/student-facilitator-chat.js').includes('studentClearFacilitatorChat')&&
+  read('assets/facilitator-student-chat.js').includes('facilitatorClearStudentChat'),
+  'Students and facilitators must be able to clear only their own chat history.');
+assert(read('student-portal.html').includes('id="portalClearMessages"')&&
+  read('assets/student-portal.js').includes('studentClearPortalMessages'),
+  'Student Portal must provide a clear message history action.');
+assert(read('assets/admin-suite.js').includes('adminClearStudentPortalMessages'),
+  'Admin student profile must provide a clear message history action.');
+assert(read('student-portal.html').includes('student-portal.js?v=20261020-delete1'),
+  'Student portal must load the current script version.');
+assert(read('service-worker.js').includes("'/assets/student-portal.js'"),
+  'Student portal script must not use stale offline message history.');
 
 const enterprise=read('functions/enterprise-admin-loader.js');
 const portal=read('functions/academic-portal-loader.js');

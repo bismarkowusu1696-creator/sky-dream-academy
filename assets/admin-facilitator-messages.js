@@ -42,12 +42,12 @@
       return '<div class="card"><div class="dashboard-top"><strong>'+esc(m.senderName||'SkyDream Administration')+
         '</strong><small>'+esc(new Date(m.createdAt).toLocaleString('en-GB'))+'</small></div>'+
         '<p class="pre-wrap">'+esc(m.message)+'</p><small class="hint">'+
-        (m.readAt?'Read '+esc(new Date(m.readAt).toLocaleString('en-GB')):'Not read yet')+'</small>'+
+        (m.readAt?'Read '+esc(new Date(m.readAt).toLocaleString('en-GB')):'Not read yet')+'</small>'+'<button type="button" class="btn btn-outline btn-small" data-admin-delete-fac="'+esc(m.id)+'">Delete for me</button>'+
         (replies.length?'<h4 class="mt-14">Facilitator replies ('+replies.length+')</h4>'+
           replies.map(r=>'<div class="card"><strong>'+esc(r.senderName||'Facilitator')+'</strong>'+
             '<small class="hint"> · '+esc(new Date(r.createdAt).toLocaleString('en-GB'))+'</small>'+
             '<p class="pre-wrap">'+esc(r.message)+'</p><small class="hint">'+
-            (r.readAt?'Read':'New reply')+'</small></div>').join('')+
+            (r.readAt?'Read':'New reply')+'</small>'+'<button type="button" class="btn btn-outline btn-small" data-admin-delete-fac="'+esc(m.id)+'" data-admin-delete-reply="'+esc(r.id)+'">Delete for me</button></div>').join('')+
           (unread?'<button type="button" class="btn btn-outline btn-small" data-fac-admin-read="'+esc(m.id)+'">Mark '+unread+' reply/replies as read</button>':'')
           :'')+'</div>';
     }).join('')||'<p class="hint">No facilitator inbox messages have been sent to this account.</p>';
@@ -70,6 +70,18 @@
       await call('adminMarkFacilitatorRepliesRead',{id:b.dataset.facAdminRead});
       await refresh(false);
     }catch(err){error(err);b.disabled=false;}
+  });
+  document.addEventListener('click',async e=>{
+    const button=e.target.closest('[data-admin-delete-fac]');
+    if(!button||!$('facilitatorMessages')?.contains(button))return;
+    if(!confirm('Delete this '+(button.dataset.adminDeleteReply?'reply':'message')+' from your admin view? The facilitator will still see their copy.'))return;
+    button.disabled=true;
+    try{
+      await call('adminDeleteFacilitatorInboxItem',{
+        id:button.dataset.adminDeleteFac,replyId:button.dataset.adminDeleteReply||''});
+      await refresh(false);
+      $('fmStatus').textContent='Removed from your admin view.';
+    }catch(err){error(err);button.disabled=false;}
   });
   window.addEventListener('skydream-owner-session-ready',build);
 })();

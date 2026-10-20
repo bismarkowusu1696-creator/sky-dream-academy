@@ -43,11 +43,11 @@
             '<div class="card"><small class="hint">'+esc(r.senderName||'Your reply')+' · '+esc(new Date(r.createdAt).toLocaleString('en-GB'))+'</small>'+
             '<p class="pre-wrap">'+esc(r.message)+'</p><small class="hint">'+(r.readAt?'Seen by Main Admin':'Awaiting Main Admin review')+'</small></div>'
           ).join(''):'')+'</div>'+
-          '<details class="mt-14"><summary>Reply to this message</summary>'+
-          '<label class="block-my-8" for="facReply_'+esc(m.id)+'">Your private reply</label>'+
+          '<div class="mt-14"><button class="btn btn-outline btn-small" type="button" data-toggle-fac-reply="'+esc(m.id)+'" aria-expanded="false">Reply</button>'+
+          '<div data-fac-reply-composer hidden><label class="block-my-8" for="facReply_'+esc(m.id)+'">Your private reply</label>'+
           '<textarea id="facReply_'+esc(m.id)+'" data-fac-reply-input rows="3" maxlength="1500" placeholder="Type your reply to the Main Admin"></textarea>'+
           '<div class="toolbar mt-8"><button type="button" class="btn btn-primary btn-small" data-send-fac-reply="'+esc(m.id)+'">Send Reply</button></div>'+
-          '</details></div>';
+          '</div></div></div>';
       }).join('')||'<p class="hint">No messages from the administration yet.</p>';
       label.textContent=items.length+' message(s) in your inbox.';
     }catch(err){label.textContent=SkyDreamFirebase.friendlyError(err)||err.message||'Could not load messages.';}
@@ -58,10 +58,21 @@
     try{await call('facilitatorMarkInboxRead',{id:b.dataset.inboxRead});await refresh();}
     catch(err){alert(SkyDreamFirebase.friendlyError(err)||err.message);b.disabled=false;}
   });
+  document.addEventListener('click',e=>{
+    const button=e.target.closest('[data-toggle-fac-reply]');
+    if(!button||!$('facInbox')?.contains(button))return;
+    const composer=button.parentElement?.querySelector('[data-fac-reply-composer]');
+    if(!composer)return;
+    const opening=composer.hidden;
+    composer.hidden=!opening;
+    button.setAttribute('aria-expanded',String(opening));
+    button.textContent=opening?'Cancel Reply':'Reply';
+    if(opening)composer.querySelector('textarea')?.focus();
+  });
   document.addEventListener('click',async e=>{
     const button=e.target.closest('[data-send-fac-reply]');
     if(!button)return;
-    const textarea=button.closest('details')?.querySelector('[data-fac-reply-input]');
+    const textarea=button.closest('[data-fac-reply-composer]')?.querySelector('[data-fac-reply-input]');
     const reply=textarea?.value.trim()||'';
     if(!reply||reply.length>1500){alert('Enter a reply of up to 1500 characters.');return;}
     button.disabled=true;

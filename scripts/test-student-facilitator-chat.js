@@ -172,6 +172,11 @@ async function main(){
   const indexes=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../firestore.indexes.json'),'utf8'));
   assert.ok(indexes.indexes.some(i=>i.collectionGroup==='sdta_student_facilitator_messages'&&
     i.fields.some(f=>f.fieldPath==='threadId')&&i.fields.some(f=>f.fieldPath==='createdAt')));
+  assert.ok(indexes.indexes.some(i=>i.collectionGroup==='sdta_student_facilitator_threads'&&
+    i.fields.some(f=>f.fieldPath==='facilitatorId')&&
+    i.fields.some(f=>f.fieldPath==='lastMessageAt')));
+  const validator=fs.readFileSync(path.resolve(__dirname,'../scripts/validate-local.js'),'utf8');
+  assert.ok(validator.includes("runNode(['scripts/test-student-facilitator-chat.js'])"));
   console.log('Student/facilitator messaging passed: identity, intake and course isolation, send/receive, unread counts, 30/h spam limit, backups and index.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

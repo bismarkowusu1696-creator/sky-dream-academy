@@ -168,7 +168,8 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
   app.facilitatorListStudentChats=onCall({enforceAppCheck:true},async request=>{
     const c=await context(),f=await facilitatorIdentity(request,c);
     const roster=c.students.filter(s=>activeStudent(s,c.intake)&&activeFacilitator(f,s));
-    const threadSnap=await db.collection(THREADS).where('facilitatorId','==',f.id).limit(200).get();
+    const threadSnap=await db.collection(THREADS).where('facilitatorId','==',f.id)
+      .orderBy('lastMessageAt','desc').limit(200).get();
     const allowed=new Set(roster.map(s=>s.id));
     const threads=threadSnap.docs.map(d=>safeThread(d.data()))
       .filter(t=>t&&allowed.has(t.studentId))

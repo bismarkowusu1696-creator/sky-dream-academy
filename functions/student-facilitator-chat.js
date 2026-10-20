@@ -24,7 +24,8 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
     ]);
     let intake={};
     try{intake=intakeDocs.exists?JSON.parse(intakeDocs.data().value||'{}'):{};}catch(_){}
-    if(!intake||typeof intake!=='object')intake={};
+    if(!intake||typeof intake!=='object'||!intake.startDate)
+      throw new HttpsError('failed-precondition','Active intake information is not available. Student chats are paused.');
     return{students,facilitators,intake};
   }
   function activeStudent(s,intake){
@@ -137,7 +138,8 @@ module.exports=function installStudentFacilitatorChat(app,{onCall,HttpsError,db,
       await db.runTransaction(async tx=>{
         const fresh=await tx.get(ref);
         if(fresh.exists&&fresh.data().studentId===student.id&&
-          fresh.data().facilitatorId===fac.id&&Number(fresh.data()[unreadKey])>0)
+          fresh.data().facilitatorId===fac.id&&fresh.data().lastMessageAt===raw.lastMessageAt&&
+          Number(fresh.data()[unreadKey])>0)
           tx.update(ref,{[unreadKey]:0,[viewer+'ReadAt']:new Date().toISOString()});
       });
     }

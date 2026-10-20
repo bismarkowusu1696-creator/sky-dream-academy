@@ -174,6 +174,18 @@
     $('portalLogout').addEventListener('click',async()=>{await SkyDreamFirebase.auth.signOut();location.reload();});
     $('portalEnablePush').addEventListener('click',()=>enablePush().catch(err=>alert(SkyDreamFirebase.friendlyError(err))));
     $('portalDisablePush').addEventListener('click',()=>disablePush().catch(err=>alert(SkyDreamFirebase.friendlyError(err))));
+    $('portalClearMessages').addEventListener('click',async()=>{
+      if(!confirm('Clear your student portal message history? Other recipients keep their own messages.'))return;
+      const button=$('portalClearMessages');button.disabled=true;
+      try{
+        const result=await SkyDreamFirebase.call('studentClearPortalMessages');
+        portal=await SkyDreamFirebase.call('getStudentPortalDashboard');
+        render();
+        alert(result.cleared+' message(s) removed from your view.'+
+          (result.morePossible?' Repeat Clear to remove older messages.':''));
+      }catch(err){alert(SkyDreamFirebase.friendlyError(err));}
+      finally{button.disabled=false;}
+    });
     $('portalMessageList').addEventListener('click',e=>{
       const b=e.target.closest('[data-delete-portal-message]');
       if(b)deletePortalMessage(b.dataset.deletePortalMessage,b);

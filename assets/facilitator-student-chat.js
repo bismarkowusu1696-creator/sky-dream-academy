@@ -21,7 +21,7 @@
     section.innerHTML='<h2>Student Chats</h2><p class="hint">Private conversations with students in your assigned current-intake programmes.</p>'+
       '<div class="field"><label for="facChatStudent">Student</label><select id="facChatStudent"></select></div>'+
       '<div class="toolbar mt-12"><button type="button" class="btn btn-outline btn-small" id="facChatRefresh">Refresh Chats</button>'+
-      '<span class="hint" id="facChatUnread"></span></div>'+
+      '<span class="hint" id="facChatUnread"></span>'+'<button type="button" class="btn btn-outline btn-small" id="facChatClear">Clear conversation</button></div>'+
       '<div id="facChatHistory" class="grid mt-12" aria-live="polite"></div>'+
       '<div class="field mt-16"><label for="facChatText">Message</label>'+
       '<textarea id="facChatText" rows="3" maxlength="1000" placeholder="Reply to the student or send course guidance"></textarea></div>'+
@@ -31,6 +31,8 @@
     $('facChatStudent').addEventListener('change',()=>{selected=$('facChatStudent').value;showChat();});
     $('facChatRefresh').addEventListener('click',async()=>{await loadList();await showChat();});
     $('facChatSend').addEventListener('click',send);
+    $('facChatClear').addEventListener('click',clearChat);
+    $('facChatHistory').addEventListener('click',deleteMessage);
     ready=true;
   }
   const status=t=>{if($('facChatStatus'))$('facChatStatus').textContent=t;};
@@ -63,10 +65,30 @@
       history.innerHTML=msgs.map(m=>
         '<div class="card"><div class="dashboard-top"><strong>'+esc(m.senderType==='facilitator'?'You':m.senderName||'Student')+
         '</strong><small class="hint">'+esc(new Date(m.createdAt).toLocaleString('en-GB'))+'</small></div>'+
-        '<p class="pre-wrap">'+esc(m.message)+'</p></div>').join('')||
+        '<p class="pre-wrap">'+esc(m.message)+'</p>'+'<button type="button" class="btn btn-outline btn-small" data-delete-fac-chat="'+esc(m.id)+'">Delete for me</button></div>').join('')||
         '<p class="hint">No messages yet. Send a course-related message to begin.</p>';
       status('');
     }catch(e){history.textContent=error(e);}
+  }
+  async function deleteMessage(e){
+    const button=e.target.closest('[data-delete-fac-chat]');
+    if(!button||!selected)return;
+    if(!confirm('Delete this message from your own view? The student keeps their copy.'))return;
+    button.disabled=true;
+    try{
+      await call('facilitatorDeleteStudentChatMessage',{
+        studentId:selected,id:button.dataset.deleteFacChat});
+      await showChat();
+      status('Message deleted from your view.');
+    }catch(e){status(error(e));button.disabled=false;}
+  }
+  async function clearChat(){
+    if(!selected||!confirm('Clear your view of this student conversation? The student keeps their messages and new messages will still arrive.'))return;
+    const button=$('facChatClear');button.disabled=true;
+    try{
+      await call('facilitatorClearStudentChat',{studentId:selected});
+      await loadList();await showChat();status('Conversation cleared from your view.');
+    }catch(e){status(error(e));}finally{button.disabled=false;}
   }
   async function send(){
     if(busy||!selected)return;

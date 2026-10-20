@@ -39,9 +39,10 @@
           '<span class="badge">'+(m.readAt?'Read':'Unread')+'</span></div>'+
           '<p class="hint">'+esc(date)+'</p><p class="pre-wrap">'+esc(m.message)+'</p>'+
           (m.readAt?'':'<button class="btn btn-outline btn-small" type="button" data-inbox-read="'+esc(m.id)+'">Mark as read</button>')+
+          '<button class="btn btn-outline btn-small" type="button" data-delete-fac-inbox="'+esc(m.id)+'">Delete for me</button>'+
           '<div class="mt-14">'+(Array.isArray(m.replies)?m.replies.map(r=>
             '<div class="card"><small class="hint">'+esc(r.senderName||'Your reply')+' · '+esc(new Date(r.createdAt).toLocaleString('en-GB'))+'</small>'+
-            '<p class="pre-wrap">'+esc(r.message)+'</p><small class="hint">'+(r.readAt?'Seen by Main Admin':'Awaiting Main Admin review')+'</small></div>'
+            '<p class="pre-wrap">'+esc(r.message)+'</p><small class="hint">'+(r.readAt?'Seen by Main Admin':'Awaiting Main Admin review')+'</small>'+'<button type="button" class="btn btn-outline btn-small" data-delete-fac-inbox="'+esc(m.id)+'" data-delete-fac-reply="'+esc(r.id)+'">Delete for me</button></div>'
           ).join(''):'')+'</div>'+
           '<div class="mt-14"><button class="btn btn-outline btn-small" type="button" data-toggle-fac-reply="'+esc(m.id)+'" aria-expanded="false">Reply</button>'+
           '<div data-fac-reply-composer hidden><label class="block-my-8" for="facReply_'+esc(m.id)+'">Your private reply</label>'+
@@ -85,6 +86,18 @@
       alert(SkyDreamFirebase.friendlyError(err)||err.message);
       button.disabled=false;button.textContent=original;
     }
+  });
+  document.addEventListener('click',async e=>{
+    const b=e.target.closest('[data-delete-fac-inbox]');
+    if(!b||!$('facInbox')?.contains(b))return;
+    if(!confirm('Delete this '+(b.dataset.deleteFacReply?'reply':'message')+' from your inbox? The Main Admin keeps their copy.'))return;
+    b.disabled=true;
+    try{
+      await call('facilitatorDeleteInboxItem',{
+        id:b.dataset.deleteFacInbox,replyId:b.dataset.deleteFacReply||''});
+      await refresh();
+      $('facInboxStatus').textContent='Removed from your inbox.';
+    }catch(err){alert(SkyDreamFirebase.friendlyError(err)||err.message);b.disabled=false;}
   });
   window.addEventListener('skydream-facilitator-dashboard-ready',refresh);
 })();

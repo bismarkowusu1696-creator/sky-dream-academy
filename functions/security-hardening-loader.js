@@ -940,4 +940,9 @@ app.adminCorrectPayment = onCall({enforceAppCheck:true},async request=>{
     oldTotal:correction.oldTotal,newTotal:correction.newTotal};
 });
 
+// Dedicated private facilitator inbox, distinct from internal admin notes.
+require('./facilitator-messaging')(app,{
+  onCall,HttpsError,db,admin,crypto,requireStrongAdminSession
+});
+
 module.exports = app;

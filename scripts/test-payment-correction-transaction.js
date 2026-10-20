@@ -7,7 +7,7 @@ const crypto=require('node:crypto');
 const {correctPaymentInPlace}=require('../functions/payment-corrections');
 const source=fs.readFileSync(path.resolve(__dirname,'../functions/security-hardening-loader.js'),'utf8');
 const first=source.indexOf('// Correct a single payment with a durable in-record revision trail.');
-const last=source.lastIndexOf('module.exports = app;');
+const last=source.indexOf('// Dedicated private facilitator inbox, distinct from internal admin notes.',first);
 assert.ok(first>=0&&last>first,'Correction endpoint missing');
 const endpoint=source.slice(first,last);
 const students=[{id:'s1',regNumber:'SDHD005/10/2026',fullName:'Example Student',feePaid:100,payments:[{amount:100,date:'2026-10-16T10:00:00Z',note:'Tuition',recordedBy:'original-admin'}]}];

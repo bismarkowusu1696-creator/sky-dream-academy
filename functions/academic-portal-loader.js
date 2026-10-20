@@ -368,6 +368,37 @@ app.adminDeleteStudentPortalMessage=onCall({enforceAppCheck:true},async request=
   return{ok:true,removed};
 });
 
+// Bulk inbox cleanup is bounded (100 writes per request), preserving the
+// counterpart's copy of each message. It never touches payments or attendance.
+async function clearPortalInbox(studentId,viewer,actor=''){
+  const key=viewer==='admin'?'hiddenForAdmin':'hiddenForStudent';
+  const snap=await db.collection(COL.studentMessages)
+    .where('studentId','==',studentId).limit(500).get();
+  const docs=snap.docs.filter(doc=>doc.data().active!==false&&
+    doc.data()[key]!==true).slice(0,100);
+  if(!docs.length)return{ok:true,cleared:0,morePossible:false};
+  const batch=db.batch(),now=new Date().toISOString();
+  for(const doc of docs){
+    batch.update(doc.ref,{[key]:true,
+      [viewer==='admin'?'adminHiddenAt':'studentHiddenAt']:now,
+      ...(viewer==='admin'?{adminHiddenBy:actor}:{})});
+  }
+  await batch.commit();
+  return{ok:true,cleared:docs.length,morePossible:docs.length===100};
+}
+app.studentClearPortalMessages=onCall({enforceAppCheck:true},async request=>{
+  const token=requireStudent(request);
+  return clearPortalInbox(token.studentId,'student');
+});
+app.adminClearStudentPortalMessages=onCall({enforceAppCheck:true},async request=>{
+  const account=await requireAdmin(request,'students');
+  const studentId=clean(request.data?.studentId,140);
+  const students=await readValue(KEYS.students,[]);
+  if(!students.some(s=>s.id===studentId))
+    throw new HttpsError('not-found','Student not found.');
+  return clearPortalInbox(studentId,'admin',account.username);
+});
+
 app.adminPreviewBulkStudentMessage=onCall({enforceAppCheck:true},async request=>{
   await requireAdmin(request,'students');
   const selected=await selectBulkRecipients(request.data||{});

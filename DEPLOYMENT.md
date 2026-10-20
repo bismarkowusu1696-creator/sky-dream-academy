@@ -153,3 +153,14 @@ Facilitators can now **reply directly** to each Main Admin message in their exis
 **Backups:** Replies live inside the existing `sdta_facilitator_messages` collection, already included in cloud backups. No new collections, keys, or billing configuration are required.
 
 **Rollout:** Run `node scripts/validate-local.js`, verify the Firebase backup and tests, merge the dedicated pull request, then deploy functions via `.\\scripts\\deploy-firebase.ps1` and ensure GitHub Pages publishes the updated scripts. Confirm both callable names with `firebase functions:list --project skydream-academy`. Test a conversation in separate browsers: Main Admin sends, facilitator replies beneath that message, admin refreshes **Facilitator Messages**, sees unread replies and marks them read; facilitator refreshes and sees **Seen by Main Admin**. Test that a different facilitator and a staff administrator cannot read or change the conversation.
+
+
+## 15. Facilitator Reply button visibility and private-script cache fix
+
+The first reply release displayed the entry point as a collapsed `<details>` disclosure, which could look like plain text rather than a button. The revised facilitator dashboard shows a visible **Reply** button on every existing admin message; click it to open the reply textarea and **Send Reply**. It remains available for messages already marked read. Replies are still restricted by `facilitatorReplyToMessage`.
+
+Previously, the PWA service worker applied a cache-first rule to `assets/facilitator-inbox.js` and `assets/admin-facilitator-messages.js`, even though production HTTP response headers instructed `no-store`. The service worker now bypasses caching those private scripts. The cache namespace was rotated and both authenticated dashboard HTML pages use a versioned script URL to defeat existing cache entries, including while an older service worker is still active.
+
+**Production host check:** The canonical site is deployed from Netlify's connected `main` branch. GitHub Pages success alone does **not** verify that `https://skydream.academy` is running the new assets. Confirm the Netlify production deploy is successful. On a separate logged-in facilitator session, refresh the private dashboard using Ctrl+Shift+R, open **Messages**, and look for a visible **Reply** button below each admin message. If the site still looks old, check that `assets/facilitator-inbox.js?v=20261020-reply-ui2` returns the new code on the **canonical** site (look for `data-toggle-fac-reply` in the source). Do not paste tokens, credentials, or message text when asking for troubleshooting help.
+
+This fix changes front-end files, the service worker, and test coverage only; existing Firebase functions `facilitatorReplyToMessage` and `adminMarkFacilitatorRepliesRead` remain unchanged. A Firebase Cloud Functions redeployment is not necessary for this fix.

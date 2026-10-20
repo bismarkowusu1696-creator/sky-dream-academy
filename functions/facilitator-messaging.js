@@ -36,10 +36,13 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
       throw new HttpsError('permission-denied','This facilitator account is not active.');
     return fac;
   }
-  async function messagesFor(facilitatorId){
+  async function messagesFor(facilitatorId,viewer){
     const snap=await db.collection(MESSAGES).where('facilitatorId','==',facilitatorId).limit(200).get();
+    const hidden=viewer==='admin'?'hiddenForAdmin':'hiddenForFacilitator';
     return snap.docs.map(doc=>({id:doc.id,...doc.data()}))
-      .filter(m=>m.active!==false)
+      .filter(m=>m.active!==false&&m[hidden]!==true)
+      .map(m=>({...m,replies:(Array.isArray(m.replies)?m.replies:[])
+        .filter(r=>r&&r[hidden]!==true)}))
       .sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')))
       .slice(0,100);
   }
@@ -52,7 +55,7 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
     if(!facilitatorId)return{facilitators,messages:[]};
     if(!list.some(f=>f.id===facilitatorId))
       throw new HttpsError('not-found','Facilitator no longer exists.');
-    const messages=await messagesFor(facilitatorId);
+    const messages=await messagesFor(facilitatorId,'admin');
     return{facilitators,messages,unreadReplies:messages.reduce((total,m)=>
       total+(Array.isArray(m.replies)?m.replies.filter(r=>!r.readAt).length:0),0)};
   });
@@ -78,7 +81,7 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
   });
   app.facilitatorGetInbox=onCall({enforceAppCheck:true},async request=>{
     const fac=await facilitator(request);
-    const messages=await messagesFor(fac.id);
+    const messages=await messagesFor(fac.id,'facilitator');
     return{messages,unread:messages.filter(m=>!m.readAt).length};
   });
   app.facilitatorMarkInboxRead=onCall({enforceAppCheck:true},async request=>{
@@ -87,7 +90,7 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
     const ref=db.collection(MESSAGES).doc(id);
     await db.runTransaction(async tx=>{
       const snap=await tx.get(ref);
-      if(!snap.exists||snap.data().facilitatorId!==fac.id||snap.data().active===false)
+      if(!snap.exists||snap.data().facilitatorId!==fac.id||snap.data().active===false||snap.data().hiddenForFacilitator===true)
         throw new HttpsError('not-found','Message not found.');
       if(!snap.data().readAt)tx.update(ref,{readAt:new Date().toISOString()});
     });
@@ -105,7 +108,7 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
     const now=new Date().toISOString(),replyId='reply_'+crypto.randomUUID();
     await db.runTransaction(async tx=>{
       const snap=await tx.get(ref);
-      if(!snap.exists||snap.data().active===false||snap.data().facilitatorId!==fac.id)
+      if(!snap.exists||snap.data().active===false||snap.data().facilitatorId!==fac.id||snap.data().hiddenForFacilitator===true)
         throw new HttpsError('not-found','Message not found in your inbox.');
       const data=snap.data();
       const replies=Array.isArray(data.replies)?data.replies:[];
@@ -132,13 +135,48 @@ module.exports=function installFacilitatorMessaging(app,{onCall,HttpsError,db,ad
       if(!snap.exists||snap.data().active===false)
         throw new HttpsError('not-found','Facilitator message not found.');
       const data=snap.data(),replies=Array.isArray(data.replies)?data.replies:[];
-      marked=replies.filter(r=>!r.readAt).length;
+      marked=replies.filter(r=>!r.readAt&&r.hiddenForAdmin!==true).length;
       if(marked){
         const when=new Date().toISOString();
-        tx.update(ref,{replies:replies.map(r=>r.readAt?r:{...r,readAt:when})});
+        tx.update(ref,{replies:replies.map(r=>r.readAt||r.hiddenForAdmin===true?r:{...r,readAt:when})});
       }
     });
     return{ok:true,marked};
   });
+
+  // Delete for me: retain the recipient's copy and the original message in
+  // Firestore backups. A reply may also be hidden without hiding the thread.
+  async function hideForViewer(request,viewer){
+    const account=viewer==='admin'?await owner(request):await facilitator(request);
+    const id=clean(request.data?.id,140),replyId=clean(request.data?.replyId,140);
+    if(!id)throw new HttpsError('invalid-argument','Select the message you want to delete.');
+    const ref=db.collection(MESSAGES).doc(id),hiddenKey=
+      viewer==='admin'?'hiddenForAdmin':'hiddenForFacilitator';
+    let removed=false;
+    await db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists||snap.data().active===false||
+        (viewer==='facilitator'&&snap.data().facilitatorId!==account.id))
+        throw new HttpsError('not-found','The selected message was not found in your inbox.');
+      const data=snap.data();
+      if(replyId){
+        const replies=Array.isArray(data.replies)?data.replies:[];
+        if(!replies.some(r=>r.id===replyId&&r[hiddenKey]!==true))
+          throw new HttpsError('not-found','The selected reply was not found.');
+        tx.update(ref,{replies:replies.map(r=>r.id===replyId?
+          {...r,[hiddenKey]:true}:r)});
+      }else{
+        if(data[hiddenKey]===true)return;
+        tx.update(ref,{[hiddenKey]:true,
+          [viewer==='admin'?'hiddenByAdminAt':'hiddenByFacilitatorAt']:new Date().toISOString()});
+      }
+      removed=true;
+    });
+    return{ok:true,removed};
+  }
+  app.adminDeleteFacilitatorInboxItem=onCall({enforceAppCheck:true},async request=>
+    hideForViewer(request,'admin'));
+  app.facilitatorDeleteInboxItem=onCall({enforceAppCheck:true},async request=>
+    hideForViewer(request,'facilitator'));
 
 };

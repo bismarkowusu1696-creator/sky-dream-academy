@@ -948,4 +948,9 @@ require('./facilitator-messaging')(app,{
 // Authenticated, course-scoped student/facilitator private conversations.
 require('./student-facilitator-chat')(app,{onCall,HttpsError,db,admin,crypto});
 
+// Change current intake dates and public weekly programme sessions without a cohort rollover.
+require('./training-schedule-editor')(app,{
+  onCall,HttpsError,db,crypto,requireStrongAdminSession
+});
+
 module.exports = app;

@@ -14,6 +14,7 @@ const BACKUP_COLLECTIONS = Object.freeze([
   'sdta_registration_workflow_rows',
   'sdta_facilitator_onboarding_rows',
   'sdta_admin_audit_archive',
+  'sdta_training_schedule_changes',
   'sdta_desk_daily_reports',
   'sdta_assessment_records',
   'sdta_timetable_entries',

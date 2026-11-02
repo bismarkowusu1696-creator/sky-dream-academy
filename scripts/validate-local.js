@@ -103,6 +103,26 @@ runNode(['scripts/test-student-facilitator-chat.js']);
 checks += 1;
 runNode(['scripts/test-message-delete.js']);
 checks += 1;
+runNode(['scripts/test-training-schedule-editor.js']);
+checks += 1;
+assert(read('functions/security-hardening-loader.js').includes("require('./training-schedule-editor')"),
+  'Secure training schedule editor must be registered in the production loader.');
+for(const name of ['adminGetTrainingSchedule','adminSaveTrainingSchedule']){
+  assert(read('functions/training-schedule-editor.js').includes(name+'=onCall({enforceAppCheck:true}'),
+    'Training schedule must enforce App Check: '+name);
+}
+assert(read('assets/admin-training-schedule.js').includes('skydream-owner-session-ready')&&
+  read('academy-team-access-83d7c921.html').includes('admin-training-schedule.js?v=20261102-schedule1'),
+  'The Main Admin training schedule editor must be loaded on the protected dashboard.');
+assert(read('schedule.html').includes('id="weeklyScheduleGrid"')&&
+  read('assets/schedule-live.js').includes('trainingSchedule'),
+  'Public Schedule page must display programme days and times.');
+assert(read('functions/backup-collections.js').includes("'sdta_training_schedule_changes'"),
+  'Schedule change history must be included in scheduled backups.');
+assert(read('service-worker.js').includes("'/assets/admin-training-schedule.js'")&&
+  read('_headers').includes('/assets/admin-training-schedule.js'),
+  'Admin schedule editor must always be loaded fresh (not PWA cached).');
+
 for(const [page,script] of [
   ['student-portal.html','assets/student-facilitator-chat.js'],
   ['academy-facilitator-access-64c2f89a.html','assets/facilitator-student-chat.js']

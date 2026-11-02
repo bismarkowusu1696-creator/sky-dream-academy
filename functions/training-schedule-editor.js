@@ -92,8 +92,16 @@ module.exports=function installTrainingSchedule(app,{
   app.adminGetTrainingSchedule=onCall({enforceAppCheck:true},async request=>{
     await requireOwner(request);
     const state=await loadState();
+    const auditSnap=await db.collection('sdta_training_schedule_changes')
+      .where('intakeStart','==',state.intake.startDate).limit(100).get();
+    const changes=auditSnap.docs.map(doc=>doc.data()).sort((a,b)=>
+      String(b.date||'').localeCompare(String(a.date||''))).slice(0,15).map(c=>({
+        id:c.id,date:c.date,updatedBy:c.updatedBy,revision:c.revision,
+        changedDates:FIELDS.filter(f=>(c.before?.intake?.[f]||'')!==(c.after?.intake?.[f]||'')),
+        sessionCount:c.after?.sessions?.length||0
+      }));
     return{intake:state.intake,revision:Number(state.weekly.revision)||0,
-      sessions:Array.isArray(state.weekly.sessions)?state.weekly.sessions:[]};
+      sessions:Array.isArray(state.weekly.sessions)?state.weekly.sessions:[],changes};
   });
   app.adminSaveTrainingSchedule=onCall({enforceAppCheck:true},async request=>{
     const account=await requireOwner(request),d=request.data||{};

@@ -43,7 +43,7 @@ self.addEventListener('notificationclick', event => {
   })());
 });
 
-const CACHE_NAME = 'skydream-pwa-v40';
+const CACHE_NAME = 'skydream-pwa-v41';
 const PUBLIC_SHELL = [
   '/',
   '/programs',
@@ -131,6 +131,7 @@ self.addEventListener('fetch', event => {
     '/assets/admin-desk-owner.js',
     '/assets/admin-pin.js',
     '/assets/admin-intake.js',
+    '/assets/admin-training-schedule.js',
     '/assets/admin-suite.js',
     '/assets/admin-facilitator-messages.js',
     '/assets/facilitator-inbox.js',

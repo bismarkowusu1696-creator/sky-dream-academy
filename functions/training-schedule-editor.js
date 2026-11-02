@@ -116,8 +116,9 @@ module.exports=function installTrainingSchedule(app,{
       const intakeRef=ref(INTAKE),weeklyRef=ref(KEY);
       const studentsRef=ref('sdta_students');
       const historyRef=db.collection('sdta_training_schedule_changes').doc('change_'+crypto.randomUUID());
-      const [intakeSnap,weeklySnap,studentSnap]=await Promise.all([
-        tx.get(intakeRef),tx.get(weeklyRef),tx.get(studentsRef)]);
+      const [intakeSnap,weeklySnap,studentSnap,attendanceSnap,classSnap]=await Promise.all([
+        tx.get(intakeRef),tx.get(weeklyRef),tx.get(studentsRef),
+        tx.get(ref('sdta_attendance')),tx.get(ref('sdta_class_sessions'))]);
       const old=parse(intakeSnap,{}),stored=parse(weeklySnap,{});
       if(!old.startDate||old.startDate!==d.intakeStart)
         throw new HttpsError('aborted','The active intake changed. Refresh before editing.');
@@ -130,6 +131,14 @@ module.exports=function installTrainingSchedule(app,{
       if(dates.startDate!==old.startDate&&students.some(s=>s.intakeStart===old.startDate))
         throw new HttpsError('failed-precondition',
           'Orientation/start date identifies the current student cohort and cannot change after registrations. Edit the other dates instead.');
+      if(dates.startDate!==old.startDate){
+        const attendance=parse(attendanceSnap,[]);
+        const classSessions=parse(classSnap,[]);
+        if((Array.isArray(attendance)&&attendance.some(a=>a.intakeStart===old.startDate))||
+          (Array.isArray(classSessions)&&classSessions.some(c=>c.intakeStart===old.startDate)))
+          throw new HttpsError('failed-precondition',
+            'This intake has recorded attendance or class sessions. Its identifying orientation date cannot be changed safely.');
+      }
       if(dates.startDate!==old.startDate&&revision>0)
         throw new HttpsError('failed-precondition',
           'The active intake has schedule history. Changing its identifying orientation date requires a separate cohort migration.');

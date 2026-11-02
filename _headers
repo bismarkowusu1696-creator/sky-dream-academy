@@ -31,6 +31,9 @@
 /assets/schedule-live.js
   Cache-Control: no-cache, max-age=0, must-revalidate
 
+/assets/admin-training-schedule.js
+  Cache-Control: no-store, max-age=0
+
 /assets/admin-enterprise-login.js
   Cache-Control: no-store, max-age=0
 
